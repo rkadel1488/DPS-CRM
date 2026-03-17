@@ -1,0 +1,141 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "System users with specific roles.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "staff", "parent", "driver"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "allowedTabs": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Student": {
+      "title": "Student",
+      "description": "Student records for canteen and transport.",
+      "type": "object",
+      "properties": {
+        "studentId": { "type": "string" },
+        "name": { "type": "string" },
+        "photoUrl": { "type": "string", "format": "uri" },
+        "medicalInfo": { "type": "string" },
+        "allergies": { "type": "array", "items": { "type": "string" } },
+        "balance": { "type": "number" },
+        "routeId": { "type": "string" },
+        "parentId": { "type": "string" },
+        "grade": { "type": "string" },
+        "section": { "type": "string" }
+      },
+      "required": ["name", "balance"]
+    },
+    "Meal": {
+      "title": "Meal",
+      "description": "Canteen menu items.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "items": { "type": "string" },
+        "calories": { "type": "number" },
+        "inventory": { "type": "number" },
+        "available": { "type": "boolean" }
+      },
+      "required": ["name", "items"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Canteen billing records.",
+      "type": "object",
+      "properties": {
+        "studentId": { "type": "string" },
+        "amount": { "type": "number" },
+        "type": { "type": "string", "enum": ["credit", "debit"] },
+        "items": { "type": "array", "items": { "type": "string" } },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "processedBy": { "type": "string" }
+      },
+      "required": ["studentId", "amount", "type", "timestamp"]
+    },
+    "Vehicle": {
+      "title": "Vehicle",
+      "description": "Transport fleet management.",
+      "type": "object",
+      "properties": {
+        "busNumber": { "type": "string" },
+        "plateNumber": { "type": "string" },
+        "capacity": { "type": "number" },
+        "status": { "type": "string", "enum": ["active", "maintenance", "inactive"] },
+        "currentLat": { "type": "number" },
+        "currentLng": { "type": "number" },
+        "lastUpdate": { "type": "string", "format": "date-time" }
+      },
+      "required": ["busNumber", "plateNumber", "status"]
+    },
+    "Route": {
+      "title": "Route",
+      "description": "Bus route definitions.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "driverId": { "type": "string" },
+        "vehicleId": { "type": "string" },
+        "stops": { "type": "array", "items": { "type": "object", "properties": { "name": { "type": "string" }, "lat": { "type": "number" }, "lng": { "type": "number" } } } }
+      },
+      "required": ["name"]
+    },
+    "BoardingLog": {
+      "title": "BoardingLog",
+      "description": "Real-time student tracking on buses.",
+      "type": "object",
+      "properties": {
+        "studentId": { "type": "string" },
+        "routeId": { "type": "string" },
+        "vehicleId": { "type": "string" },
+        "type": { "type": "string", "enum": ["boarding", "alighting"] },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "location": { "type": "object", "properties": { "lat": { "type": "number" }, "lng": { "type": "number" } } }
+      },
+      "required": ["studentId", "type", "timestamp"]
+    },
+    "MealPlan": {
+      "title": "MealPlan",
+      "description": "Weekly meal schedule.",
+      "type": "object",
+      "properties": {
+        "day": { "type": "string", "enum": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] },
+        "mealName": { "type": "string" },
+        "mealId": { "type": "string" }
+      },
+      "required": ["day", "mealName"]
+    },
+    "TransportAttendance": {
+      "title": "TransportAttendance",
+      "description": "Transport attendance records.",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string" },
+        "routeId": { "type": "string" },
+        "studentId": { "type": "string" },
+        "status": { "type": "string", "enum": ["present", "absent"] },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "markedBy": { "type": "string" }
+      },
+      "required": ["date", "routeId", "studentId", "status", "timestamp", "markedBy"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": { "schema": "User", "description": "User profiles" },
+    "/students/{studentId}": { "schema": "Student", "description": "Student database" },
+    "/meals/{mealId}": { "schema": "Meal", "description": "Canteen menu" },
+    "/transactions/{transactionId}": { "schema": "Transaction", "description": "Billing history" },
+    "/vehicles/{vehicleId}": { "schema": "Vehicle", "description": "Fleet tracking" },
+    "/routes/{routeId}": { "schema": "Route", "description": "Route planning" },
+    "/boarding_logs/{logId}": { "schema": "BoardingLog", "description": "Tracking logs" },
+    "/meal_plans/{planId}": { "schema": "MealPlan", "description": "Weekly meal schedule" },
+    "/transport_attendance/{attendanceId}": { "schema": "TransportAttendance", "description": "Transport attendance records" }
+  }
+}

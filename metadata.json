@@ -1,0 +1,7 @@
+{
+  "name": "CampusFlow: Canteen & Transport",
+  "description": "A comprehensive management system for school canteens and transportation, featuring real-time tracking, meal planning, and billing.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}

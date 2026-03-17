@@ -1,0 +1,839 @@
+import React, { useState, useEffect, Component } from 'react';
+import { 
+  LayoutDashboard, 
+  Utensils, 
+  Bus, 
+  Users, 
+  Settings, 
+  LogOut, 
+  Bell, 
+  Search,
+  Menu as MenuIcon,
+  X,
+  CreditCard,
+  MapPin,
+  ClipboardList,
+  AlertCircle,
+  TrendingUp,
+  ChevronRight
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { auth, db } from './firebase';
+import { 
+  onAuthStateChanged, 
+  signInWithPopup, 
+  GoogleAuthProvider, 
+  signInAnonymously,
+  signOut,
+  User as FirebaseUser
+} from 'firebase/auth';
+import { 
+  doc, 
+  getDoc, 
+  setDoc, 
+  onSnapshot, 
+  collection, 
+  query, 
+  orderBy, 
+  limit,
+  getDocs,
+  addDoc,
+  serverTimestamp
+} from 'firebase/firestore';
+import { StaffInvite, UserProfile, UserRole } from './types';
+import { MAIN_ADMIN_EMAIL } from './constants';
+
+// Components
+import CanteenDashboard from './components/CanteenDashboard';
+import TransportDashboard from './components/TransportDashboard';
+import AdminDashboard from './components/AdminDashboard';
+
+// Firestore Error Handling
+export enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId: string | undefined;
+    email: string | null | undefined;
+    emailVerified: boolean | undefined;
+    isAnonymous: boolean | undefined;
+    tenantId: string | null | undefined;
+    providerInfo: {
+      providerId: string;
+      displayName: string | null;
+      email: string | null;
+      photoUrl: string | null;
+    }[];
+  }
+}
+
+export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo: auth.currentUser?.providerData.map(provider => ({
+        providerId: provider.providerId,
+        displayName: provider.displayName,
+        email: provider.email,
+        photoUrl: provider.photoURL
+      })) || []
+    },
+    operationType,
+    path
+  };
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
+
+// Error Boundary Component
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: any;
+}
+
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  state: ErrorBoundaryState = { hasError: false, error: null };
+
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: any, errorInfo: any) {
+    console.error('ErrorBoundary caught an error', error, errorInfo);
+  }
+
+  componentDidMount() {
+    window.addEventListener('unhandledrejection', this.handleUnhandledRejection);
+    window.addEventListener('error', this.handleErrorEvent);
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener('unhandledrejection', this.handleUnhandledRejection);
+    window.removeEventListener('error', this.handleErrorEvent);
+  }
+
+  handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+    event.preventDefault();
+    this.setState({ hasError: true, error: event.reason });
+  };
+
+  handleErrorEvent = (event: ErrorEvent) => {
+    event.preventDefault();
+    this.setState({ hasError: true, error: event.error });
+  };
+
+  render() {
+    const { hasError, error } = this.state;
+    if (hasError) {
+      let errorMessage = 'Something went wrong.';
+      try {
+        const parsed = JSON.parse(error.message);
+        if (parsed.error) errorMessage = `Firestore Error: ${parsed.error}`;
+      } catch (e) {
+        errorMessage = error?.message || errorMessage;
+      }
+
+      return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+          <div className="bg-white p-8 rounded-3xl shadow-xl max-w-md w-full border border-red-100 text-center">
+            <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-6">
+              <AlertCircle className="w-8 h-8 text-red-500" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Application Error</h2>
+            <p className="text-gray-500 mb-6">{errorMessage}</p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="w-full py-3 bg-gray-900 text-white rounded-xl font-bold hover:bg-gray-800 transition-all"
+            >
+              Reload Application
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (this as any).props.children;
+  }
+}
+
+export default function App() {
+  return (
+    <ErrorBoundary>
+      <AppContent />
+    </ErrorBoundary>
+  );
+}
+
+function AppContent() {
+  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [adminAction, setAdminAction] = useState<'add_student' | 'add_teacher' | 'add_staff' | 'add_parent' | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [loading, setLoading] = useState(true);
+  
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [isPhoneLogin, setIsPhoneLogin] = useState(false);
+  const [loginError, setLoginError] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+
+  const isAdmin = profile?.email === MAIN_ADMIN_EMAIL;
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      setUser(firebaseUser);
+      if (firebaseUser) {
+        try {
+          const docRef = doc(db, 'users', firebaseUser.uid);
+          const docSnap = await getDoc(docRef);
+          
+          if (docSnap.exists()) {
+            let data = docSnap.data() as UserProfile;
+            
+            // Force admin role for the main admin email
+            if (firebaseUser.email === MAIN_ADMIN_EMAIL && (data.role !== 'admin' || data.allowedTabs?.length !== 5)) {
+              const updatedProfile = {
+                ...data,
+                role: 'admin' as UserRole,
+                allowedTabs: ['dashboard', 'canteen', 'transport', 'admin', 'settings']
+              };
+              await setDoc(docRef, updatedProfile);
+              data = updatedProfile;
+            }
+            
+            setProfile(data);
+          } else if (!firebaseUser.isAnonymous) {
+            // Create default profile for new Google users
+            const isAdmin = firebaseUser.email === MAIN_ADMIN_EMAIL;
+            const newProfile: UserProfile = {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email || '',
+              displayName: firebaseUser.displayName || 'User',
+              role: isAdmin ? 'admin' : 'staff',
+              createdAt: new Date().toISOString(),
+              allowedTabs: isAdmin ? ['dashboard', 'canteen', 'transport', 'admin', 'settings'] : ['dashboard']
+            };
+            await setDoc(docRef, newProfile);
+            setProfile(newProfile);
+          }
+        } catch (error: any) {
+          console.error("Error fetching user profile:", error);
+          if (error.message?.includes('client is offline')) {
+            error.message = "Could not connect to Firestore. Please ensure the database 'ai-studio-991b43cf-8da1-495f-b24f-89722babf104' exists in your Firebase project 'gen-lang-client-0945475485'.";
+          }
+          handleFirestoreError(error, OperationType.GET, `users/${firebaseUser.uid}`);
+        }
+      } else {
+        setProfile(null);
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleLogin = async () => {
+    if (isLoggingIn) return;
+    setIsLoggingIn(true);
+    const provider = new GoogleAuthProvider();
+    setLoginError('');
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (error: any) {
+      console.error('Login failed:', error);
+      if (error.code === 'auth/admin-restricted-operation') {
+        setLoginError('Sign-ups are disabled. Please enable "Enable create (sign-up)" in Firebase Authentication settings.');
+      } else if (error.code === 'auth/operation-not-allowed') {
+        setLoginError('Google sign-in is not enabled. Please enable it in Firebase Authentication settings.');
+      } else if (error.message?.includes('NTERNAL ASSERTION FAILED') || error.message?.includes('INTERNAL ASSERTION FAILED')) {
+        setLoginError('Login popup was closed or blocked. Please try again and ensure popups are allowed.');
+      } else {
+        setLoginError(error.message || 'Login failed. Please try again.');
+      }
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  const handlePhoneLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError('');
+    if (!phoneNumber) {
+      setLoginError('Please enter a phone number.');
+      return;
+    }
+    
+    if (isLoggingIn) return;
+    setIsLoggingIn(true);
+    setLoading(true);
+    try {
+      // 1. Sign in anonymously to get read access
+      const userCred = await signInAnonymously(auth);
+      
+      // 2. Check if phone number exists in staff_invites
+      const inviteDoc = await getDoc(doc(db, 'staff_invites', phoneNumber));
+      
+      if (!inviteDoc.exists()) {
+        // Not found, sign out and show error
+        await signOut(auth);
+        setLoginError('Phone number not registered.');
+        setLoading(false);
+        setIsLoggingIn(false);
+        return;
+      }
+      
+      const invite = inviteDoc.data() as StaffInvite;
+      
+      const newProfile: UserProfile = {
+        uid: userCred.user.uid,
+        phoneNumber: phoneNumber,
+        displayName: invite.name,
+        role: invite.role,
+        allowedTabs: invite.allowedTabs,
+        createdAt: new Date().toISOString()
+      };
+      
+      // 3. Create user profile
+      await setDoc(doc(db, 'users', userCred.user.uid), newProfile);
+      
+      // 4. Update local state
+      setProfile(newProfile);
+      
+    } catch (error: any) {
+      console.error(error);
+      if (error.code === 'auth/admin-restricted-operation') {
+        setLoginError('Sign-ups are disabled. Please enable "Enable create (sign-up)" in Firebase Authentication settings.');
+      } else if (error.code === 'auth/operation-not-allowed') {
+        setLoginError('Anonymous auth is not enabled. Please enable it in Firebase Authentication settings.');
+      } else {
+        setLoginError('Login failed. Please try again.');
+      }
+      await signOut(auth);
+      setLoading(false);
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  const handleLogout = () => {
+    setActiveTab('dashboard');
+    signOut(auth);
+  };
+
+  if (loading || (user && !profile)) {
+    return (
+      <div className="min-h-screen bg-[#F5F5F4] flex items-center justify-center">
+        <motion.div 
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full"
+        />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-[#F5F5F4] flex items-center justify-center p-4">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-md w-full bg-white rounded-3xl shadow-xl p-8 text-center border border-black/5"
+        >
+          <div className="w-20 h-20 bg-emerald-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <Bus className="w-10 h-10 text-emerald-600" />
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">CampusFlow</h1>
+          <p className="text-gray-500 mb-8">Canteen & Transport Management System</p>
+          
+          {isPhoneLogin ? (
+            <form onSubmit={handlePhoneLogin} className="space-y-4">
+              <div>
+                <input 
+                  type="tel" 
+                  placeholder="Enter Phone Number" 
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  className="w-full p-4 bg-gray-50 border border-black/5 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500 text-center text-lg tracking-wider"
+                />
+              </div>
+              {loginError && <p className="text-red-500 text-sm">{loginError}</p>}
+              <button
+                type="submit"
+                className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-semibold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200"
+              >
+                Login with Phone
+              </button>
+              <button
+                type="button"
+                onClick={() => { setIsPhoneLogin(false); setLoginError(''); }}
+                className="w-full py-4 bg-white text-gray-500 rounded-2xl font-medium hover:bg-gray-50 transition-all"
+              >
+                Back to Google Login
+              </button>
+            </form>
+          ) : (
+            <div className="space-y-4">
+              {loginError && <p className="text-red-500 text-sm">{loginError}</p>}
+              <button
+                onClick={handleLogin}
+                disabled={isLoggingIn}
+                className="w-full py-4 bg-gray-900 text-white rounded-2xl font-semibold hover:bg-gray-800 transition-all flex items-center justify-center gap-3 shadow-lg shadow-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="Google" />
+                {isLoggingIn ? 'Signing in...' : 'Sign in with Google'}
+              </button>
+              <button
+                onClick={() => setIsPhoneLogin(true)}
+                className="w-full py-4 bg-emerald-50 text-emerald-700 rounded-2xl font-semibold hover:bg-emerald-100 transition-all flex items-center justify-center gap-3"
+              >
+                Staff Login (Phone Number)
+              </button>
+            </div>
+          )}
+          
+          <p className="mt-6 text-xs text-gray-400">
+            Secure access for authorized school personnel and parents.
+          </p>
+        </motion.div>
+      </div>
+    );
+  }
+
+  const navItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'canteen', label: 'Canteen', icon: Utensils },
+    { id: 'transport', label: 'Transport', icon: Bus },
+    { id: 'admin', label: 'Management', icon: Users },
+    { id: 'settings', label: 'Settings', icon: Settings },
+  ].filter(item => {
+    if (profile?.role === 'admin') return true;
+    return profile?.allowedTabs?.includes(item.id);
+  });
+
+  return (
+    <div className="min-h-screen bg-[#F5F5F4] flex">
+      {/* Sidebar */}
+      <motion.aside 
+        initial={false}
+        animate={{ width: isSidebarOpen ? 280 : 80 }}
+        className="bg-white border-r border-black/5 flex flex-col z-50 sticky top-0 h-screen"
+      >
+        <div className="p-6 flex items-center justify-between">
+          <AnimatePresence mode="wait">
+            {isSidebarOpen ? (
+              <motion.div 
+                key="logo"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex items-center gap-3"
+              >
+                <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center">
+                  <Bus className="w-6 h-6 text-white" />
+                </div>
+                <span className="font-bold text-xl tracking-tight">CampusFlow</span>
+              </motion.div>
+            ) : (
+              <motion.div 
+                key="icon"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center mx-auto"
+              >
+                <Bus className="w-6 h-6 text-white" />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        <nav className="flex-1 px-4 space-y-2 mt-4">
+          {navItems.map((item) => {
+            if (!isAdmin && !profile?.allowedTabs?.includes(item.id)) return null;
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className={`w-full flex items-center gap-4 p-3 rounded-2xl transition-all ${
+                  isActive 
+                    ? 'bg-emerald-50 text-emerald-700 font-medium' 
+                    : 'text-gray-500 hover:bg-gray-50'
+                }`}
+              >
+                <item.icon className={`w-6 h-6 ${isActive ? 'text-emerald-600' : ''}`} />
+                {isSidebarOpen && <span>{item.label}</span>}
+                {isActive && isSidebarOpen && (
+                  <motion.div 
+                    layoutId="active-pill"
+                    className="ml-auto w-1.5 h-6 bg-emerald-600 rounded-full"
+                  />
+                )}
+              </button>
+            );
+          })}
+        </nav>
+
+        <div className="p-4 border-t border-black/5">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-4 p-3 text-gray-500 hover:bg-red-50 hover:text-red-600 rounded-2xl transition-all"
+          >
+            <LogOut className="w-6 h-6" />
+            {isSidebarOpen && <span>Logout</span>}
+          </button>
+        </div>
+      </motion.aside>
+
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col min-w-0">
+        <header className="h-20 bg-white border-b border-black/5 px-8 flex items-center justify-between sticky top-0 z-40">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="p-2 hover:bg-gray-100 rounded-lg lg:hidden"
+            >
+              <MenuIcon className="w-6 h-6" />
+            </button>
+            <div className="relative hidden md:block">
+              <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input 
+                type="text" 
+                placeholder="Search students, routes..." 
+                className="pl-10 pr-4 py-2 bg-gray-100 border-none rounded-xl w-64 focus:ring-2 focus:ring-emerald-500 transition-all outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-6">
+            <button className="relative p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-all">
+              <Bell className="w-6 h-6" />
+              <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full"></span>
+            </button>
+            <div className="flex items-center gap-3 pl-6 border-l border-black/5">
+              <div className="text-right hidden sm:block">
+                <p className="text-sm font-semibold text-gray-900">{profile?.displayName}</p>
+                <p className="text-xs text-gray-500 capitalize">{profile?.role}</p>
+              </div>
+              <img 
+                src={user.photoURL || `https://ui-avatars.com/api/?name=${profile?.displayName}`} 
+                className="w-10 h-10 rounded-xl border border-black/5"
+                alt="Profile"
+              />
+            </div>
+          </div>
+        </header>
+
+        <div className="p-8 overflow-auto">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              {activeTab === 'dashboard' && <DashboardOverview profile={profile} isAdmin={isAdmin} setActiveTab={setActiveTab} />}
+              {activeTab === 'canteen' && <CanteenDashboard profile={profile} isAdmin={isAdmin} />}
+              {activeTab === 'transport' && <TransportDashboard profile={profile} isAdmin={isAdmin} />}
+              {activeTab === 'admin' && <AdminDashboard profile={profile} isAdmin={isAdmin} initialAction={adminAction} onActionComplete={() => setAdminAction(null)} />}
+              {activeTab === 'settings' && <SettingsView profile={profile} isAdmin={isAdmin} />}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+function DashboardOverview({ profile, isAdmin, setActiveTab }: { profile: UserProfile | null, isAdmin: boolean, setActiveTab: (tab: string) => void }) {
+  const [stats, setStats] = useState({
+    totalStudents: 0,
+    activeBuses: 0,
+    canteenLunchRegs: 0,
+  });
+
+  useEffect(() => {
+    if (!profile) return;
+
+    const fetchStats = async () => {
+      if (profile.role !== 'admin' && profile.role !== 'staff') {
+        return;
+      }
+      try {
+        const studentsSnap = await getDocs(collection(db, 'students'));
+        const vehiclesSnap = await getDocs(collection(db, 'vehicles'));
+        
+        setStats({
+          totalStudents: studentsSnap.size,
+          activeBuses: vehiclesSnap.size,
+          canteenLunchRegs: studentsSnap.docs.filter(d => (d.data().balance || 0) > 0).length,
+        });
+      } catch (error) {
+        console.error("Failed to fetch stats:", error);
+        // Don't throw to error boundary for stats
+      }
+    };
+
+    fetchStats();
+  }, [profile]);
+
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [showQuickAction, setShowQuickAction] = useState(false);
+
+  const handleDownloadReport = async () => {
+    if (isDownloading) return;
+    setIsDownloading(true);
+    try {
+      const xlsx = await import('xlsx');
+      
+      const collections = ['students', 'users', 'vehicles', 'routes', 'meals', 'transactions', 'boarding_logs', 'transport_attendance'];
+      const workbook = xlsx.utils.book_new();
+      
+      for (const colName of collections) {
+        const snap = await getDocs(collection(db, colName));
+        const data = snap.docs.map(doc => {
+          const docData = doc.data();
+          // Convert complex objects/arrays to strings for excel
+          Object.keys(docData).forEach(key => {
+            if (typeof docData[key] === 'object' && docData[key] !== null) {
+              if (docData[key].toDate) {
+                docData[key] = docData[key].toDate().toLocaleString();
+              } else {
+                docData[key] = JSON.stringify(docData[key]);
+              }
+            }
+          });
+          return { id: doc.id, ...docData };
+        });
+        
+        const worksheet = xlsx.utils.json_to_sheet(data.length > 0 ? data : [{ message: 'No data' }]);
+        xlsx.utils.book_append_sheet(workbook, worksheet, colName.substring(0, 31)); // Excel sheet names max 31 chars
+      }
+      
+      const today = new Date().toISOString().split('T')[0];
+      xlsx.writeFile(workbook, `CampusFlow_Report_${today}.xlsx`);
+    } catch (error) {
+      console.error("Error downloading report:", error);
+      alert("Failed to download report. Please try again.");
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-8 relative">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-3xl font-bold text-gray-900">Welcome back, {profile?.displayName.split(' ')[0]}!</h2>
+          <p className="text-gray-500 mt-1">Here's what's happening across campus today.</p>
+        </div>
+        <div className="flex gap-3 relative">
+          <button 
+            onClick={handleDownloadReport}
+            disabled={isDownloading}
+            className="px-4 py-2 bg-white border border-black/5 rounded-xl text-sm font-medium hover:bg-gray-50 transition-all disabled:opacity-50"
+          >
+            {isDownloading ? 'Downloading...' : 'Download Report'}
+          </button>
+          <div className="relative">
+            <button 
+              onClick={() => setShowQuickAction(!showQuickAction)}
+              className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-medium hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100"
+            >
+              Quick Action
+            </button>
+            
+            <AnimatePresence>
+              {showQuickAction && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-black/5 overflow-hidden z-50"
+                >
+                  <div className="p-2 space-y-1">
+                    <button 
+                      onClick={() => { setShowQuickAction(false); setActiveTab('admin'); setAdminAction('add_student'); }}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-xl transition-all"
+                    >
+                      Add Student
+                    </button>
+                    <button 
+                      onClick={() => { setShowQuickAction(false); setActiveTab('admin'); setAdminAction('add_teacher'); }}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-xl transition-all"
+                    >
+                      Add Teacher
+                    </button>
+                    <button 
+                      onClick={() => { setShowQuickAction(false); setActiveTab('admin'); setAdminAction('add_staff'); }}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-xl transition-all"
+                    >
+                      Add Staff
+                    </button>
+                    <button 
+                      onClick={() => { setShowQuickAction(false); setActiveTab('admin'); setAdminAction('add_parent'); }}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-xl transition-all"
+                    >
+                      Add Parent
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {[
+          { label: 'Total Students Registered', value: stats.totalStudents, icon: Users, color: 'bg-blue-500', trend: 'Registered' },
+          { label: 'Total Buses Registered', value: stats.activeBuses, icon: Bus, color: 'bg-emerald-500', trend: 'Fleet' },
+          { label: 'Canteen Lunch Registrations', value: stats.canteenLunchRegs, icon: Utensils, color: 'bg-orange-500', trend: 'Active' },
+        ].map((stat, i) => (
+          <motion.div 
+            key={i}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: i * 0.1 }}
+            className="bg-white p-6 rounded-3xl border border-black/5 shadow-sm"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div className={`${stat.color} p-3 rounded-2xl text-white`}>
+                <stat.icon className="w-6 h-6" />
+              </div>
+              <span className="text-xs font-bold px-2 py-1 rounded-full bg-gray-50 text-gray-500">
+                {stat.trend}
+              </span>
+            </div>
+            <p className="text-gray-500 text-sm font-medium">{stat.label}</p>
+            <h3 className="text-2xl font-bold text-gray-900 mt-1">{stat.value}</h3>
+          </motion.div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Fleet Status Card */}
+        <div className="lg:col-span-2 bg-emerald-600 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden">
+          <div className="relative z-10 max-w-md">
+            <h3 className="text-2xl font-bold mb-3">Fleet Status Overview</h3>
+            <p className="text-emerald-100 text-lg mb-6">Total {stats.activeBuses} buses are currently registered and operational in the system.</p>
+            <button 
+              onClick={() => setActiveTab('transport')}
+              className="px-8 py-3 bg-white text-emerald-600 rounded-xl font-bold hover:bg-emerald-50 transition-all"
+            >
+              Open Live Map
+            </button>
+          </div>
+          <Bus className="absolute -right-8 -bottom-8 w-64 h-64 text-emerald-500/20 rotate-12" />
+        </div>
+
+        {/* Quick Actions - Restricted to Admin */}
+        <div className="space-y-6">
+          <div className="bg-gray-900 rounded-3xl p-6 text-white shadow-xl">
+            <h3 className="font-bold text-lg mb-4">Management Actions</h3>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { label: 'Add Student', icon: Users, adminOnly: true, tab: 'admin' },
+                { label: 'New Transaction', icon: CreditCard, tab: 'canteen' },
+                { label: 'Update Route', icon: MapPin, adminOnly: true, tab: 'transport' },
+                { label: 'Menu Planner', icon: ClipboardList, tab: 'canteen' },
+              ].map((action, i) => {
+                const isDisabled = action.adminOnly && !isAdmin;
+                return (
+                  <button 
+                    key={i} 
+                    disabled={isDisabled}
+                    onClick={() => setActiveTab(action.tab)}
+                    className={`flex flex-col items-center justify-center p-4 rounded-2xl transition-all gap-2 ${
+                      isDisabled 
+                        ? 'bg-white/5 text-white/20 cursor-not-allowed' 
+                        : 'bg-white/10 hover:bg-white/20 text-white'
+                    }`}
+                  >
+                    <action.icon className="w-6 h-6" />
+                    <span className="text-xs font-medium">{action.label}</span>
+                    {action.adminOnly && !isDisabled && <span className="text-[8px] uppercase font-bold text-emerald-400">Admin</span>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SettingsView({ profile, isAdmin }: { profile: UserProfile | null, isAdmin: boolean }) {
+  return (
+    <div className="max-w-2xl mx-auto">
+      <h2 className="text-3xl font-bold text-gray-900 mb-8">Settings</h2>
+      <div className="bg-white rounded-3xl border border-black/5 shadow-sm divide-y divide-black/5">
+        <div className="p-6">
+          <h3 className="font-bold text-gray-900 mb-4">Profile Information</h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Display Name</label>
+              <input type="text" defaultValue={profile?.displayName} className="w-full p-3 bg-gray-50 border-none rounded-xl outline-none focus:ring-2 focus:ring-emerald-500" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Email Address</label>
+              <input type="email" defaultValue={profile?.email} disabled className="w-full p-3 bg-gray-100 border-none rounded-xl text-gray-500 cursor-not-allowed" />
+            </div>
+          </div>
+        </div>
+        <div className="p-6">
+          <h3 className="font-bold text-gray-900 mb-4">Notifications</h3>
+          <div className="space-y-4">
+            {[
+              { label: 'Email Alerts', desc: 'Receive daily summary reports' },
+              { label: 'Push Notifications', desc: 'Real-time alerts for bus delays' },
+              { label: 'Low Balance SMS', desc: 'Automated alerts for student accounts' },
+            ].map((item, i) => (
+              <div key={i} className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-gray-900">{item.label}</p>
+                  <p className="text-sm text-gray-500">{item.desc}</p>
+                </div>
+                <div className="w-12 h-6 bg-emerald-500 rounded-full relative cursor-pointer">
+                  <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full shadow-sm"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="p-6">
+          <button 
+            onClick={() => alert('Settings saved successfully!')}
+            className="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all"
+          >
+            Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

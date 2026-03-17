@@ -1,0 +1,139 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    // Collection: users
+    // Fields: uid, email, displayName, role (admin, staff, parent, driver)
+    //
+    // Collection: students
+    // Fields: studentId, name, balance, routeId, parentId, grade, section
+    //
+    // Collection: meals
+    // Fields: name, category, items, available
+    //
+    // Collection: transactions
+    // Fields: studentId, amount, type, timestamp
+    //
+    // Collection: vehicles
+    // Fields: busNumber, plateNumber, status, currentLat, currentLng
+    //
+    // Collection: routes
+    // Fields: name, driverId, vehicleId, stops
+    //
+    // Collection: boarding_logs
+    // Fields: studentId, type, timestamp
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function hasRole(role) {
+      return isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().role == role;
+    }
+
+    function isAdmin() {
+      return (('email' in request.auth.token) && request.auth.token.email == "rkadel1488@gmail.com") || hasRole('admin');
+    }
+
+    function isStaff() {
+      return isAdmin() || hasRole('staff') || hasRole('teacher');
+    }
+
+    function isDriver() {
+      return isAdmin() || hasRole('driver');
+    }
+
+    function isParentOf(studentId) {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/students/$(studentId)) && 
+             get(/databases/$(database)/documents/students/$(studentId)).data.parentId == request.auth.uid;
+    }
+
+    // Validation Functions
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'role']) &&
+             data.uid is string &&
+             (!('email' in data) || data.email is string) &&
+             (!('phoneNumber' in data) || data.phoneNumber is string) &&
+             data.role in ['admin', 'staff', 'parent', 'driver', 'teacher'] &&
+             (!('allowedTabs' in data) || data.allowedTabs is list);
+    }
+
+    // Rules
+    match /users/{uid} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.auth.uid == uid && isValidUser(request.resource.data) && (
+        request.resource.data.role != 'admin' || 
+        isAdmin() || 
+        (
+          'phoneNumber' in request.resource.data && 
+          exists(/databases/$(database)/documents/staff_invites/$(request.resource.data.phoneNumber)) &&
+          get(/databases/$(database)/documents/staff_invites/$(request.resource.data.phoneNumber)).data.role == 'admin'
+        )
+      );
+      allow update: if isAdmin() || (request.auth.uid == uid && request.resource.data.role == resource.data.role);
+      allow delete: if isAdmin();
+    }
+
+    match /students/{studentId} {
+      allow read: if isStaff() || isDriver() || isParentOf(studentId);
+      allow write: if isStaff();
+    }
+
+    match /meals/{mealId} {
+      allow read: if isAuthenticated();
+      allow write: if isStaff();
+    }
+
+    match /transactions/{transactionId} {
+      allow read: if isStaff() || (isAuthenticated() && isParentOf(resource.data.studentId));
+      allow create: if isStaff();
+      allow update, delete: if isAdmin();
+    }
+
+    match /vehicles/{vehicleId} {
+      allow read: if isAuthenticated();
+      allow write: if isDriver() || isStaff();
+    }
+
+    match /routes/{routeId} {
+      allow read: if isAuthenticated();
+      allow write: if isStaff();
+    }
+
+    match /boarding_logs/{logId} {
+      allow read: if isStaff() || isDriver() || (isAuthenticated() && isParentOf(resource.data.studentId));
+      allow create: if isDriver() || isStaff();
+      allow update, delete: if isAdmin();
+    }
+
+    match /meal_plans/{planId} {
+      allow read: if isAuthenticated();
+      allow write: if isStaff();
+    }
+
+    match /lunch_attendance/{date} {
+      allow read: if isStaff();
+      allow write: if isStaff();
+    }
+
+    match /transport_attendance/{attendanceId} {
+      allow read: if isStaff() || isDriver() || (isAuthenticated() && isParentOf(resource.data.studentId));
+      allow write: if isStaff() || isDriver();
+    }
+
+    match /staff_invites/{phoneNumber} {
+      allow get: if isAuthenticated();
+      allow list: if isStaff();
+      allow write: if isAdmin();
+    }
+  }
+}
