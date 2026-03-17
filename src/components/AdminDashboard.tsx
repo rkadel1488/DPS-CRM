@@ -293,7 +293,7 @@ export default function AdminDashboard({ profile, isAdmin, initialAction, onActi
 
         <div className="overflow-x-auto">
           {activeTab === 'students' && (
-            <table className="w-full text-left">
+            <table className="w-full text-left min-w-[600px]">
               <thead className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-widest font-bold">
                 <tr>
                   <th className="px-6 py-4">Student</th>
@@ -365,7 +365,7 @@ export default function AdminDashboard({ profile, isAdmin, initialAction, onActi
           )}
 
           {activeTab === 'teachers' && (
-            <table className="w-full text-left">
+            <table className="w-full text-left min-w-[600px]">
               <thead className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-widest font-bold">
                 <tr>
                   <th className="px-6 py-4">Teacher Name</th>
@@ -489,7 +489,7 @@ export default function AdminDashboard({ profile, isAdmin, initialAction, onActi
           )}
 
           {activeTab === 'staff' && (
-            <table className="w-full text-left">
+            <table className="w-full text-left min-w-[600px]">
               <thead className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-widest font-bold">
                 <tr>
                   <th className="px-6 py-4">Staff Member</th>
@@ -640,7 +640,7 @@ export default function AdminDashboard({ profile, isAdmin, initialAction, onActi
             </table>
           )}
           {activeTab === 'parents' && (
-            <table className="w-full text-left">
+            <table className="w-full text-left min-w-[600px]">
               <thead className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-widest font-bold">
                 <tr>
                   <th className="px-6 py-4">Parent Name</th>

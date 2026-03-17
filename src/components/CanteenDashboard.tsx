@@ -498,7 +498,7 @@ export default function CanteenDashboard({ profile, isAdmin }: { profile: UserPr
                 </div>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-left">
+                <table className="w-full text-left min-w-[600px]">
                   <thead className="bg-gray-50 text-gray-400 text-xs uppercase tracking-wider">
                     <tr>
                       <th className="px-6 py-4 font-bold">Student Name</th>

@@ -188,7 +188,20 @@ function AppContent() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [adminAction, setAdminAction] = useState<'add_student' | 'add_teacher' | 'add_staff' | 'add_parent' | null>(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1024);
+
+  // Handle resize for sidebar
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        setIsSidebarOpen(true);
+      } else {
+        setIsSidebarOpen(false);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   const [loading, setLoading] = useState(true);
   
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -359,10 +372,10 @@ function AppContent() {
           animate={{ opacity: 1, y: 0 }}
           className="max-w-md w-full bg-white rounded-3xl shadow-xl p-8 text-center border border-black/5"
         >
-          <div className="w-20 h-20 bg-emerald-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
-            <Bus className="w-10 h-10 text-emerald-600" />
+          <div className="w-24 h-24 rounded-2xl flex items-center justify-center mx-auto mb-6 overflow-hidden border border-black/5 shadow-sm">
+            <img src="https://dpsbiratnagar.edu.np/wp-content/uploads/2026/03/dps-logo-high-scaled.png" alt="DPS Logo" className="w-full h-full object-cover" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">CampusFlow</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">DPS CRM</h1>
           <p className="text-gray-500 mb-8">Canteen & Transport Management System</p>
           
           {isPhoneLogin ? (
@@ -431,12 +444,22 @@ function AppContent() {
   });
 
   return (
-    <div className="min-h-screen bg-[#F5F5F4] flex">
+    <div className="min-h-screen bg-[#F5F5F4] flex relative">
+      {/* Mobile Sidebar Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/20 z-40 lg:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
       <motion.aside 
         initial={false}
         animate={{ width: isSidebarOpen ? 280 : 80 }}
-        className="bg-white border-r border-black/5 flex flex-col z-50 sticky top-0 h-screen"
+        className={`bg-white border-r border-black/5 flex flex-col z-50 fixed lg:sticky top-0 h-screen transition-transform duration-300 ${
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        }`}
       >
         <div className="p-6 flex items-center justify-between">
           <AnimatePresence mode="wait">
@@ -448,10 +471,10 @@ function AppContent() {
                 exit={{ opacity: 0 }}
                 className="flex items-center gap-3"
               >
-                <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center">
-                  <Bus className="w-6 h-6 text-white" />
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden border border-black/5 shadow-sm">
+                  <img src="https://dpsbiratnagar.edu.np/wp-content/uploads/2026/03/dps-logo-high-scaled.png" alt="DPS Logo" className="w-full h-full object-cover" />
                 </div>
-                <span className="font-bold text-xl tracking-tight">CampusFlow</span>
+                <span className="font-bold text-xl tracking-tight">DPS CRM</span>
               </motion.div>
             ) : (
               <motion.div 
@@ -459,9 +482,9 @@ function AppContent() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center mx-auto"
+                className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto overflow-hidden border border-black/5 shadow-sm"
               >
-                <Bus className="w-6 h-6 text-white" />
+                <img src="https://dpsbiratnagar.edu.np/wp-content/uploads/2026/03/dps-logo-high-scaled.png" alt="DPS Logo" className="w-full h-full object-cover" />
               </motion.div>
             )}
           </AnimatePresence>
@@ -507,7 +530,7 @@ function AppContent() {
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-w-0">
-        <header className="h-20 bg-white border-b border-black/5 px-8 flex items-center justify-between sticky top-0 z-40">
+        <header className="h-20 bg-white border-b border-black/5 px-4 md:px-8 flex items-center justify-between sticky top-0 z-40">
           <div className="flex items-center gap-4">
             <button 
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -525,12 +548,12 @@ function AppContent() {
             </div>
           </div>
 
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4 md:gap-6">
             <button className="relative p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-all">
               <Bell className="w-6 h-6" />
               <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full"></span>
             </button>
-            <div className="flex items-center gap-3 pl-6 border-l border-black/5">
+            <div className="flex items-center gap-3 pl-4 md:pl-6 border-l border-black/5">
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-semibold text-gray-900">{profile?.displayName}</p>
                 <p className="text-xs text-gray-500 capitalize">{profile?.role}</p>
@@ -544,7 +567,7 @@ function AppContent() {
           </div>
         </header>
 
-        <div className="p-8 overflow-auto">
+        <div className="p-4 md:p-8 overflow-auto">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
@@ -632,7 +655,7 @@ function DashboardOverview({ profile, isAdmin, setActiveTab }: { profile: UserPr
       }
       
       const today = new Date().toISOString().split('T')[0];
-      xlsx.writeFile(workbook, `CampusFlow_Report_${today}.xlsx`);
+      xlsx.writeFile(workbook, `DPS_CRM_Report_${today}.xlsx`);
     } catch (error) {
       console.error("Error downloading report:", error);
       alert("Failed to download report. Please try again.");
