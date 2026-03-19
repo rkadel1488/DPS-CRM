@@ -13,7 +13,9 @@ import {
   CheckCircle2,
   XCircle,
   Trash2,
-  BookOpen
+  BookOpen,
+  Upload,
+  Edit2
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { db } from '../firebase';
@@ -21,8 +23,9 @@ import { addDoc, collection, onSnapshot, query, doc, updateDoc, setDoc, deleteDo
 import { Student, UserProfile, UserRole, StaffInvite } from '../types';
 import { MAIN_ADMIN_EMAIL } from '../constants';
 import { handleFirestoreError, OperationType } from '../App';
+import * as xlsx from 'xlsx';
 
-export default function AdminDashboard({ profile, isAdmin, initialAction, onActionComplete }: { profile: UserProfile | null, isAdmin: boolean, initialAction?: 'add_student' | 'add_teacher' | 'add_staff' | 'add_parent' | null, onActionComplete?: () => void }) {
+export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialAction, onActionComplete }: { profile: UserProfile | null, isAdmin: boolean, isMainAdmin: boolean, initialAction?: 'add_student' | 'add_teacher' | 'add_staff' | 'add_parent' | null, onActionComplete?: () => void }) {
   const [students, setStudents] = useState<Student[]>([]);
   const [staff, setStaff] = useState<UserProfile[]>([]);
   const [invites, setInvites] = useState<StaffInvite[]>([]);
@@ -31,6 +34,7 @@ export default function AdminDashboard({ profile, isAdmin, initialAction, onActi
   const [isAddingStudent, setIsAddingStudent] = useState(false);
   const [isAddingStaff, setIsAddingStaff] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState<string | null>(null);
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [staffToDelete, setStaffToDelete] = useState<string | null>(null);
   const [inviteToDelete, setInviteToDelete] = useState<string | null>(null);
   const [newStudent, setNewStudent] = useState({ name: '', grade: '', section: '', balance: 0, parentId: '', routeId: '' });
@@ -79,6 +83,18 @@ export default function AdminDashboard({ profile, isAdmin, initialAction, onActi
       setNewStudent({ name: '', grade: '', section: '', balance: 0, parentId: '', routeId: '' });
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'students');
+    }
+  };
+
+  const handleEditStudent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isAdmin || !editingStudent) return;
+    try {
+      const { id, ...updateData } = editingStudent;
+      await updateDoc(doc(db, 'students', id), updateData);
+      setEditingStudent(null);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `students/${editingStudent.id}`);
     }
   };
 
@@ -182,6 +198,10 @@ export default function AdminDashboard({ profile, isAdmin, initialAction, onActi
 
   const updateRole = async (user: UserProfile, newRole: UserRole) => {
     if (user.email === MAIN_ADMIN_EMAIL) return; // Cannot edit main admin
+    if (newRole === 'admin' && !isMainAdmin) {
+      alert("Only the main admin can assign the admin role.");
+      return;
+    }
 
     try {
       await updateDoc(doc(db, 'users', user.uid), {
@@ -190,6 +210,61 @@ export default function AdminDashboard({ profile, isAdmin, initialAction, onActi
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `users/${user.uid}`);
     }
+  };
+
+  const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const data = await file.arrayBuffer();
+      const workbook = xlsx.read(data);
+      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+      const jsonData = xlsx.utils.sheet_to_json(worksheet);
+
+      if (activeTab === 'students') {
+        for (const row of jsonData as any[]) {
+          if (!row.name) continue;
+          await addDoc(collection(db, 'students'), {
+            name: row.name,
+            grade: String(row.grade || ''),
+            section: String(row.section || ''),
+            rollNumber: String(row.rollNumber || ''),
+            parentName: String(row.parentName || ''),
+            parentPhone: String(row.parentPhone || ''),
+            parentEmail: String(row.parentEmail || ''),
+            canteenBalance: Number(row.canteenBalance) || 0,
+            transportRoute: String(row.transportRoute || ''),
+            busStop: String(row.busStop || ''),
+            createdAt: new Date().toISOString(),
+          });
+        }
+        alert('Students imported successfully!');
+      } else {
+        for (const row of jsonData as any[]) {
+          if (!row.name || !row.phoneNumber) continue;
+          
+          let role = activeTab === 'teachers' ? 'teacher' : 
+                     activeTab === 'parents' ? 'parent' : 
+                     (row.role || 'staff');
+                     
+          await addDoc(collection(db, 'staff_invites'), {
+            name: row.name,
+            phoneNumber: String(row.phoneNumber),
+            role: role,
+            allowedTabs: ['dashboard'],
+            createdAt: new Date().toISOString(),
+            createdBy: profile?.uid || 'admin'
+          });
+        }
+        alert(`${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} imported successfully!`);
+      }
+    } catch (error) {
+      console.error('Error importing Excel:', error);
+      alert('Failed to import Excel file. Please check the format.');
+    }
+    
+    e.target.value = '';
   };
 
   const availableTabs = [
@@ -202,12 +277,19 @@ export default function AdminDashboard({ profile, isAdmin, initialAction, onActi
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Campus Management</h2>
           <p className="text-gray-500">Manage student records, staff roles, and parent access.</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
+          {isAdmin && (
+            <label className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl text-sm font-bold hover:bg-emerald-100 transition-all cursor-pointer">
+              <Upload className="w-4 h-4" />
+              Import Excel
+              <input type="file" accept=".xlsx, .xls" className="hidden" onChange={handleImportExcel} />
+            </label>
+          )}
           {activeTab === 'students' && isAdmin && (
             <button 
               onClick={() => setIsAddingStudent(true)}
@@ -258,7 +340,7 @@ export default function AdminDashboard({ profile, isAdmin, initialAction, onActi
 
       <div className="bg-white rounded-3xl border border-black/5 shadow-sm overflow-hidden">
         <div className="p-6 border-b border-black/5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex gap-2 bg-gray-100 p-1 rounded-xl">
+          <div className="grid grid-cols-2 md:flex md:flex-wrap gap-2 bg-gray-100 p-1 rounded-xl">
             {[
               { id: 'students', label: 'Students', icon: GraduationCap },
               { id: 'teachers', label: 'Teachers', icon: BookOpen },
@@ -268,7 +350,7 @@ export default function AdminDashboard({ profile, isAdmin, initialAction, onActi
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                className={`flex items-center justify-center md:justify-start gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
                   activeTab === tab.id 
                     ? 'bg-white text-gray-900 shadow-sm' 
                     : 'text-gray-500 hover:text-gray-700'
@@ -298,6 +380,7 @@ export default function AdminDashboard({ profile, isAdmin, initialAction, onActi
                 <tr>
                   <th className="px-6 py-4">Student</th>
                   <th className="px-6 py-4">Contact</th>
+                  <th className="px-6 py-4">Route</th>
                   <th className="px-6 py-4">Balance</th>
                   <th className="px-6 py-4 text-right">Actions</th>
                 </tr>
@@ -325,6 +408,11 @@ export default function AdminDashboard({ profile, isAdmin, initialAction, onActi
                       </div>
                     </td>
                     <td className="px-6 py-4">
+                      <span className="text-sm font-medium text-gray-700">
+                        {student.routeId ? routes.find(r => r.id === student.routeId)?.name || 'Unknown Route' : 'Unassigned'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         <div className={`w-2 h-2 rounded-full ${student.balance > 0 ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
                         <span className="text-sm font-bold text-gray-900">${student.balance.toFixed(2)}</span>
@@ -333,15 +421,26 @@ export default function AdminDashboard({ profile, isAdmin, initialAction, onActi
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
                         {isAdmin && (
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setStudentToDelete(student.id);
-                            }}
-                            className="p-2 hover:bg-red-50 text-red-400 hover:text-red-500 rounded-lg transition-all"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <>
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingStudent(student);
+                              }}
+                              className="p-2 hover:bg-emerald-50 text-emerald-400 hover:text-emerald-500 rounded-lg transition-all"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setStudentToDelete(student.id);
+                              }}
+                              className="p-2 hover:bg-red-50 text-red-400 hover:text-red-500 rounded-lg transition-all"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
                         )}
                         <button className="p-2 hover:bg-gray-100 rounded-lg transition-all">
                           <MoreVertical className="w-4 h-4 text-gray-400" />
@@ -351,7 +450,7 @@ export default function AdminDashboard({ profile, isAdmin, initialAction, onActi
                   </tr>
                 )) : (
                   <tr>
-                    <td colSpan={4} className="px-6 py-20 text-center">
+                    <td colSpan={5} className="px-6 py-20 text-center">
                       <div className="max-w-xs mx-auto">
                         <Users className="w-12 h-12 text-gray-200 mx-auto mb-4" />
                         <p className="text-gray-500 font-medium">No records found</p>
@@ -400,12 +499,13 @@ export default function AdminDashboard({ profile, isAdmin, initialAction, onActi
                         value={member.role}
                         onChange={(e) => updateRole(member, e.target.value as UserRole)}
                         className="text-[10px] font-bold px-2 py-1 rounded-lg border-none bg-gray-50 text-gray-900 focus:ring-2 focus:ring-emerald-500 outline-none"
+                        disabled={!isAdmin}
                       >
                         <option value="staff">Staff</option>
                         <option value="teacher">Teacher</option>
                         <option value="driver">Driver</option>
                         <option value="parent">Parent</option>
-                        <option value="admin">Admin</option>
+                        {isMainAdmin && <option value="admin">Admin</option>}
                       </select>
                     </td>
                     <td className="px-6 py-4 text-right">
@@ -524,12 +624,13 @@ export default function AdminDashboard({ profile, isAdmin, initialAction, onActi
                           value={member.role}
                           onChange={(e) => updateRole(member, e.target.value as UserRole)}
                           className="text-[10px] font-bold px-2 py-1 rounded-lg border-none bg-gray-50 text-gray-900 focus:ring-2 focus:ring-emerald-500 outline-none"
+                          disabled={!isAdmin}
                         >
                           <option value="staff">Staff</option>
                           <option value="teacher">Teacher</option>
                           <option value="driver">Driver</option>
                           <option value="parent">Parent</option>
-                          <option value="admin">Admin</option>
+                          {isMainAdmin && <option value="admin">Admin</option>}
                         </select>
                       )}
                     </td>
@@ -675,12 +776,13 @@ export default function AdminDashboard({ profile, isAdmin, initialAction, onActi
                         value={member.role}
                         onChange={(e) => updateRole(member, e.target.value as UserRole)}
                         className="text-[10px] font-bold px-2 py-1 rounded-lg border-none bg-gray-50 text-gray-900 focus:ring-2 focus:ring-emerald-500 outline-none"
+                        disabled={!isAdmin}
                       >
                         <option value="staff">Staff</option>
                         <option value="teacher">Teacher</option>
                         <option value="driver">Driver</option>
                         <option value="parent">Parent</option>
-                        <option value="admin">Admin</option>
+                        {isMainAdmin && <option value="admin">Admin</option>}
                       </select>
                     </td>
                     <td className="px-6 py-4 text-right">
@@ -932,6 +1034,92 @@ export default function AdminDashboard({ profile, isAdmin, initialAction, onActi
                   className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all"
                 >
                   Add Staff
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+
+      {editingStudent && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-3xl p-6 w-full max-w-md shadow-xl"
+          >
+            <h3 className="text-xl font-bold text-gray-900 mb-4">Edit Student</h3>
+            <form onSubmit={handleEditStudent} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                <input 
+                  type="text" 
+                  required
+                  value={editingStudent.name}
+                  onChange={e => setEditingStudent({...editingStudent, name: e.target.value})}
+                  className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Grade</label>
+                  <input 
+                    type="text" 
+                    required
+                    value={editingStudent.grade}
+                    onChange={e => setEditingStudent({...editingStudent, grade: e.target.value})}
+                    className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Section</label>
+                  <input 
+                    type="text" 
+                    required
+                    value={editingStudent.section}
+                    onChange={e => setEditingStudent({...editingStudent, section: e.target.value})}
+                    className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Balance ($)</label>
+                <input 
+                  type="number" 
+                  step="0.01"
+                  min="0"
+                  required
+                  value={editingStudent.balance}
+                  onChange={e => setEditingStudent({...editingStudent, balance: parseFloat(e.target.value)})}
+                  className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Transport Route (Optional)</label>
+                <select
+                  value={editingStudent.routeId || ''}
+                  onChange={e => setEditingStudent({...editingStudent, routeId: e.target.value})}
+                  className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                >
+                  <option value="">No Route Assigned</option>
+                  {routes.map(route => (
+                    <option key={route.id} value={route.id}>{route.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button 
+                  type="button"
+                  onClick={() => setEditingStudent(null)}
+                  className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-emerald-500 text-white rounded-xl font-bold hover:bg-emerald-600 transition-all"
+                >
+                  Save Changes
                 </button>
               </div>
             </form>

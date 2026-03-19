@@ -266,12 +266,12 @@ export default function TransportDashboard({ profile, isAdmin }: { profile: User
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Transport Management</h2>
           <p className="text-gray-500">Monitor fleet, optimize routes, and track students.</p>
         </div>
-        <div className="flex gap-2 bg-white p-1 rounded-2xl border border-black/5 shadow-sm">
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 bg-white p-1 rounded-2xl border border-black/5 shadow-sm">
           {[
             { id: 'fleet', label: 'Fleet', icon: Bus },
             { id: 'routes', label: 'Routes', icon: Navigation },
@@ -281,7 +281,7 @@ export default function TransportDashboard({ profile, isAdmin }: { profile: User
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+              className={`flex items-center justify-center sm:justify-start gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                 activeTab === tab.id 
                   ? 'bg-emerald-600 text-white shadow-md' 
                   : 'text-gray-500 hover:bg-gray-50'

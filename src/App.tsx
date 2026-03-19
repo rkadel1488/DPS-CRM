@@ -208,8 +208,10 @@ function AppContent() {
   const [isPhoneLogin, setIsPhoneLogin] = useState(false);
   const [loginError, setLoginError] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
-
-  const isAdmin = profile?.email === MAIN_ADMIN_EMAIL;
+  const [showNotifications, setShowNotifications] = useState(false);
+  
+  const isMainAdmin = profile?.email === MAIN_ADMIN_EMAIL;
+  const isAdmin = isMainAdmin || profile?.role === 'admin';
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -236,14 +238,14 @@ function AppContent() {
             setProfile(data);
           } else if (!firebaseUser.isAnonymous) {
             // Create default profile for new Google users
-            const isAdmin = firebaseUser.email === MAIN_ADMIN_EMAIL;
+            const isNewUserMainAdmin = firebaseUser.email === MAIN_ADMIN_EMAIL;
             const newProfile: UserProfile = {
               uid: firebaseUser.uid,
               email: firebaseUser.email || '',
               displayName: firebaseUser.displayName || 'User',
-              role: isAdmin ? 'admin' : 'staff',
+              role: isNewUserMainAdmin ? 'admin' : 'staff',
               createdAt: new Date().toISOString(),
-              allowedTabs: isAdmin ? ['dashboard', 'canteen', 'transport', 'admin', 'settings'] : ['dashboard']
+              allowedTabs: isNewUserMainAdmin ? ['dashboard', 'canteen', 'transport', 'admin', 'settings'] : ['dashboard']
             };
             await setDoc(docRef, newProfile);
             setProfile(newProfile);
@@ -277,6 +279,8 @@ function AppContent() {
         setLoginError('Sign-ups are disabled. Please enable "Enable create (sign-up)" in Firebase Authentication settings.');
       } else if (error.code === 'auth/operation-not-allowed') {
         setLoginError('Google sign-in is not enabled. Please enable it in Firebase Authentication settings.');
+      } else if (error.code === 'auth/network-request-failed') {
+        setLoginError('Network request failed. This is often caused by ad blockers, privacy extensions (like Brave Shields), or blocked third-party cookies. Please disable them and try again.');
       } else if (error.message?.includes('NTERNAL ASSERTION FAILED') || error.message?.includes('INTERNAL ASSERTION FAILED')) {
         setLoginError('Login popup was closed or blocked. Please try again and ensure popups are allowed.');
       } else {
@@ -337,6 +341,8 @@ function AppContent() {
         setLoginError('Sign-ups are disabled. Please enable "Enable create (sign-up)" in Firebase Authentication settings.');
       } else if (error.code === 'auth/operation-not-allowed') {
         setLoginError('Anonymous auth is not enabled. Please enable it in Firebase Authentication settings.');
+      } else if (error.code === 'auth/network-request-failed') {
+        setLoginError('Network request failed. This is often caused by ad blockers, privacy extensions (like Brave Shields), or blocked third-party cookies. Please disable them and try again.');
       } else {
         setLoginError('Login failed. Please try again.');
       }
@@ -372,8 +378,8 @@ function AppContent() {
           animate={{ opacity: 1, y: 0 }}
           className="max-w-md w-full bg-white rounded-3xl shadow-xl p-8 text-center border border-black/5"
         >
-          <div className="w-24 h-24 rounded-2xl flex items-center justify-center mx-auto mb-6 overflow-hidden border border-black/5 shadow-sm">
-            <img src="https://dpsbiratnagar.edu.np/wp-content/uploads/2026/03/dps-logo-high-scaled.png" alt="DPS Logo" className="w-full h-full object-cover" />
+          <div className="w-24 h-24 rounded-2xl flex items-center justify-center mx-auto mb-6 overflow-hidden border border-black/5 shadow-sm bg-white">
+            <img src="https://dpsbiratnagar.edu.np/wp-content/uploads/2026/03/dps-logo-high-scaled.png" alt="DPS Logo" className="w-full h-full object-contain p-2" />
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">DPS CRM</h1>
           <p className="text-gray-500 mb-8">Canteen & Transport Management System</p>
@@ -471,8 +477,8 @@ function AppContent() {
                 exit={{ opacity: 0 }}
                 className="flex items-center gap-3"
               >
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden border border-black/5 shadow-sm">
-                  <img src="https://dpsbiratnagar.edu.np/wp-content/uploads/2026/03/dps-logo-high-scaled.png" alt="DPS Logo" className="w-full h-full object-cover" />
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden border border-black/5 shadow-sm bg-white">
+                  <img src="https://dpsbiratnagar.edu.np/wp-content/uploads/2026/03/dps-logo-high-scaled.png" alt="DPS Logo" className="w-full h-full object-contain p-1" />
                 </div>
                 <span className="font-bold text-xl tracking-tight">DPS CRM</span>
               </motion.div>
@@ -482,9 +488,9 @@ function AppContent() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto overflow-hidden border border-black/5 shadow-sm"
+                className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto overflow-hidden border border-black/5 shadow-sm bg-white"
               >
-                <img src="https://dpsbiratnagar.edu.np/wp-content/uploads/2026/03/dps-logo-high-scaled.png" alt="DPS Logo" className="w-full h-full object-cover" />
+                <img src="https://dpsbiratnagar.edu.np/wp-content/uploads/2026/03/dps-logo-high-scaled.png" alt="DPS Logo" className="w-full h-full object-contain p-1" />
               </motion.div>
             )}
           </AnimatePresence>
@@ -549,10 +555,61 @@ function AppContent() {
           </div>
 
           <div className="flex items-center gap-4 md:gap-6">
-            <button className="relative p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-all">
-              <Bell className="w-6 h-6" />
-              <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full"></span>
-            </button>
+            <div className="relative">
+              <button 
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="relative p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-all"
+              >
+                <Bell className="w-6 h-6" />
+                <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full"></span>
+              </button>
+              
+              <AnimatePresence>
+                {showNotifications && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    transition={{ duration: 0.2 }}
+                    className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-black/5 overflow-hidden z-50"
+                  >
+                    <div className="p-4 border-b border-black/5 flex justify-between items-center">
+                      <h3 className="font-semibold text-gray-900">Notifications</h3>
+                      <button className="text-xs text-emerald-600 font-medium hover:text-emerald-700">Mark all as read</button>
+                    </div>
+                    <div className="max-h-96 overflow-y-auto">
+                      <div className="p-4 border-b border-black/5 hover:bg-gray-50 transition-colors cursor-pointer">
+                        <div className="flex gap-3">
+                          <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                            <Bell className="w-5 h-5 text-emerald-600" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">Welcome to DPS CRM</p>
+                            <p className="text-xs text-gray-500 mt-1">Your account has been successfully set up.</p>
+                            <p className="text-xs text-gray-400 mt-2">Just now</p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="p-4 hover:bg-gray-50 transition-colors cursor-pointer">
+                        <div className="flex gap-3">
+                          <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                            <Bell className="w-5 h-5 text-blue-600" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">System Update</p>
+                            <p className="text-xs text-gray-500 mt-1">New features have been added to the Transport module.</p>
+                            <p className="text-xs text-gray-400 mt-2">2 hours ago</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="p-3 border-t border-black/5 text-center">
+                      <button className="text-sm text-gray-500 hover:text-gray-700 font-medium">View all notifications</button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
             <div className="flex items-center gap-3 pl-4 md:pl-6 border-l border-black/5">
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-semibold text-gray-900">{profile?.displayName}</p>
@@ -576,10 +633,10 @@ function AppContent() {
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
             >
-              {activeTab === 'dashboard' && <DashboardOverview profile={profile} isAdmin={isAdmin} setActiveTab={setActiveTab} />}
+              {activeTab === 'dashboard' && <DashboardOverview profile={profile} isAdmin={isAdmin} setActiveTab={setActiveTab} setAdminAction={setAdminAction} />}
               {activeTab === 'canteen' && <CanteenDashboard profile={profile} isAdmin={isAdmin} />}
               {activeTab === 'transport' && <TransportDashboard profile={profile} isAdmin={isAdmin} />}
-              {activeTab === 'admin' && <AdminDashboard profile={profile} isAdmin={isAdmin} initialAction={adminAction} onActionComplete={() => setAdminAction(null)} />}
+              {activeTab === 'admin' && <AdminDashboard profile={profile} isAdmin={isAdmin} isMainAdmin={isMainAdmin} initialAction={adminAction} onActionComplete={() => setAdminAction(null)} />}
               {activeTab === 'settings' && <SettingsView profile={profile} isAdmin={isAdmin} />}
             </motion.div>
           </AnimatePresence>
@@ -589,7 +646,7 @@ function AppContent() {
   );
 }
 
-function DashboardOverview({ profile, isAdmin, setActiveTab }: { profile: UserProfile | null, isAdmin: boolean, setActiveTab: (tab: string) => void }) {
+function DashboardOverview({ profile, isAdmin, setActiveTab, setAdminAction }: { profile: UserProfile | null, isAdmin: boolean, setActiveTab: (tab: string) => void, setAdminAction: (action: 'add_student' | 'add_teacher' | 'add_staff' | 'add_parent' | null) => void }) {
   const [stats, setStats] = useState({
     totalStudents: 0,
     activeBuses: 0,

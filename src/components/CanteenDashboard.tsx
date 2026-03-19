@@ -135,7 +135,7 @@ export default function CanteenDashboard({ profile, isAdmin }: { profile: UserPr
     });
 
     const unsubscribeTeachers = onSnapshot(collection(db, 'users'), (snapshot) => {
-      const allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserProfile));
+      const allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as unknown as UserProfile));
       setTeachers(allUsers.filter(u => u.role === 'teacher'));
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'users');
@@ -199,12 +199,12 @@ export default function CanteenDashboard({ profile, isAdmin }: { profile: UserPr
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Canteen Management</h2>
           <p className="text-gray-500">Manage menus, billing, and meal planning.</p>
         </div>
-        <div className="flex gap-2 bg-white p-1 rounded-2xl border border-black/5 shadow-sm overflow-x-auto">
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 bg-white p-1 rounded-2xl border border-black/5 shadow-sm">
           {[
             { id: 'menu', label: 'Menu', icon: Utensils },
             { id: 'planner', label: 'Meal Planner', icon: Calendar },
@@ -216,7 +216,7 @@ export default function CanteenDashboard({ profile, isAdmin }: { profile: UserPr
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap ${
+              className={`flex items-center justify-center sm:justify-start gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                 activeTab === tab.id 
                   ? 'bg-emerald-600 text-white shadow-md' 
                   : 'text-gray-500 hover:bg-gray-50'
