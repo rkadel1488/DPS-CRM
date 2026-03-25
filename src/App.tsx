@@ -15,7 +15,8 @@ import {
   ClipboardList,
   AlertCircle,
   TrendingUp,
-  ChevronRight
+  ChevronRight,
+  BookOpen
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, db } from './firebase';
@@ -47,6 +48,7 @@ import { MAIN_ADMIN_EMAIL } from './constants';
 import CanteenDashboard from './components/CanteenDashboard';
 import TransportDashboard from './components/TransportDashboard';
 import AdminDashboard from './components/AdminDashboard';
+import LibraryDashboard from './components/LibraryDashboard';
 
 // Firestore Error Handling
 export enum OperationType {
@@ -440,6 +442,7 @@ function AppContent() {
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'library', label: 'Library', icon: BookOpen },
     { id: 'canteen', label: 'Canteen', icon: Utensils },
     { id: 'transport', label: 'Transport', icon: Bus },
     { id: 'admin', label: 'Management', icon: Users },
@@ -636,6 +639,7 @@ function AppContent() {
               {activeTab === 'dashboard' && <DashboardOverview profile={profile} isAdmin={isAdmin} setActiveTab={setActiveTab} setAdminAction={setAdminAction} />}
               {activeTab === 'canteen' && <CanteenDashboard profile={profile} isAdmin={isAdmin} />}
               {activeTab === 'transport' && <TransportDashboard profile={profile} isAdmin={isAdmin} />}
+              {activeTab === 'library' && <LibraryDashboard profile={profile} isAdmin={isAdmin} />}
               {activeTab === 'admin' && <AdminDashboard profile={profile} isAdmin={isAdmin} isMainAdmin={isMainAdmin} initialAction={adminAction} onActionComplete={() => setAdminAction(null)} />}
               {activeTab === 'settings' && <SettingsView profile={profile} isAdmin={isAdmin} />}
             </motion.div>

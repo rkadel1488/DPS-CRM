@@ -135,5 +135,15 @@ service cloud.firestore {
       allow list: if isStaff();
       allow write: if isAdmin();
     }
+
+    match /books/{bookId} {
+      allow read: if isAuthenticated();
+      allow write: if isStaff();
+    }
+
+    match /book_issues/{issueId} {
+      allow read: if isAuthenticated();
+      allow write: if isStaff();
+    }
   }
 }

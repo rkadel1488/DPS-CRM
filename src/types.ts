@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'staff' | 'parent' | 'driver' | 'teacher';
+export type UserRole = 'admin' | 'staff' | 'parent' | 'driver' | 'teacher' | 'librarian';
 
 export interface UserProfile {
   uid: string;
@@ -16,6 +16,33 @@ export interface StaffInvite {
   phoneNumber: string;
   role: UserRole;
   allowedTabs: string[];
+}
+
+export interface Book {
+  id: string;
+  bookCode: string;
+  title: string;
+  author?: string;
+  category?: string;
+  totalCopies: number;
+  availableCopies: number;
+  addedBy: string;
+  createdAt: any;
+}
+
+export interface BookIssue {
+  id: string;
+  bookId: string;
+  bookCode: string;
+  bookTitle: string;
+  issuedToId: string; // studentId or teacherId
+  issuedToName: string;
+  issuedToType: 'student' | 'teacher';
+  issueDate: any;
+  dueDate: any;
+  returnDate?: any;
+  status: 'issued' | 'returned' | 'overdue';
+  issuedBy: string;
 }
 
 export interface Student {

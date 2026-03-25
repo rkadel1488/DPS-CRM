@@ -125,6 +125,41 @@
         "markedBy": { "type": "string" }
       },
       "required": ["date", "routeId", "studentId", "status", "timestamp", "markedBy"]
+    },
+    "Book": {
+      "title": "Book",
+      "description": "Library book records.",
+      "type": "object",
+      "properties": {
+        "bookCode": { "type": "string" },
+        "title": { "type": "string" },
+        "author": { "type": "string" },
+        "category": { "type": "string" },
+        "totalCopies": { "type": "number" },
+        "availableCopies": { "type": "number" },
+        "addedBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["bookCode", "title", "totalCopies", "availableCopies", "addedBy", "createdAt"]
+    },
+    "BookIssue": {
+      "title": "BookIssue",
+      "description": "Library book issue records.",
+      "type": "object",
+      "properties": {
+        "bookId": { "type": "string" },
+        "bookCode": { "type": "string" },
+        "bookTitle": { "type": "string" },
+        "issuedToId": { "type": "string" },
+        "issuedToName": { "type": "string" },
+        "issuedToType": { "type": "string", "enum": ["student", "teacher"] },
+        "issueDate": { "type": "string", "format": "date-time" },
+        "dueDate": { "type": "string", "format": "date-time" },
+        "returnDate": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["issued", "returned", "overdue"] },
+        "issuedBy": { "type": "string" }
+      },
+      "required": ["bookId", "bookCode", "bookTitle", "issuedToId", "issuedToName", "issuedToType", "issueDate", "dueDate", "status", "issuedBy"]
     }
   },
   "firestore": {
@@ -136,6 +171,8 @@
     "/routes/{routeId}": { "schema": "Route", "description": "Route planning" },
     "/boarding_logs/{logId}": { "schema": "BoardingLog", "description": "Tracking logs" },
     "/meal_plans/{planId}": { "schema": "MealPlan", "description": "Weekly meal schedule" },
-    "/transport_attendance/{attendanceId}": { "schema": "TransportAttendance", "description": "Transport attendance records" }
+    "/transport_attendance/{attendanceId}": { "schema": "TransportAttendance", "description": "Transport attendance records" },
+    "/books/{bookId}": { "schema": "Book", "description": "Library books" },
+    "/book_issues/{issueId}": { "schema": "BookIssue", "description": "Library book issues" }
   }
 }
