@@ -48,13 +48,14 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
       const issuesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as BookIssue));
       setIssues(issuesData);
       
-      // Check for overdue books (> 7 days)
+      // Check for overdue books (> 7 days past due date)
       const now = new Date();
       const overdue = issuesData.filter(issue => {
         if (issue.status === 'returned') return false;
-        const issueDate = new Date(issue.issueDate);
-        const diffTime = Math.abs(now.getTime() - issueDate.getTime());
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        const dueDate = new Date(issue.dueDate);
+        if (now <= dueDate) return false;
+        const diffTime = now.getTime() - dueDate.getTime();
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
         return diffDays > 7;
       });
       setNotifications(overdue);
