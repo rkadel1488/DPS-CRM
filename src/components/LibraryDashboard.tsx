@@ -18,7 +18,7 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
   const [students, setStudents] = useState<Student[]>([]);
   const [teachers, setTeachers] = useState<UserProfile[]>([]);
   
-  const [activeTab, setActiveTab] = useState<'books' | 'issues'>('books');
+  const [activeTab, setActiveTab] = useState<'books' | 'issues' | 'overdue'>('books');
   const [searchQuery, setSearchQuery] = useState('');
   
   const [showAddModal, setShowAddModal] = useState(false);
@@ -34,7 +34,15 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
   const [selectedUserHistory, setSelectedUserHistory] = useState<{name: string, type: 'student'|'teacher'} | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'book' | 'issue', item: any } | null>(null);
   
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 25;
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, searchQuery]);
 
   useEffect(() => {
     if (!profile) return;
@@ -257,87 +265,224 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
     issue.issuedToName.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const filteredOverdue = notifications.filter(issue =>
+    issue.bookTitle.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    issue.issuedToName.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const totalPages = Math.ceil(
+    (activeTab === 'books' ? filteredBooks.length : 
+     activeTab === 'issues' ? filteredIssues.length : 
+     filteredOverdue.length) / itemsPerPage
+  );
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedBooks = filteredBooks.slice(startIndex, startIndex + itemsPerPage);
+  const paginatedIssues = filteredIssues.slice(startIndex, startIndex + itemsPerPage);
+  const paginatedOverdue = filteredOverdue.slice(startIndex, startIndex + itemsPerPage);
+
+  const renderIssuesTable = (items: BookIssue[], emptyMessage: string) => (
+    <>
+      {/* Desktop Table View */}
+      <div className="hidden md:block overflow-x-auto">
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="bg-gray-50/50 border-b border-black/5">
+              <th className="px-6 py-4 text-sm font-semibold text-gray-900">Book</th>
+              <th className="px-6 py-4 text-sm font-semibold text-gray-900">Issued To</th>
+              <th className="px-6 py-4 text-sm font-semibold text-gray-900">Issue Date</th>
+              <th className="px-6 py-4 text-sm font-semibold text-gray-900">Status</th>
+              <th className="px-6 py-4 text-sm font-semibold text-gray-900 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-black/5">
+            {items.length > 0 ? items.map((issue) => {
+              const isOverdue = issue.status === 'issued' && new Date(issue.dueDate) < new Date();
+              return (
+                <tr key={issue.id} className="hover:bg-gray-50/50 transition-colors">
+                  <td className="px-6 py-4">
+                    <p className="font-medium text-gray-900">{issue.bookTitle}</p>
+                    <p className="text-xs text-gray-500 font-mono">{issue.bookCode}</p>
+                  </td>
+                  <td className="px-6 py-4">
+                    <button 
+                      onClick={() => setSelectedUserHistory({name: issue.issuedToName, type: issue.issuedToType})}
+                      className="font-medium text-emerald-600 hover:text-emerald-700 hover:underline text-left transition-colors"
+                    >
+                      {issue.issuedToName}
+                    </button>
+                    <p className="text-xs text-gray-500 capitalize">{issue.issuedToType}</p>
+                  </td>
+                  <td className="px-6 py-4">
+                    <p className="text-sm text-gray-900">{new Date(issue.issueDate).toLocaleDateString()}</p>
+                    <p className={`text-xs mt-0.5 ${isOverdue ? 'text-red-500 font-medium' : 'text-gray-500'}`}>
+                      Due: {new Date(issue.dueDate).toLocaleDateString()}
+                    </p>
+                  </td>
+                  <td className="px-6 py-4">
+                    {issue.status === 'returned' ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
+                        <CheckCircle className="w-3 h-3" /> Returned
+                      </span>
+                    ) : isOverdue ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700">
+                        <AlertCircle className="w-3 h-3" /> Overdue
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700">
+                        <Clock className="w-3 h-3" /> Issued
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      {issue.status === 'issued' && (
+                        <button
+                          onClick={() => handleReturnBook(issue)}
+                          className="px-3 py-1.5 bg-emerald-50 text-emerald-700 text-sm font-medium rounded-lg hover:bg-emerald-100 transition-colors"
+                        >
+                          Mark Returned
+                        </button>
+                      )}
+                      {isAdmin && (
+                        <button
+                          onClick={() => handleDeleteIssue(issue)}
+                          className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Delete Record"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            }) : (
+              <tr>
+                <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+                  {emptyMessage}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Mobile Card View */}
+      <div className="md:hidden divide-y divide-black/5">
+        {items.length > 0 ? items.map((issue) => {
+          const isOverdue = issue.status === 'issued' && new Date(issue.dueDate) < new Date();
+          return (
+            <div key={issue.id} className="p-4 space-y-3">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="font-bold text-gray-900">{issue.bookTitle}</h3>
+                  <p className="text-xs text-gray-500 font-mono">{issue.bookCode}</p>
+                </div>
+                {isAdmin && (
+                  <button
+                    onClick={() => handleDeleteIssue(issue)}
+                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-gray-400 uppercase font-bold tracking-wider">Issued To</p>
+                  <button 
+                    onClick={() => setSelectedUserHistory({name: issue.issuedToName, type: issue.issuedToType})}
+                    className="font-bold text-emerald-600 hover:underline"
+                  >
+                    {issue.issuedToName}
+                  </button>
+                  <p className="text-xs text-gray-500 capitalize">{issue.issuedToType}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-gray-400 uppercase font-bold tracking-wider">Status</p>
+                  {issue.status === 'returned' ? (
+                    <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600">
+                      <CheckCircle className="w-3 h-3" /> Returned
+                    </span>
+                  ) : isOverdue ? (
+                    <span className="inline-flex items-center gap-1 text-xs font-bold text-red-600">
+                      <AlertCircle className="w-3 h-3" /> Overdue
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-600">
+                      <Clock className="w-3 h-3" /> Issued
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between bg-gray-50 p-3 rounded-xl">
+                <div>
+                  <p className="text-[10px] text-gray-400 uppercase font-bold">Issue Date</p>
+                  <p className="text-sm font-medium">{new Date(issue.issueDate).toLocaleDateString()}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] text-gray-400 uppercase font-bold">Due Date</p>
+                  <p className={`text-sm font-bold ${isOverdue ? 'text-red-600' : 'text-gray-900'}`}>
+                    {new Date(issue.dueDate).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+
+              {issue.status === 'issued' && (
+                <button
+                  onClick={() => handleReturnBook(issue)}
+                  className="w-full py-2.5 bg-emerald-600 text-white text-sm font-bold rounded-xl hover:bg-emerald-700 transition-colors shadow-sm shadow-emerald-100"
+                >
+                  Mark as Returned
+                </button>
+              )}
+            </div>
+          );
+        }) : (
+          <div className="px-6 py-12 text-center text-gray-500">
+            {emptyMessage}
+          </div>
+        )}
+      </div>
+    </>
+  );
+
   return (
     <div className="flex-1 overflow-auto bg-[#F5F5F4]">
-      <div className="p-8 max-w-7xl mx-auto space-y-8">
+      <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Library Management</h1>
-            <p className="text-gray-500 mt-1">Manage books, issues, and returns</p>
+            <h2 className="text-2xl font-bold text-gray-900">Library Management</h2>
+            <p className="text-gray-500">Manage books, issues, and returns</p>
           </div>
           
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <button 
-                onClick={() => setShowNotifications(!showNotifications)}
-                className="relative p-2 bg-white border border-black/5 rounded-xl hover:bg-gray-50 transition-colors"
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 bg-white p-1 rounded-2xl border border-black/5 shadow-sm">
+            {[
+              { id: 'books', label: 'Books', icon: BookOpen },
+              { id: 'issues', label: 'Issued Entries', icon: Clock },
+              { id: 'overdue', label: 'Overdue', icon: AlertCircle },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`flex items-center justify-center sm:justify-start gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                  activeTab === tab.id 
+                    ? 'bg-emerald-600 text-white shadow-md' 
+                    : 'text-gray-500 hover:bg-gray-50'
+                }`}
               >
-                <Bell className="w-5 h-5 text-gray-600" />
-                {notifications.length > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold flex items-center justify-center rounded-full border-2 border-white">
+                <tab.icon className="w-4 h-4" />
+                {tab.label}
+                {tab.id === 'overdue' && notifications.length > 0 && (
+                  <span className="flex items-center justify-center w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full">
                     {notifications.length}
                   </span>
                 )}
               </button>
-              
-              <AnimatePresence>
-                {showNotifications && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-black/5 overflow-hidden z-50"
-                  >
-                    <div className="p-4 border-b border-black/5 flex justify-between items-center">
-                      <h3 className="font-semibold text-gray-900">Overdue Books</h3>
-                      <span className="text-xs font-medium text-red-600 bg-red-50 px-2 py-1 rounded-full">
-                        {notifications.length} Overdue
-                      </span>
-                    </div>
-                    <div className="max-h-96 overflow-y-auto">
-                      {notifications.length > 0 ? (
-                        notifications.map(notif => (
-                          <div key={notif.id} className="p-4 border-b border-black/5 hover:bg-gray-50">
-                            <div className="flex gap-3">
-                              <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-                              <div>
-                                <p className="text-sm font-medium text-gray-900">{notif.bookTitle}</p>
-                                <p className="text-xs text-gray-500 mt-1">Issued to: {notif.issuedToName}</p>
-                                <p className="text-xs text-red-500 mt-1">
-                                  Due: {new Date(notif.dueDate).toLocaleDateString()}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="p-6 text-center text-gray-500 text-sm">
-                          No overdue books
-                        </div>
-                      )}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            <button
-              onClick={() => setActiveTab('books')}
-              className={`px-4 py-2 rounded-xl font-medium transition-colors ${
-                activeTab === 'books' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 border border-black/5 hover:bg-gray-50'
-              }`}
-            >
-              Books
-            </button>
-            <button
-              onClick={() => setActiveTab('issues')}
-              className={`px-4 py-2 rounded-xl font-medium transition-colors ${
-                activeTab === 'issues' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 border border-black/5 hover:bg-gray-50'
-              }`}
-            >
-              Issued Entries
-            </button>
+            ))}
           </div>
         </div>
 
@@ -394,155 +539,171 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
         {/* Content Area */}
         <div className="bg-white rounded-3xl border border-black/5 shadow-sm overflow-hidden">
           {activeTab === 'books' ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-gray-50/50 border-b border-black/5">
-                    <th className="px-6 py-4 text-sm font-semibold text-gray-900">Book Code</th>
-                    <th className="px-6 py-4 text-sm font-semibold text-gray-900">Title & Author</th>
-                    <th className="px-6 py-4 text-sm font-semibold text-gray-900">Category</th>
-                    <th className="px-6 py-4 text-sm font-semibold text-gray-900">Availability</th>
-                    <th className="px-6 py-4 text-sm font-semibold text-gray-900 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-black/5">
-                  {filteredBooks.length > 0 ? filteredBooks.map((book) => (
-                    <tr key={book.id} className="hover:bg-gray-50/50 transition-colors">
-                      <td className="px-6 py-4">
-                        <span className="font-mono text-sm bg-gray-100 px-2 py-1 rounded-md text-gray-700">
-                          {book.bookCode}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <p className="font-medium text-gray-900">{book.title}</p>
-                        {book.author && <p className="text-sm text-gray-500">{book.author}</p>}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
-                          {book.category || 'General'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <div className={`w-2 h-2 rounded-full ${book.availableCopies > 0 ? 'bg-emerald-500' : 'bg-red-500'}`} />
-                          <span className="text-sm font-medium text-gray-700">
-                            {book.availableCopies} / {book.totalCopies}
+            <>
+              {/* Desktop Table View */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-gray-50/50 border-b border-black/5">
+                      <th className="px-6 py-4 text-sm font-semibold text-gray-900">Book Code</th>
+                      <th className="px-6 py-4 text-sm font-semibold text-gray-900">Title & Author</th>
+                      <th className="px-6 py-4 text-sm font-semibold text-gray-900">Category</th>
+                      <th className="px-6 py-4 text-sm font-semibold text-gray-900">Availability</th>
+                      <th className="px-6 py-4 text-sm font-semibold text-gray-900 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-black/5">
+                    {paginatedBooks.length > 0 ? paginatedBooks.map((book) => (
+                      <tr key={book.id} className="hover:bg-gray-50/50 transition-colors">
+                        <td className="px-6 py-4">
+                          <span className="font-mono text-sm bg-gray-100 px-2 py-1 rounded-md text-gray-700">
+                            {book.bookCode}
                           </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => {
-                              setSelectedBook(book);
-                              setShowIssueModal(true);
-                            }}
-                            disabled={book.availableCopies === 0}
-                            className="px-3 py-1.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                          >
-                            Issue Book
-                          </button>
-                          <button
-                            onClick={() => handleDeleteBook(book)}
-                            className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Delete Book"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  )) : (
-                    <tr>
-                      <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
-                        No books found. Add a book or import from Excel.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-gray-50/50 border-b border-black/5">
-                    <th className="px-6 py-4 text-sm font-semibold text-gray-900">Book</th>
-                    <th className="px-6 py-4 text-sm font-semibold text-gray-900">Issued To</th>
-                    <th className="px-6 py-4 text-sm font-semibold text-gray-900">Issue Date</th>
-                    <th className="px-6 py-4 text-sm font-semibold text-gray-900">Status</th>
-                    <th className="px-6 py-4 text-sm font-semibold text-gray-900 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-black/5">
-                  {filteredIssues.length > 0 ? filteredIssues.map((issue) => {
-                    const isOverdue = issue.status === 'issued' && new Date(issue.dueDate) < new Date();
-                    return (
-                      <tr key={issue.id} className="hover:bg-gray-50/50 transition-colors">
-                        <td className="px-6 py-4">
-                          <p className="font-medium text-gray-900">{issue.bookTitle}</p>
-                          <p className="text-xs text-gray-500 font-mono">{issue.bookCode}</p>
                         </td>
                         <td className="px-6 py-4">
-                          <button 
-                            onClick={() => setSelectedUserHistory({name: issue.issuedToName, type: issue.issuedToType})}
-                            className="font-medium text-emerald-600 hover:text-emerald-700 hover:underline text-left transition-colors"
-                          >
-                            {issue.issuedToName}
-                          </button>
-                          <p className="text-xs text-gray-500 capitalize">{issue.issuedToType}</p>
+                          <p className="font-medium text-gray-900">{book.title}</p>
+                          {book.author && <p className="text-sm text-gray-500">{book.author}</p>}
                         </td>
                         <td className="px-6 py-4">
-                          <p className="text-sm text-gray-900">{new Date(issue.issueDate).toLocaleDateString()}</p>
-                          <p className={`text-xs mt-0.5 ${isOverdue ? 'text-red-500 font-medium' : 'text-gray-500'}`}>
-                            Due: {new Date(issue.dueDate).toLocaleDateString()}
-                          </p>
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
+                            {book.category || 'General'}
+                          </span>
                         </td>
                         <td className="px-6 py-4">
-                          {issue.status === 'returned' ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
-                              <CheckCircle className="w-3 h-3" /> Returned
+                          <div className="flex items-center gap-2">
+                            <div className={`w-2 h-2 rounded-full ${book.availableCopies > 0 ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                            <span className="text-sm font-medium text-gray-700">
+                              {book.availableCopies} / {book.totalCopies}
                             </span>
-                          ) : isOverdue ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700">
-                              <AlertCircle className="w-3 h-3" /> Overdue
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700">
-                              <Clock className="w-3 h-3" /> Issued
-                            </span>
-                          )}
+                          </div>
                         </td>
                         <td className="px-6 py-4 text-right">
                           <div className="flex items-center justify-end gap-2">
-                            {issue.status === 'issued' && (
+                            <button
+                              onClick={() => {
+                                setSelectedBook(book);
+                                setShowIssueModal(true);
+                              }}
+                              disabled={book.availableCopies === 0}
+                              className="px-3 py-1.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                              Issue Book
+                            </button>
+                            {isAdmin && (
                               <button
-                                onClick={() => handleReturnBook(issue)}
-                                className="px-3 py-1.5 bg-emerald-50 text-emerald-700 text-sm font-medium rounded-lg hover:bg-emerald-100 transition-colors"
+                                onClick={() => handleDeleteBook(book)}
+                                className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                title="Delete Book"
                               >
-                                Mark Returned
+                                <Trash2 className="w-4 h-4" />
                               </button>
                             )}
-                            <button
-                              onClick={() => handleDeleteIssue(issue)}
-                              className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                              title="Delete Record"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
                           </div>
                         </td>
                       </tr>
-                    );
-                  }) : (
-                    <tr>
-                      <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
-                        No issued books found.
-                      </td>
-                    </tr>
+                    )) : (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+                          No books found. Add a book or import from Excel.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Card View */}
+              <div className="md:hidden divide-y divide-black/5">
+                {paginatedBooks.length > 0 ? paginatedBooks.map((book) => (
+                  <div key={book.id} className="p-4 space-y-3">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <span className="font-mono text-xs bg-gray-100 px-2 py-0.5 rounded text-gray-600">
+                          {book.bookCode}
+                        </span>
+                        <h3 className="font-bold text-gray-900 mt-1">{book.title}</h3>
+                        {book.author && <p className="text-sm text-gray-500">{book.author}</p>}
+                      </div>
+                      {isAdmin && (
+                        <button
+                          onClick={() => handleDeleteBook(book)}
+                          className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                      )}
+                    </div>
+                    
+                    <div className="flex flex-wrap gap-2">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
+                        {book.category || 'General'}
+                      </span>
+                      <div className="flex items-center gap-2 bg-gray-50 px-2 py-0.5 rounded-full">
+                        <div className={`w-1.5 h-1.5 rounded-full ${book.availableCopies > 0 ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                        <span className="text-xs font-medium text-gray-700">
+                          {book.availableCopies} / {book.totalCopies} Available
+                        </span>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        setSelectedBook(book);
+                        setShowIssueModal(true);
+                      }}
+                      disabled={book.availableCopies === 0}
+                      className="w-full py-2.5 bg-gray-900 text-white text-sm font-bold rounded-xl hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Issue Book
+                    </button>
+                  </div>
+                )) : (
+                  <div className="px-6 py-12 text-center text-gray-500">
+                    No books found.
+                  </div>
+                )}
+              </div>
+            </>
+          ) : activeTab === 'issues' ? (
+            renderIssuesTable(paginatedIssues, "No issued books found.")
+          ) : (
+            renderIssuesTable(paginatedOverdue, "No overdue books found.")
+          )}
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="px-6 py-4 bg-gray-50 border-t border-black/5 flex items-center justify-between">
+              <p className="text-sm text-gray-500">
+                Showing <span className="font-medium text-gray-900">{startIndex + 1}</span> to{' '}
+                <span className="font-medium text-gray-900">
+                  {Math.min(startIndex + itemsPerPage, 
+                    activeTab === 'books' ? filteredBooks.length : 
+                    activeTab === 'issues' ? filteredIssues.length : 
+                    filteredOverdue.length
                   )}
-                </tbody>
-              </table>
+                </span> of{' '}
+                <span className="font-medium text-gray-900">
+                  {activeTab === 'books' ? filteredBooks.length : 
+                   activeTab === 'issues' ? filteredIssues.length : 
+                   filteredOverdue.length}
+                </span> entries
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="px-4 py-2 bg-white border border-black/5 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Previous
+                </button>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-4 py-2 bg-white border border-black/5 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Next
+                </button>
+              </div>
             </div>
           )}
         </div>
