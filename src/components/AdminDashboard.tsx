@@ -271,6 +271,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
     { id: 'dashboard', label: 'Dashboard' },
     { id: 'canteen', label: 'Canteen' },
     { id: 'transport', label: 'Transport' },
+    { id: 'library', label: 'Library' },
     { id: 'admin', label: 'Management' },
     { id: 'settings', label: 'Settings' },
   ];

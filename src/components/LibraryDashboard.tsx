@@ -255,6 +255,22 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
     XLSX.writeFile(wb, "Library_Entries.xlsx");
   };
 
+  const exportBooks = () => {
+    const dataToExport = books.map(book => ({
+      'Book Code': book.bookCode,
+      'Title': book.title,
+      'Author': book.author || 'N/A',
+      'Category': book.category || 'General',
+      'Total Copies': book.totalCopies,
+      'Available Copies': book.availableCopies
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(dataToExport);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Books");
+    XLSX.writeFile(wb, "Library_Books.xlsx");
+  };
+
   const filteredBooks = books.filter(book => 
     book.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
     book.bookCode.toLowerCase().includes(searchQuery.toLowerCase())
@@ -515,6 +531,13 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
                 >
                   <Upload className="w-4 h-4" />
                   Import Excel
+                </button>
+                <button
+                  onClick={exportBooks}
+                  className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white border border-black/5 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-medium"
+                >
+                  <Download className="w-4 h-4" />
+                  Export Books
                 </button>
                 <button
                   onClick={() => setShowAddModal(true)}

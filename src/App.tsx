@@ -227,11 +227,11 @@ function AppContent() {
             let data = docSnap.data() as UserProfile;
             
             // Force admin role for the main admin email
-            if (firebaseUser.email === MAIN_ADMIN_EMAIL && (data.role !== 'admin' || data.allowedTabs?.length !== 5)) {
+            if (firebaseUser.email === MAIN_ADMIN_EMAIL && (data.role !== 'admin' || data.allowedTabs?.length !== 6)) {
               const updatedProfile = {
                 ...data,
                 role: 'admin' as UserRole,
-                allowedTabs: ['dashboard', 'canteen', 'transport', 'admin', 'settings']
+                allowedTabs: ['dashboard', 'canteen', 'transport', 'library', 'admin', 'settings']
               };
               await setDoc(docRef, updatedProfile);
               data = updatedProfile;
@@ -247,7 +247,7 @@ function AppContent() {
               displayName: firebaseUser.displayName || 'User',
               role: isNewUserMainAdmin ? 'admin' : 'staff',
               createdAt: new Date().toISOString(),
-              allowedTabs: isNewUserMainAdmin ? ['dashboard', 'canteen', 'transport', 'admin', 'settings'] : ['dashboard']
+              allowedTabs: isNewUserMainAdmin ? ['dashboard', 'canteen', 'transport', 'library', 'admin', 'settings'] : ['dashboard']
             };
             await setDoc(docRef, newProfile);
             setProfile(newProfile);
