@@ -28,6 +28,8 @@ export interface Book {
   availableCopies: number;
   addedBy: string;
   createdAt: any;
+  bookClass?: string;
+  price?: number;
 }
 
 export interface BookIssue {

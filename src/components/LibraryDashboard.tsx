@@ -25,7 +25,7 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
   const [showIssueModal, setShowIssueModal] = useState(false);
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   
-  const [newBook, setNewBook] = useState({ bookCode: '', title: '', author: '', category: '', totalCopies: 1 });
+  const [newBook, setNewBook] = useState({ bookCode: '', title: '', author: '', category: '', totalCopies: 1, bookClass: '', price: '' });
   const [newIssue, setNewIssue] = useState({ bookId: '', issuedToName: '', issuedToId: '', issuedToType: 'student' as 'student' | 'teacher' });
   
   const [notifications, setNotifications] = useState<BookIssue[]>([]);
@@ -91,14 +91,32 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
     if (!profile) return;
     
     try {
+      let finalBookCode = newBook.bookCode.trim();
+      if (!finalBookCode) {
+        // Auto-generate book code
+        const dpsBooks = books.filter(b => b.bookCode.startsWith('DPS-'));
+        let maxNum = 0;
+        dpsBooks.forEach(b => {
+          const numPart = b.bookCode.substring(4);
+          const num = parseInt(numPart, 10);
+          if (!isNaN(num) && num > maxNum) {
+            maxNum = num;
+          }
+        });
+        const nextNum = maxNum + 1;
+        finalBookCode = `DPS-${nextNum.toString().padStart(4, '0')}`;
+      }
+
       await addDoc(collection(db, 'books'), {
         ...newBook,
+        bookCode: finalBookCode,
+        price: newBook.price ? Number(newBook.price) : null,
         availableCopies: newBook.totalCopies,
         addedBy: profile.uid,
         createdAt: new Date().toISOString()
       });
       setShowAddModal(false);
-      setNewBook({ bookCode: '', title: '', author: '', category: '', totalCopies: 1 });
+      setNewBook({ bookCode: '', title: '', author: '', category: '', totalCopies: 1, bookClass: '', price: '' });
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'books');
     }
@@ -124,6 +142,8 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
               title: String(row.title),
               author: row.author ? String(row.author) : '',
               category: row.category ? String(row.category) : '',
+              bookClass: row.class ? String(row.class) : '',
+              price: row.price ? Number(row.price) : null,
               totalCopies: row.totalCopies ? Number(row.totalCopies) : 1,
               availableCopies: row.totalCopies ? Number(row.totalCopies) : 1,
               addedBy: profile.uid,
@@ -261,6 +281,8 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
       'Title': book.title,
       'Author': book.author || 'N/A',
       'Category': book.category || 'General',
+      'Class': book.bookClass || 'N/A',
+      'Price': book.price || 'N/A',
       'Total Copies': book.totalCopies,
       'Available Copies': book.availableCopies
     }));
@@ -750,14 +772,13 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
               </div>
               <form onSubmit={handleAddBook} className="p-6 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Book Code *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Book Code (Optional)</label>
                   <input
                     type="text"
-                    required
                     value={newBook.bookCode}
                     onChange={e => setNewBook({...newBook, bookCode: e.target.value})}
                     className="w-full px-4 py-2 bg-gray-50 border border-black/5 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none"
-                    placeholder="e.g. BK-001"
+                    placeholder="e.g. BK-001 (Leave empty to auto-generate)"
                   />
                 </div>
                 <div>
@@ -780,6 +801,30 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
                     className="w-full px-4 py-2 bg-gray-50 border border-black/5 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none"
                     placeholder="Author Name"
                   />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Class</label>
+                    <input
+                      type="text"
+                      value={newBook.bookClass}
+                      onChange={e => setNewBook({...newBook, bookClass: e.target.value})}
+                      className="w-full px-4 py-2 bg-gray-50 border border-black/5 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                      placeholder="e.g. Grade 10"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Price (Optional)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={newBook.price}
+                      onChange={e => setNewBook({...newBook, price: e.target.value})}
+                      className="w-full px-4 py-2 bg-gray-50 border border-black/5 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                      placeholder="0.00"
+                    />
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
