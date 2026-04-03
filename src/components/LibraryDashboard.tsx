@@ -135,23 +135,50 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
         const ws = wb.Sheets[wsname];
         const data = XLSX.utils.sheet_to_json(ws);
 
+        let currentMaxNum = 0;
+        const dpsBooks = books.filter(b => b.bookCode.startsWith('DPS-'));
+        dpsBooks.forEach(b => {
+          const numPart = b.bookCode.substring(4);
+          const num = parseInt(numPart, 10);
+          if (!isNaN(num) && num > currentMaxNum) {
+            currentMaxNum = num;
+          }
+        });
+
         for (const row of data as any[]) {
-          if (row.bookCode && row.title) {
+          const title = row.title || row.Title || row['Book Title'];
+          if (title) {
+            let bookCode = row.bookCode || row['Book Code'] || row.book_code;
+            if (!bookCode) {
+              currentMaxNum++;
+              bookCode = `DPS-${currentMaxNum.toString().padStart(4, '0')}`;
+            }
+
+            const author = row.author || row.Author || '';
+            const category = row.category || row.Category || '';
+            const bookClass = row.class || row.Class || row.bookClass || '';
+            const price = row.price || row.Price;
+            const totalCopies = row.totalCopies || row['Total Copies'] || 1;
+
             await addDoc(collection(db, 'books'), {
-              bookCode: String(row.bookCode),
-              title: String(row.title),
-              author: row.author ? String(row.author) : '',
-              category: row.category ? String(row.category) : '',
-              bookClass: row.class ? String(row.class) : '',
-              price: row.price ? Number(row.price) : null,
-              totalCopies: row.totalCopies ? Number(row.totalCopies) : 1,
-              availableCopies: row.totalCopies ? Number(row.totalCopies) : 1,
+              bookCode: String(bookCode),
+              title: String(title),
+              author: String(author),
+              category: String(category),
+              bookClass: String(bookClass),
+              price: price && !isNaN(Number(price)) ? Number(price) : null,
+              totalCopies: Number(totalCopies),
+              availableCopies: Number(totalCopies),
               addedBy: profile.uid,
               createdAt: new Date().toISOString()
             });
           }
         }
         alert('Books imported successfully!');
+        // Reset file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
       } catch (error) {
         console.error("Error importing books:", error);
         alert("Failed to import books. Please check the file format.");
