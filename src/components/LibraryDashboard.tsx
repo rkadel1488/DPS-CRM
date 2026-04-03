@@ -49,6 +49,8 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
 
     const booksUnsubscribe = onSnapshot(collection(db, 'books'), (snapshot) => {
       const booksData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Book));
+      // Sort books by newest first
+      booksData.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setBooks(booksData);
     }, (error) => handleFirestoreError(error, OperationType.GET, 'books'));
 
@@ -145,20 +147,43 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
           }
         });
 
+        let importedCount = 0;
         for (const row of data as any[]) {
-          const title = row.title || row.Title || row['Book Title'];
+          // Try to find the title column dynamically
+          const titleKey = Object.keys(row).find(k => 
+            k.toLowerCase().includes('title') || 
+            k.toLowerCase().includes('name') || 
+            k.toLowerCase() === 'book'
+          );
+          
+          const title = titleKey ? row[titleKey] : null;
+          
           if (title) {
-            let bookCode = row.bookCode || row['Book Code'] || row.book_code;
+            // Try to find the book code column dynamically
+            const codeKey = Object.keys(row).find(k => 
+              k.toLowerCase().includes('code') || 
+              k.toLowerCase().includes('id') || 
+              k.toLowerCase().includes('isbn')
+            );
+            let bookCode = codeKey ? row[codeKey] : null;
+            
             if (!bookCode) {
               currentMaxNum++;
               bookCode = `DPS-${currentMaxNum.toString().padStart(4, '0')}`;
             }
 
-            const author = row.author || row.Author || '';
-            const category = row.category || row.Category || '';
-            const bookClass = row.class || row.Class || row.bookClass || '';
-            const price = row.price || row.Price;
-            const totalCopies = row.totalCopies || row['Total Copies'] || 1;
+            // Try to find other columns dynamically
+            const authorKey = Object.keys(row).find(k => k.toLowerCase().includes('author'));
+            const categoryKey = Object.keys(row).find(k => k.toLowerCase().includes('category') || k.toLowerCase().includes('genre'));
+            const classKey = Object.keys(row).find(k => k.toLowerCase().includes('class') || k.toLowerCase().includes('grade'));
+            const priceKey = Object.keys(row).find(k => k.toLowerCase().includes('price') || k.toLowerCase().includes('cost'));
+            const copiesKey = Object.keys(row).find(k => k.toLowerCase().includes('copies') || k.toLowerCase().includes('qty') || k.toLowerCase().includes('quantity'));
+
+            const author = authorKey ? row[authorKey] : '';
+            const category = categoryKey ? row[categoryKey] : '';
+            const bookClass = classKey ? row[classKey] : '';
+            const price = priceKey ? row[priceKey] : null;
+            const totalCopies = copiesKey ? row[copiesKey] : 1;
 
             await addDoc(collection(db, 'books'), {
               bookCode: String(bookCode),
@@ -172,9 +197,16 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
               addedBy: profile.uid,
               createdAt: new Date().toISOString()
             });
+            importedCount++;
           }
         }
-        alert('Books imported successfully!');
+        
+        if (importedCount === 0) {
+          alert('No valid books found in the Excel file. Please ensure there is a "Title" or "Name" column.');
+        } else {
+          alert(`${importedCount} books imported successfully!`);
+        }
+        
         // Reset file input
         if (fileInputRef.current) {
           fileInputRef.current.value = '';
