@@ -652,6 +652,7 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
                       <th className="px-6 py-4 text-sm font-semibold text-gray-900">Book Code</th>
                       <th className="px-6 py-4 text-sm font-semibold text-gray-900">Title & Author</th>
                       <th className="px-6 py-4 text-sm font-semibold text-gray-900">Category</th>
+                      <th className="px-6 py-4 text-sm font-semibold text-gray-900">Class</th>
                       <th className="px-6 py-4 text-sm font-semibold text-gray-900">Availability</th>
                       <th className="px-6 py-4 text-sm font-semibold text-gray-900 text-right">Actions</th>
                     </tr>
@@ -671,6 +672,11 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
                         <td className="px-6 py-4">
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
                             {book.category || 'General'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-50 text-purple-700">
+                            {book.bookClass || 'N/A'}
                           </span>
                         </td>
                         <td className="px-6 py-4">
@@ -707,7 +713,7 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
                       </tr>
                     )) : (
                       <tr>
-                        <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+                        <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
                           No books found. Add a book or import from Excel.
                         </td>
                       </tr>
@@ -741,6 +747,9 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
                     <div className="flex flex-wrap gap-2">
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
                         {book.category || 'General'}
+                      </span>
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-50 text-purple-700">
+                        {book.bookClass || 'N/A'}
                       </span>
                       <div className="flex items-center gap-2 bg-gray-50 px-2 py-0.5 rounded-full">
                         <div className={`w-1.5 h-1.5 rounded-full ${book.availableCopies > 0 ? 'bg-emerald-500' : 'bg-red-500'}`} />

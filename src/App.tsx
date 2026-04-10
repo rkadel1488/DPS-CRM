@@ -254,8 +254,8 @@ function AppContent() {
           }
         } catch (error: any) {
           console.error("Error fetching user profile:", error);
-          if (error.message?.includes('client is offline')) {
-            error.message = "Could not connect to Firestore. Please ensure the database 'ai-studio-991b43cf-8da1-495f-b24f-89722babf104' exists in your Firebase project 'gen-lang-client-0945475485'.";
+          if (error.message?.includes('client is offline') || error.code === 'unavailable') {
+            error.message = "Could not connect to Firestore. Please ensure the database 'ai-studio-991b43cf-8da1-495f-b24f-89722babf104' exists in your Firebase project 'gen-lang-client-0945475485' and that you have accepted the Firebase terms in the setup UI.";
           }
           handleFirestoreError(error, OperationType.GET, `users/${firebaseUser.uid}`);
         }
