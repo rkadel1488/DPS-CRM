@@ -18,45 +18,106 @@ import { db } from '../firebase';
 import { addDoc, collection, onSnapshot, query, doc, serverTimestamp, updateDoc, getDoc } from 'firebase/firestore';
 import { UserProfile, Student, GatePass } from '../types';
 import { handleFirestoreError, OperationType } from '../App';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import { Html5Qrcode } from 'html5-qrcode';
 
-export default function GatePassDashboard({ profile, isAdmin }: { profile: UserProfile | null, isAdmin: boolean }) {
+export default function GatePassDashboard({ profile, isAdmin, initialScan = false }: { profile: UserProfile | null, isAdmin: boolean, initialScan?: boolean }) {
   const [gatePasses, setGatePasses] = useState<GatePass[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [isAddingGatePass, setIsAddingGatePass] = useState(false);
   const [newGatePass, setNewGatePass] = useState({ studentId: '', reason: '', departureTime: new Date().toISOString().slice(0, 16) });
   const [gatePassSearch, setGatePassSearch] = useState('');
-  const [isScanning, setIsScanning] = useState(false);
+  const [isScanning, setIsScanning] = useState(initialScan);
   const [scannedStudent, setScannedStudent] = useState<Student | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
 
   useEffect(() => {
-    let scanner: Html5QrcodeScanner | null = null;
+    if (initialScan) {
+      setIsScanning(true);
+    }
+  }, [initialScan]);
+
+  useEffect(() => {
+    let html5QrCode: Html5Qrcode | null = null;
+    let isMounted = true;
+
+    const startScanner = async () => {
+      try {
+        // Double check element existence
+        const element = document.getElementById("qr-reader");
+        if (!element) {
+          if (isMounted) setTimeout(startScanner, 200);
+          return;
+        }
+
+        setCameraError(null);
+        html5QrCode = new Html5Qrcode("qr-reader");
+        
+        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+        
+        try {
+          // Try environment (back) camera first
+          await html5QrCode.start(
+            { facingMode: "environment" },
+            config,
+            (decodedText) => {
+              const student = students.find(s => s.id === decodedText || s.studentId === decodedText);
+              if (student && isMounted) {
+                setScannedStudent(student);
+                setIsScanning(false);
+                if (html5QrCode) {
+                  html5QrCode.stop().catch(err => console.error("Error stopping scanner", err));
+                }
+              }
+            },
+            () => {}
+          );
+        } catch (envErr) {
+          console.warn("Back camera failed, trying any available camera", envErr);
+          // Fallback: Use the first available camera
+          const cameras = await Html5Qrcode.getCameras();
+          if (cameras && cameras.length > 0 && isMounted) {
+            await html5QrCode.start(
+              cameras[0].id,
+              config,
+              (decodedText) => {
+                const student = students.find(s => s.id === decodedText || s.studentId === decodedText);
+                if (student && isMounted) {
+                  setScannedStudent(student);
+                  setIsScanning(false);
+                  if (html5QrCode) {
+                    html5QrCode.stop().catch(err => console.error("Error stopping scanner", err));
+                  }
+                }
+              },
+              () => {}
+            );
+          } else {
+            throw new Error("No cameras found on this device.");
+          }
+        }
+      } catch (err: any) {
+        console.error("Scanner error:", err);
+        if (isMounted) {
+          if (err?.toString().includes("Permission denied")) {
+            setCameraError("Camera permission denied. Please enable camera access in your browser settings.");
+          } else if (err?.toString().includes("NotFound")) {
+            setCameraError("No camera found. If you are on a laptop, ensure your webcam is connected.");
+          } else {
+            setCameraError("Could not access camera. Please ensure no other app is using it.");
+          }
+        }
+      }
+    };
 
     if (isScanning) {
-      scanner = new Html5QrcodeScanner(
-        "qr-reader",
-        { fps: 10, qrbox: { width: 250, height: 250 } },
-        /* verbose= */ false
-      );
-
-      scanner.render((decodedText) => {
-        const student = students.find(s => s.id === decodedText || s.studentId === decodedText);
-        if (student) {
-          setScannedStudent(student);
-          setIsScanning(false);
-          if (scanner) scanner.clear();
-        } else {
-          alert("Student not found for this QR code.");
-        }
-      }, (error) => {
-        // console.error(error);
-      });
+      startScanner();
     }
 
     return () => {
-      if (scanner) {
-        scanner.clear().catch(error => console.error("Failed to clear scanner", error));
+      isMounted = false;
+      if (html5QrCode && html5QrCode.isScanning) {
+        html5QrCode.stop().catch(err => console.error("Error stopping scanner on unmount", err));
       }
     };
   }, [isScanning, students]);
@@ -330,7 +391,26 @@ export default function GatePassDashboard({ profile, isAdmin }: { profile: UserP
                 <h3 className="text-2xl font-bold text-gray-900">Scan Student QR Code</h3>
                 <p className="text-gray-500">Point your camera at the student's ID card QR</p>
               </div>
-              <div id="qr-reader" className="overflow-hidden rounded-2xl border-4 border-blue-50" />
+              
+              {cameraError ? (
+                <div className="bg-red-50 p-6 rounded-2xl text-center space-y-4">
+                  <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto">
+                    <AlertTriangle className="w-6 h-6" />
+                  </div>
+                  <p className="text-red-700 font-medium">{cameraError}</p>
+                  <button 
+                    onClick={() => {
+                      setIsScanning(false);
+                      setTimeout(() => setIsScanning(true), 100);
+                    }}
+                    className="px-6 py-2 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              ) : (
+                <div id="qr-reader" className="overflow-hidden rounded-2xl border-4 border-blue-50" />
+              )}
             </motion.div>
           </div>
         )}
@@ -396,6 +476,16 @@ export default function GatePassDashboard({ profile, isAdmin }: { profile: UserP
                       <CheckCircle2 className="w-5 h-5" />
                     )}
                     Mark as Verified & Notify
+                  </button>
+                  <button
+                    disabled={isVerifying}
+                    onClick={() => {
+                      setScannedStudent(null);
+                      setIsScanning(true);
+                    }}
+                    className="w-full py-4 bg-gray-100 text-gray-700 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-gray-200 transition-all disabled:opacity-50"
+                  >
+                    Scan Another
                   </button>
                   <p className="text-[10px] text-gray-400 italic">
                      Clicking verify will issue an active gate pass and send an automated SMS to the linked phone number.

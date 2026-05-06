@@ -17,7 +17,8 @@ import {
   TrendingUp,
   ChevronRight,
   BookOpen,
-  Ticket
+  Ticket,
+  QrCode
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, db } from './firebase';
@@ -192,6 +193,13 @@ function AppContent() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [adminAction, setAdminAction] = useState<'add_student' | 'add_teacher' | 'add_staff' | 'add_parent' | null>(null);
+  const [isQuickScanning, setIsQuickScanning] = useState(false);
+
+  useEffect(() => {
+    if (activeTab !== 'gatepass') {
+      setIsQuickScanning(false);
+    }
+  }, [activeTab]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1024);
 
   // Handle resize for sidebar
@@ -639,8 +647,8 @@ function AppContent() {
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
             >
-              {activeTab === 'dashboard' && <DashboardOverview profile={profile} isAdmin={isAdmin} setActiveTab={setActiveTab} setAdminAction={setAdminAction} />}
-              {activeTab === 'gatepass' && <GatePassDashboard profile={profile} isAdmin={isAdmin} />}
+              {activeTab === 'dashboard' && <DashboardOverview profile={profile} isAdmin={isAdmin} setActiveTab={setActiveTab} setAdminAction={setAdminAction} setIsQuickScanning={setIsQuickScanning} />}
+              {activeTab === 'gatepass' && <GatePassDashboard profile={profile} isAdmin={isAdmin} initialScan={isQuickScanning} />}
               {activeTab === 'canteen' && <CanteenDashboard profile={profile} isAdmin={isAdmin} />}
               {activeTab === 'transport' && <TransportDashboard profile={profile} isAdmin={isAdmin} />}
               {activeTab === 'library' && <LibraryDashboard profile={profile} isAdmin={isAdmin} />}
@@ -654,7 +662,7 @@ function AppContent() {
   );
 }
 
-function DashboardOverview({ profile, isAdmin, setActiveTab, setAdminAction }: { profile: UserProfile | null, isAdmin: boolean, setActiveTab: (tab: string) => void, setAdminAction: (action: 'add_student' | 'add_teacher' | 'add_staff' | 'add_parent' | null) => void }) {
+function DashboardOverview({ profile, isAdmin, setActiveTab, setAdminAction, setIsQuickScanning }: { profile: UserProfile | null, isAdmin: boolean, setActiveTab: (tab: string) => void, setAdminAction: (action: 'add_student' | 'add_teacher' | 'add_staff' | 'add_parent' | null) => void, setIsQuickScanning?: (scan: boolean) => void }) {
   const [stats, setStats] = useState({
     totalStudents: 0,
     activeBuses: 0,
@@ -848,8 +856,8 @@ function DashboardOverview({ profile, isAdmin, setActiveTab, setAdminAction }: {
             <div className="grid grid-cols-2 gap-3">
               {[
                 { label: 'Add Student', icon: Users, adminOnly: true, tab: 'admin' },
+                { label: 'Scan Student ID', icon: QrCode, tab: 'gatepass', quickScan: true },
                 { label: 'New Transaction', icon: CreditCard, tab: 'canteen' },
-                { label: 'Issue Gate Pass', icon: Ticket, tab: 'gatepass' },
                 { label: 'Menu Planner', icon: ClipboardList, tab: 'canteen' },
               ].map((action, i) => {
                 const isDisabled = action.adminOnly && !isAdmin;
@@ -857,7 +865,10 @@ function DashboardOverview({ profile, isAdmin, setActiveTab, setAdminAction }: {
                   <button 
                     key={i} 
                     disabled={isDisabled}
-                    onClick={() => setActiveTab(action.tab)}
+                    onClick={() => {
+                      if (action.quickScan) setIsQuickScanning?.(true);
+                      setActiveTab(action.tab);
+                    }}
                     className={`flex flex-col items-center justify-center p-4 rounded-2xl transition-all gap-2 ${
                       isDisabled 
                         ? 'bg-white/5 text-white/20 cursor-not-allowed' 
