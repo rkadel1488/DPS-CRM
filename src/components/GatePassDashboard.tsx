@@ -428,7 +428,7 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
                 <X className="w-5 h-5 text-gray-400" />
               </button>
 
-              <div className="text-center space-y-4">
+              <div className="text-center space-y-4 max-h-[85vh] overflow-y-auto px-1">
                 <div className="w-24 h-24 bg-blue-50 rounded-full flex items-center justify-center mx-auto ring-4 ring-blue-100 overflow-hidden">
                   {scannedStudent.photoUrl ? (
                     <img src={scannedStudent.photoUrl} alt={scannedStudent.name} className="w-full h-full object-cover" />
@@ -441,7 +441,7 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
                   <p className="text-blue-600 font-bold font-mono text-sm tracking-widest">{scannedStudent.studentId || 'ID Pending'}</p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 pb-6">
+                <div className="grid grid-cols-2 gap-3 pb-4">
                   <div className="bg-gray-50 p-3 rounded-2xl">
                     <p className="text-[10px] text-gray-400 font-bold uppercase">Grade</p>
                     <p className="font-bold text-gray-900">{scannedStudent.grade}</p>
@@ -459,7 +459,63 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
                   </div>
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-4 py-4 border-y border-black/5">
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider text-center">Verified Pickup Personnel</p>
+                  <div className="flex justify-center gap-4 overflow-x-auto pb-2">
+                    {/* Father */}
+                    <div className="flex-shrink-0 w-24 space-y-2">
+                      <div className="w-20 h-20 mx-auto bg-gray-100 rounded-xl overflow-hidden border border-black/5 shadow-sm">
+                        {scannedStudent.fatherPhotoUrl ? (
+                          <img src={scannedStudent.fatherPhotoUrl} alt="Father" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Users className="w-8 h-8 text-gray-200" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-center">
+                        <p className="text-[8px] text-gray-400 font-bold uppercase leading-none mb-1">Father</p>
+                        <p className="text-[10px] font-bold text-gray-800 line-clamp-1">{scannedStudent.fatherName || 'Not Listed'}</p>
+                      </div>
+                    </div>
+
+                    {/* Mother */}
+                    <div className="flex-shrink-0 w-24 space-y-2">
+                      <div className="w-20 h-20 mx-auto bg-gray-100 rounded-xl overflow-hidden border border-black/5 shadow-sm">
+                        {scannedStudent.motherPhotoUrl ? (
+                          <img src={scannedStudent.motherPhotoUrl} alt="Mother" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Users className="w-8 h-8 text-gray-200" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-center">
+                        <p className="text-[8px] text-gray-400 font-bold uppercase leading-none mb-1">Mother</p>
+                        <p className="text-[10px] font-bold text-gray-800 line-clamp-1">{scannedStudent.motherName || 'Not Listed'}</p>
+                      </div>
+                    </div>
+
+                    {/* Driver */}
+                    <div className="flex-shrink-0 w-24 space-y-2">
+                      <div className="w-20 h-20 mx-auto bg-gray-100 rounded-xl overflow-hidden border border-black/5 shadow-sm">
+                        {scannedStudent.driverPhotoUrl ? (
+                          <img src={scannedStudent.driverPhotoUrl} alt="Driver" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Users className="w-8 h-8 text-gray-200" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-center">
+                        <p className="text-[8px] text-gray-400 font-bold uppercase leading-none mb-1">Driver</p>
+                        <p className="text-[10px] font-bold text-gray-800 line-clamp-1">{scannedStudent.driverName || 'Not Listed'}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3 pt-4">
                   <button
                     disabled={isVerifying}
                     onClick={handleVerifyAndIssue}
