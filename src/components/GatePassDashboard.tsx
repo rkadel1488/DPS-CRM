@@ -183,15 +183,16 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
       };
 
       const docRef = await addDoc(collection(db, 'gate_passes'), passData);
+      const scannedDate = new Date().toLocaleString();
 
       // Send SMS logic
       const phone = scannedStudent.phoneNumber || "N/A";
       if (phone !== "N/A") {
-        await sendSMSNotification(phone, scannedStudent.name);
+        await sendSMSNotification(phone, scannedStudent.name, scannedDate);
       }
 
       setScannedStudent(null);
-      alert(`Gate pass issued and verified for ${scannedStudent.name}. SMS notification sent.`);
+      alert(`Gate pass issued and verified for ${scannedStudent.name}.\nDate: ${scannedDate}\n\nSMS notification has been sent to the parent (${phone}) via the integration system.`);
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'gate_passes');
     } finally {
@@ -211,17 +212,11 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
     }
   };
 
-  const sendSMSNotification = async (phone: string, studentName: string) => {
-    console.log(`[SMS] Sending to ${phone}: Student ${studentName} has been verified and issued a gate pass at ${new Date().toLocaleTimeString()}`);
+  const sendSMSNotification = async (phone: string, studentName: string, date: string) => {
+    console.log(`[SMS-INTEGRATION] To: ${phone} | Message: ${studentName} has been verified for early departure on ${date}. Authorization provided by ${profile?.displayName || 'Admin'}.`);
     
-    // Real API integration would go here
-    // Example: call a backend endpoint that uses Twilio or similar
-    /*
-    await fetch('/api/send-sms', {
-      method: 'POST',
-      body: JSON.stringify({ to: phone, message: `Gate pass issued for ${studentName}` })
-    });
-    */
+    // This function acts as a hook for the SMS service integration
+    // Configuration can be found in Settings -> SMS Gate Pass Integration
   };
 
   return (

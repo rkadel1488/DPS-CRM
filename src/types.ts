@@ -60,6 +60,12 @@ export interface Student {
   grade: string;
   section: string;
   phoneNumber?: string;
+  fatherName?: string;
+  fatherPhotoUrl?: string;
+  motherName?: string;
+  motherPhotoUrl?: string;
+  driverName?: string;
+  driverPhotoUrl?: string;
 }
 
 export interface Meal {

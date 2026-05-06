@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import QRCode from 'qrcode';
 import { 
   Users, 
   UserPlus, 
@@ -15,7 +16,10 @@ import {
   Trash2,
   BookOpen,
   Upload,
-  Edit2
+  Edit2,
+  QrCode,
+  Download,
+  Camera
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { db } from '../firebase';
@@ -37,7 +41,22 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [staffToDelete, setStaffToDelete] = useState<string | null>(null);
   const [inviteToDelete, setInviteToDelete] = useState<string | null>(null);
-  const [newStudent, setNewStudent] = useState({ name: '', grade: '', section: '', balance: 0, parentId: '', routeId: '', phoneNumber: '' });
+  const [newStudent, setNewStudent] = useState({ 
+    name: '', 
+    grade: '', 
+    section: '', 
+    balance: 0, 
+    parentId: '', 
+    routeId: '', 
+    phoneNumber: '',
+    fatherName: '',
+    fatherPhotoUrl: '',
+    motherName: '',
+    motherPhotoUrl: '',
+    driverName: '',
+    driverPhotoUrl: '',
+    photoUrl: ''
+  });
   const [newStaff, setNewStaff] = useState<StaffInvite>({ name: '', phoneNumber: '', role: 'staff', allowedTabs: ['dashboard'] });
   const [routes, setRoutes] = useState<any[]>([]);
 
@@ -78,12 +97,187 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
     e.preventDefault();
     if (!isAdmin) return;
     try {
-      await addDoc(collection(db, 'students'), newStudent);
+      const docRef = await addDoc(collection(db, 'students'), newStudent);
       setIsAddingStudent(false);
-      setNewStudent({ name: '', grade: '', section: '', balance: 0, parentId: '', routeId: '', phoneNumber: '' });
+      setNewStudent({ 
+        name: '', 
+        grade: '', 
+        section: '', 
+        balance: 0, 
+        parentId: '', 
+        routeId: '', 
+        phoneNumber: '',
+        fatherName: '',
+        fatherPhotoUrl: '',
+        motherName: '',
+        motherPhotoUrl: '',
+        driverName: '',
+        driverPhotoUrl: '',
+        photoUrl: ''
+      });
+      alert('Student added successfully!');
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'students');
     }
+  };
+
+  const downloadQRCode = async (student: Student) => {
+    try {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      // Card Dimensions
+      canvas.width = 1000;
+      canvas.height = 1400;
+
+      // Background
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Header Banner
+      ctx.fillStyle = '#10b981'; // Emerald 500
+      ctx.fillRect(0, 0, canvas.width, 100);
+      
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 40px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('STUDENT IDENTITY CARD', canvas.width / 2, 65);
+
+      // Helper to load images
+      const loadImage = (src: string): Promise<HTMLImageElement | null> => {
+        return new Promise((resolve) => {
+          if (!src) resolve(null);
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = () => resolve(img);
+          img.onerror = () => resolve(null);
+          img.src = src;
+        });
+      };
+
+      // 1. Draw Student Photo or Placeholder
+      const studentImg = await loadImage(student.photoUrl || '');
+      const photoX = 50;
+      const photoY = 150;
+      const photoSize = 250;
+      
+      ctx.strokeStyle = '#e5e7eb';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(photoX, photoY, photoSize, photoSize);
+      
+      if (studentImg) {
+        ctx.drawImage(studentImg, photoX, photoY, photoSize, photoSize);
+      } else {
+        ctx.fillStyle = '#f3f4f6';
+        ctx.fillRect(photoX, photoY, photoSize, photoSize);
+        ctx.fillStyle = '#9ca3af';
+        ctx.font = '24px sans-serif';
+        ctx.fillText('NO PHOTO', photoX + photoSize/2, photoY + photoSize/2);
+      }
+
+      // 2. Draw Student Details
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#111827';
+      ctx.font = 'bold 50px sans-serif';
+      ctx.fillText(student.name.toUpperCase(), 330, 200);
+      
+      ctx.font = '30px sans-serif';
+      ctx.fillStyle = '#4b5563';
+      ctx.fillText(`Grade: ${student.grade} - ${student.section}`, 330, 250);
+      ctx.fillText(`ID: ${student.studentId || student.id?.substring(0, 8)}`, 330, 300);
+      if (student.phoneNumber) {
+        ctx.fillText(`Phone: ${student.phoneNumber}`, 330, 350);
+      }
+
+      // 3. Generate and Draw QR Code
+      const qrData = student.id || student.studentId || student.name;
+      const qrDataUrl = await QRCode.toDataURL(qrData, { width: 400, margin: 1 });
+      const qrImg = await loadImage(qrDataUrl);
+      if (qrImg) {
+        ctx.drawImage(qrImg, canvas.width - 450, 450, 400, 400);
+      }
+
+      // 4. Draw Family & Driver Section
+      ctx.fillStyle = '#f9fafb';
+      ctx.fillRect(50, 880, canvas.width - 100, 450);
+      
+      ctx.fillStyle = '#374151';
+      ctx.font = 'bold 36px sans-serif';
+      ctx.fillText('GUARDIANS & AUTHORIZED PERSONNEL', 80, 930);
+
+      const items = [
+        { label: 'FATHER', name: student.fatherName, photo: student.fatherPhotoUrl },
+        { label: 'MOTHER', name: student.motherName, photo: student.motherPhotoUrl },
+        { label: 'DRIVER', name: student.driverName, photo: student.driverPhotoUrl },
+      ];
+
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        const startX = 80 + (i * 300);
+        const startY = 960;
+        const imgSize = 240;
+
+        // Photo
+        const itemImg = await loadImage(item.photo || '');
+        ctx.strokeStyle = '#d1d5db';
+        ctx.strokeRect(startX, startY, imgSize, imgSize);
+        if (itemImg) {
+          ctx.drawImage(itemImg, startX, startY, imgSize, imgSize);
+        } else {
+          ctx.fillStyle = '#e5e7eb';
+          ctx.fillRect(startX, startY, imgSize, imgSize);
+        }
+
+        // Label & Name
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#6b7280';
+        ctx.font = 'bold 20px sans-serif';
+        ctx.fillText(item.label, startX + imgSize/2, startY + imgSize + 30);
+        
+        ctx.fillStyle = '#111827';
+        ctx.font = 'bold 24px sans-serif';
+        const displayName = item.name || 'Not Provided';
+        ctx.fillText(displayName.length > 18 ? displayName.substring(0, 15) + '...' : displayName, startX + imgSize/2, startY + imgSize + 65);
+      }
+
+      // Footer
+      ctx.fillStyle = '#9ca3af';
+      ctx.font = '16px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('This card is for official use only. If found, please return to school office.', canvas.width/2, 1370);
+
+      // Trigger Download
+      const finalUrl = canvas.toDataURL('image/png', 1.0);
+      const link = document.createElement('a');
+      link.href = finalUrl;
+      link.download = `ID_CARD_${student.name.replace(/\s+/g, '_')}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+    } catch (err) {
+      console.error('ID Card Generation error:', err);
+      alert('Failed to generate full ID card.');
+    }
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, isEdit: boolean, type: 'student' | 'father' | 'mother' | 'driver') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      const field = type === 'student' ? 'photoUrl' : `${type}PhotoUrl`;
+      
+      if (isEdit && editingStudent) {
+        setEditingStudent({ ...editingStudent, [field]: base64String });
+      } else {
+        setNewStudent({ ...newStudent, [field]: base64String });
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleEditStudent = async (e: React.FormEvent) => {
@@ -424,6 +618,16 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                       <div className="flex items-center justify-end gap-2">
                         {isAdmin && (
                           <>
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                downloadQRCode(student);
+                              }}
+                              className="p-2 hover:bg-blue-50 text-blue-400 hover:text-blue-500 rounded-lg transition-all"
+                              title="Download QR Code"
+                            >
+                              <Download className="w-4 h-4" />
+                            </button>
                             <button 
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -1051,7 +1255,24 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
             className="bg-white rounded-3xl p-6 w-full max-w-md shadow-xl"
           >
             <h3 className="text-xl font-bold text-gray-900 mb-4">Edit Student</h3>
-            <form onSubmit={handleEditStudent} className="space-y-4">
+            <form onSubmit={handleEditStudent} className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
+              <div className="flex flex-col items-center gap-4 py-4">
+                <div className="relative group">
+                  <div className="w-24 h-24 rounded-2xl bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden">
+                    {editingStudent.photoUrl ? (
+                      <img src={editingStudent.photoUrl} alt="Preview" className="w-full h-full object-cover" />
+                    ) : (
+                      <Camera className="w-8 h-8 text-gray-400" />
+                    )}
+                  </div>
+                  <label className="absolute -bottom-2 -right-2 p-2 bg-emerald-600 text-white rounded-xl shadow-lg cursor-pointer hover:bg-emerald-700 transition-all">
+                    <Upload className="w-4 h-4" />
+                    <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, true, 'student')} />
+                  </label>
+                </div>
+                <p className="text-[10px] text-gray-400 font-bold uppercase">Student Photo (Optional)</p>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
                 <input 
@@ -1084,18 +1305,89 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                   />
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Balance ($)</label>
-                <input 
-                  type="number" 
-                  step="0.01"
-                  min="0"
-                  required
-                  value={editingStudent.balance}
-                  onChange={e => setEditingStudent({...editingStudent, balance: parseFloat(e.target.value)})}
-                  className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
-                />
+
+              <div className="space-y-4 pt-2">
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Family & Driver Information</p>
+                
+                <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl">
+                  <div className="relative">
+                    <div className="w-16 h-16 rounded-xl bg-white border border-black/5 flex items-center justify-center overflow-hidden">
+                      {editingStudent.fatherPhotoUrl ? (
+                        <img src={editingStudent.fatherPhotoUrl} alt="Father" className="w-full h-full object-cover" />
+                      ) : (
+                        <Camera className="w-6 h-6 text-gray-300" />
+                      )}
+                    </div>
+                    <label className="absolute -bottom-1 -right-1 p-1.5 bg-gray-900 text-white rounded-lg shadow-sm cursor-pointer hover:bg-black transition-all">
+                      <Upload className="w-3 h-3" />
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, true, 'father')} />
+                    </label>
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Father's Name</label>
+                    <input 
+                      type="text" 
+                      placeholder="Father's Name"
+                      value={editingStudent.fatherName || ''}
+                      onChange={e => setEditingStudent({...editingStudent, fatherName: e.target.value})}
+                      className="w-full px-3 py-1.5 bg-white border border-black/10 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl">
+                  <div className="relative">
+                    <div className="w-16 h-16 rounded-xl bg-white border border-black/5 flex items-center justify-center overflow-hidden">
+                      {editingStudent.motherPhotoUrl ? (
+                        <img src={editingStudent.motherPhotoUrl} alt="Mother" className="w-full h-full object-cover" />
+                      ) : (
+                        <Camera className="w-6 h-6 text-gray-300" />
+                      )}
+                    </div>
+                    <label className="absolute -bottom-1 -right-1 p-1.5 bg-gray-900 text-white rounded-lg shadow-sm cursor-pointer hover:bg-black transition-all">
+                      <Upload className="w-3 h-3" />
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, true, 'mother')} />
+                    </label>
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Mother's Name</label>
+                    <input 
+                      type="text" 
+                      placeholder="Mother's Name"
+                      value={editingStudent.motherName || ''}
+                      onChange={e => setEditingStudent({...editingStudent, motherName: e.target.value})}
+                      className="w-full px-3 py-1.5 bg-white border border-black/10 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl">
+                  <div className="relative">
+                    <div className="w-16 h-16 rounded-xl bg-white border border-black/5 flex items-center justify-center overflow-hidden">
+                      {editingStudent.driverPhotoUrl ? (
+                        <img src={editingStudent.driverPhotoUrl} alt="Driver" className="w-full h-full object-cover" />
+                      ) : (
+                        <Camera className="w-6 h-6 text-gray-300" />
+                      )}
+                    </div>
+                    <label className="absolute -bottom-1 -right-1 p-1.5 bg-gray-900 text-white rounded-lg shadow-sm cursor-pointer hover:bg-black transition-all">
+                      <Upload className="w-3 h-3" />
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, true, 'driver')} />
+                    </label>
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Driver's Name</label>
+                    <input 
+                      type="text" 
+                      placeholder="Driver's Name"
+                      value={editingStudent.driverName || ''}
+                      onChange={e => setEditingStudent({...editingStudent, driverName: e.target.value})}
+                      className="w-full px-3 py-1.5 bg-white border border-black/10 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                    />
+                  </div>
+                </div>
               </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Transport Route (Optional)</label>
                 <select
@@ -1148,7 +1440,24 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
             className="bg-white rounded-3xl p-6 w-full max-w-md shadow-xl"
           >
             <h3 className="text-xl font-bold text-gray-900 mb-4">Add New Student</h3>
-            <form onSubmit={handleAddStudent} className="space-y-4">
+            <form onSubmit={handleAddStudent} className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
+              <div className="flex flex-col items-center gap-4 py-4">
+                <div className="relative group">
+                  <div className="w-24 h-24 rounded-2xl bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden">
+                    {newStudent.photoUrl ? (
+                      <img src={newStudent.photoUrl} alt="Preview" className="w-full h-full object-cover" />
+                    ) : (
+                      <Camera className="w-8 h-8 text-gray-400" />
+                    )}
+                  </div>
+                  <label className="absolute -bottom-2 -right-2 p-2 bg-emerald-600 text-white rounded-xl shadow-lg cursor-pointer hover:bg-emerald-700 transition-all">
+                    <Upload className="w-4 h-4" />
+                    <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, false, 'student')} />
+                  </label>
+                </div>
+                <p className="text-[10px] text-gray-400 font-bold uppercase">Student Photo (Optional)</p>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
                 <input 
@@ -1181,18 +1490,89 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                   />
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Initial Balance ($)</label>
-                <input 
-                  type="number" 
-                  step="0.01"
-                  min="0"
-                  required
-                  value={newStudent.balance}
-                  onChange={e => setNewStudent({...newStudent, balance: parseFloat(e.target.value)})}
-                  className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
-                />
+
+              <div className="space-y-4 pt-2">
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Family & Driver Information</p>
+                
+                <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl">
+                  <div className="relative">
+                    <div className="w-16 h-16 rounded-xl bg-white border border-black/5 flex items-center justify-center overflow-hidden">
+                      {newStudent.fatherPhotoUrl ? (
+                        <img src={newStudent.fatherPhotoUrl} alt="Father" className="w-full h-full object-cover" />
+                      ) : (
+                        <Camera className="w-6 h-6 text-gray-300" />
+                      )}
+                    </div>
+                    <label className="absolute -bottom-1 -right-1 p-1.5 bg-gray-900 text-white rounded-lg shadow-sm cursor-pointer hover:bg-black transition-all">
+                      <Upload className="w-3 h-3" />
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, false, 'father')} />
+                    </label>
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Father's Name</label>
+                    <input 
+                      type="text" 
+                      placeholder="Father's Name"
+                      value={newStudent.fatherName}
+                      onChange={e => setNewStudent({...newStudent, fatherName: e.target.value})}
+                      className="w-full px-3 py-1.5 bg-white border border-black/10 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl">
+                  <div className="relative">
+                    <div className="w-16 h-16 rounded-xl bg-white border border-black/5 flex items-center justify-center overflow-hidden">
+                      {newStudent.motherPhotoUrl ? (
+                        <img src={newStudent.motherPhotoUrl} alt="Mother" className="w-full h-full object-cover" />
+                      ) : (
+                        <Camera className="w-6 h-6 text-gray-300" />
+                      )}
+                    </div>
+                    <label className="absolute -bottom-1 -right-1 p-1.5 bg-gray-900 text-white rounded-lg shadow-sm cursor-pointer hover:bg-black transition-all">
+                      <Upload className="w-3 h-3" />
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, false, 'mother')} />
+                    </label>
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Mother's Name</label>
+                    <input 
+                      type="text" 
+                      placeholder="Mother's Name"
+                      value={newStudent.motherName}
+                      onChange={e => setNewStudent({...newStudent, motherName: e.target.value})}
+                      className="w-full px-3 py-1.5 bg-white border border-black/10 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl">
+                  <div className="relative">
+                    <div className="w-16 h-16 rounded-xl bg-white border border-black/5 flex items-center justify-center overflow-hidden">
+                      {newStudent.driverPhotoUrl ? (
+                        <img src={newStudent.driverPhotoUrl} alt="Driver" className="w-full h-full object-cover" />
+                      ) : (
+                        <Camera className="w-6 h-6 text-gray-300" />
+                      )}
+                    </div>
+                    <label className="absolute -bottom-1 -right-1 p-1.5 bg-gray-900 text-white rounded-lg shadow-sm cursor-pointer hover:bg-black transition-all">
+                      <Upload className="w-3 h-3" />
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, false, 'driver')} />
+                    </label>
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Driver's Name</label>
+                    <input 
+                      type="text" 
+                      placeholder="Driver's Name"
+                      value={newStudent.driverName}
+                      onChange={e => setNewStudent({...newStudent, driverName: e.target.value})}
+                      className="w-full px-3 py-1.5 bg-white border border-black/10 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                    />
+                  </div>
+                </div>
               </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Transport Route (Optional)</label>
                 <select

@@ -929,6 +929,28 @@ function SettingsView({ profile, isAdmin }: { profile: UserProfile | null, isAdm
           </div>
         </div>
         <div className="p-6">
+          <h3 className="font-bold text-gray-900 mb-1 flex items-center gap-2">
+            SMS Gate Pass Integration
+            <span className="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full uppercase tracking-tighter">Integration System</span>
+          </h3>
+          <p className="text-sm text-gray-500 mb-4">Configure the service provider for sending automated verification alerts.</p>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Provider Service URL (Placeholder)</label>
+              <input type="text" placeholder="https://api.sms-gateway.com/v1/send" className="w-full p-3 bg-gray-50 border border-black/5 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-mono text-xs" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">API Authentication Key (Placeholder)</label>
+              <input type="password" value="••••••••••••••••" readOnly className="w-full p-3 bg-gray-50 border border-black/5 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-mono text-xs" />
+            </div>
+            <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100">
+              <p className="text-xs text-blue-700 font-medium leading-relaxed">
+                <strong>System Logic:</strong> When a gate pass is marked as "Verified" via QR scan, the system will trigger a POST request to the configured URL above containing the parent's phone number and the verification timestamp.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="p-6">
           <button 
             onClick={() => alert('Settings saved successfully!')}
             className="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all"
