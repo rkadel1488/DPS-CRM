@@ -40,7 +40,10 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return (('email' in request.auth.token) && request.auth.token.email == "rkadel1488@gmail.com") || hasRole('admin');
+      return (('email' in request.auth.token) && 
+              request.auth.token.email == "rkadel1488@gmail.com" && 
+              request.auth.token.email_verified == true) || 
+             hasRole('admin');
     }
 
     function isStaff() {
@@ -110,7 +113,8 @@ service cloud.firestore {
     }
 
     match /boarding_logs/{logId} {
-      allow read: if isStaff() || isDriver() || (isAuthenticated() && isParentOf(resource.data.studentId));
+      allow list: if isStaff() || isDriver();
+      allow get: if isStaff() || isDriver() || (isAuthenticated() && isParentOf(resource.data.studentId));
       allow create: if isDriver() || isStaff();
       allow update, delete: if isAdmin();
     }
@@ -126,7 +130,8 @@ service cloud.firestore {
     }
 
     match /transport_attendance/{attendanceId} {
-      allow read: if isStaff() || isDriver() || (isAuthenticated() && isParentOf(resource.data.studentId));
+      allow list: if isStaff() || isDriver();
+      allow get: if isStaff() || isDriver() || (isAuthenticated() && isParentOf(resource.data.studentId));
       allow write: if isStaff() || isDriver();
     }
 
@@ -143,6 +148,15 @@ service cloud.firestore {
 
     match /book_issues/{issueId} {
       allow read: if isAuthenticated();
+      allow write: if isStaff();
+    }
+
+    match /gate_passes/{passId} {
+      allow list: if isStaff() || isDriver();
+      // Parents can list only their children's gate passes if we added studentId filter, 
+      // but isParentOf uses get() which is limited/forbidden in list. 
+      // For now, only staff/drivers can list all.
+      allow get: if isStaff() || isDriver() || (isAuthenticated() && isParentOf(resource.data.studentId));
       allow write: if isStaff();
     }
   }

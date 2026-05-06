@@ -16,7 +16,8 @@ import {
   AlertCircle,
   TrendingUp,
   ChevronRight,
-  BookOpen
+  BookOpen,
+  Ticket
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, db } from './firebase';
@@ -49,6 +50,7 @@ import CanteenDashboard from './components/CanteenDashboard';
 import TransportDashboard from './components/TransportDashboard';
 import AdminDashboard from './components/AdminDashboard';
 import LibraryDashboard from './components/LibraryDashboard';
+import GatePassDashboard from './components/GatePassDashboard';
 
 // Firestore Error Handling
 export enum OperationType {
@@ -227,11 +229,11 @@ function AppContent() {
             let data = docSnap.data() as UserProfile;
             
             // Force admin role for the main admin email
-            if (firebaseUser.email === MAIN_ADMIN_EMAIL && (data.role !== 'admin' || data.allowedTabs?.length !== 6)) {
+            if (firebaseUser.email === MAIN_ADMIN_EMAIL && (data.role !== 'admin' || data.allowedTabs?.length !== 7)) {
               const updatedProfile = {
                 ...data,
                 role: 'admin' as UserRole,
-                allowedTabs: ['dashboard', 'canteen', 'transport', 'library', 'admin', 'settings']
+                allowedTabs: ['dashboard', 'gatepass', 'canteen', 'transport', 'library', 'admin', 'settings']
               };
               await setDoc(docRef, updatedProfile);
               data = updatedProfile;
@@ -247,7 +249,7 @@ function AppContent() {
               displayName: firebaseUser.displayName || 'User',
               role: isNewUserMainAdmin ? 'admin' : 'staff',
               createdAt: new Date().toISOString(),
-              allowedTabs: isNewUserMainAdmin ? ['dashboard', 'canteen', 'transport', 'library', 'admin', 'settings'] : ['dashboard']
+              allowedTabs: isNewUserMainAdmin ? ['dashboard', 'gatepass', 'canteen', 'transport', 'library', 'admin', 'settings'] : ['dashboard']
             };
             await setDoc(docRef, newProfile);
             setProfile(newProfile);
@@ -442,6 +444,7 @@ function AppContent() {
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'gatepass', label: 'Gate Pass', icon: Ticket },
     { id: 'library', label: 'Library', icon: BookOpen },
     { id: 'canteen', label: 'Canteen', icon: Utensils },
     { id: 'transport', label: 'Transport', icon: Bus },
@@ -637,6 +640,7 @@ function AppContent() {
               transition={{ duration: 0.2 }}
             >
               {activeTab === 'dashboard' && <DashboardOverview profile={profile} isAdmin={isAdmin} setActiveTab={setActiveTab} setAdminAction={setAdminAction} />}
+              {activeTab === 'gatepass' && <GatePassDashboard profile={profile} isAdmin={isAdmin} />}
               {activeTab === 'canteen' && <CanteenDashboard profile={profile} isAdmin={isAdmin} />}
               {activeTab === 'transport' && <TransportDashboard profile={profile} isAdmin={isAdmin} />}
               {activeTab === 'library' && <LibraryDashboard profile={profile} isAdmin={isAdmin} />}
@@ -655,6 +659,7 @@ function DashboardOverview({ profile, isAdmin, setActiveTab, setAdminAction }: {
     totalStudents: 0,
     activeBuses: 0,
     canteenLunchRegs: 0,
+    activeGatePasses: 0,
   });
 
   useEffect(() => {
@@ -667,11 +672,13 @@ function DashboardOverview({ profile, isAdmin, setActiveTab, setAdminAction }: {
       try {
         const studentsSnap = await getDocs(collection(db, 'students'));
         const vehiclesSnap = await getDocs(collection(db, 'vehicles'));
+        const gatePassesSnap = await getDocs(collection(db, 'gate_passes'));
         
         setStats({
           totalStudents: studentsSnap.size,
           activeBuses: vehiclesSnap.size,
           canteenLunchRegs: studentsSnap.docs.filter(d => (d.data().balance || 0) > 0).length,
+          activeGatePasses: gatePassesSnap.docs.filter(d => d.data().status === 'active').length,
         });
       } catch (error) {
         console.error("Failed to fetch stats:", error);
@@ -790,11 +797,12 @@ function DashboardOverview({ profile, isAdmin, setActiveTab, setAdminAction }: {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { label: 'Total Students Registered', value: stats.totalStudents, icon: Users, color: 'bg-blue-500', trend: 'Registered' },
-          { label: 'Total Buses Registered', value: stats.activeBuses, icon: Bus, color: 'bg-emerald-500', trend: 'Fleet' },
-          { label: 'Canteen Lunch Registrations', value: stats.canteenLunchRegs, icon: Utensils, color: 'bg-orange-500', trend: 'Active' },
+          { label: 'Total Students', value: stats.totalStudents, icon: Users, color: 'bg-blue-500', trend: 'Registered' },
+          { label: 'Active Buses', value: stats.activeBuses, icon: Bus, color: 'bg-emerald-500', trend: 'Fleet' },
+          { label: 'Gate Passes', value: stats.activeGatePasses, icon: Ticket, color: 'bg-orange-500', trend: 'Active' },
+          { label: 'Lunch Regs', value: stats.canteenLunchRegs, icon: Utensils, color: 'bg-indigo-500', trend: 'Active' },
         ].map((stat, i) => (
           <motion.div 
             key={i}
@@ -841,7 +849,7 @@ function DashboardOverview({ profile, isAdmin, setActiveTab, setAdminAction }: {
               {[
                 { label: 'Add Student', icon: Users, adminOnly: true, tab: 'admin' },
                 { label: 'New Transaction', icon: CreditCard, tab: 'canteen' },
-                { label: 'Update Route', icon: MapPin, adminOnly: true, tab: 'transport' },
+                { label: 'Issue Gate Pass', icon: Ticket, tab: 'gatepass' },
                 { label: 'Menu Planner', icon: ClipboardList, tab: 'canteen' },
               ].map((action, i) => {
                 const isDisabled = action.adminOnly && !isAdmin;

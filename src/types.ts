@@ -59,6 +59,7 @@ export interface Student {
   parentId?: string;
   grade: string;
   section: string;
+  phoneNumber?: string;
 }
 
 export interface Meal {
@@ -126,4 +127,16 @@ export interface TransportAttendance {
   status: 'present' | 'absent';
   timestamp: any;
   markedBy: string;
+}
+
+export interface GatePass {
+  id: string;
+  studentId: string;
+  studentName: string;
+  reason: string;
+  departureTime: any;
+  arrivalTime?: any;
+  status: 'active' | 'returned' | 'cancelled';
+  authorizedBy: string;
+  createdAt: any;
 }

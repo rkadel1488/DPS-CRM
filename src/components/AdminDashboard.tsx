@@ -37,7 +37,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [staffToDelete, setStaffToDelete] = useState<string | null>(null);
   const [inviteToDelete, setInviteToDelete] = useState<string | null>(null);
-  const [newStudent, setNewStudent] = useState({ name: '', grade: '', section: '', balance: 0, parentId: '', routeId: '' });
+  const [newStudent, setNewStudent] = useState({ name: '', grade: '', section: '', balance: 0, parentId: '', routeId: '', phoneNumber: '' });
   const [newStaff, setNewStaff] = useState<StaffInvite>({ name: '', phoneNumber: '', role: 'staff', allowedTabs: ['dashboard'] });
   const [routes, setRoutes] = useState<any[]>([]);
 
@@ -80,7 +80,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
     try {
       await addDoc(collection(db, 'students'), newStudent);
       setIsAddingStudent(false);
-      setNewStudent({ name: '', grade: '', section: '', balance: 0, parentId: '', routeId: '' });
+      setNewStudent({ name: '', grade: '', section: '', balance: 0, parentId: '', routeId: '', phoneNumber: '' });
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'students');
     }
@@ -269,6 +269,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
 
   const availableTabs = [
     { id: 'dashboard', label: 'Dashboard' },
+    { id: 'gatepass', label: 'Gate Pass' },
     { id: 'canteen', label: 'Canteen' },
     { id: 'transport', label: 'Transport' },
     { id: 'library', label: 'Library' },
@@ -1108,6 +1109,17 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                   ))}
                 </select>
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Parent Phone Number (For SMS Notifications)</label>
+                <input 
+                  type="tel" 
+                  required
+                  placeholder="+1234567890"
+                  value={editingStudent.phoneNumber || ''}
+                  onChange={e => setEditingStudent({...editingStudent, phoneNumber: e.target.value})}
+                  className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                />
+              </div>
               <div className="flex gap-3 pt-4">
                 <button 
                   type="button"
@@ -1193,6 +1205,17 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                     <option key={route.id} value={route.id}>{route.name}</option>
                   ))}
                 </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Parent Phone Number (For SMS Notifications)</label>
+                <input 
+                  type="tel" 
+                  required
+                  placeholder="+1234567890"
+                  value={newStudent.phoneNumber}
+                  onChange={e => setNewStudent({...newStudent, phoneNumber: e.target.value})}
+                  className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                />
               </div>
               <div className="flex gap-3 pt-4">
                 <button 
