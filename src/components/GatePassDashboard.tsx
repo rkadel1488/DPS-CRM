@@ -172,27 +172,34 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
     setIsVerifying(true);
 
     try {
+      const now = new Date();
+      const scannedDate = now.toLocaleString();
+      
       const passData = {
         studentId: scannedStudent.id,
         studentName: scannedStudent.name,
-        reason: "QR Verified Check-out",
-        departureTime: new Date().toISOString(),
+        reason: "QR Verified Early Check-out",
+        departureTime: now.toISOString(),
+        verifiedAt: serverTimestamp(),
         status: 'active' as const,
         authorizedBy: profile.displayName || profile.email || 'Admin',
-        createdAt: serverTimestamp()
+        createdAt: serverTimestamp(),
+        qrVerified: true
       };
 
-      const docRef = await addDoc(collection(db, 'gate_passes'), passData);
-      const scannedDate = new Date().toLocaleString();
+      await addDoc(collection(db, 'gate_passes'), passData);
 
-      // Send SMS logic
+      // Send SMS logic via the integration hook
       const phone = scannedStudent.phoneNumber || "N/A";
       if (phone !== "N/A") {
         await sendSMSNotification(phone, scannedStudent.name, scannedDate);
       }
 
+      // Close the modal and the scanner
       setScannedStudent(null);
-      alert(`Gate pass issued and verified for ${scannedStudent.name}.\nDate: ${scannedDate}\n\nSMS notification has been sent to the parent (${phone}) via the integration system.`);
+      setIsScanning(false);
+      
+      alert(`✅ Verification Successful\n\nStudent: ${scannedStudent.name}\nTime: ${scannedDate}\n\nGate pass has been recorded and an SMS notification was sent to ${phone}.`);
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'gate_passes');
     } finally {
@@ -459,57 +466,64 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
                   </div>
                 </div>
 
-                <div className="space-y-4 py-4 border-y border-black/5">
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider text-center">Verified Pickup Personnel</p>
-                  <div className="flex justify-center gap-4 overflow-x-auto pb-2">
+                <div className="space-y-4 py-6 border-y border-black/5">
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider text-center flex items-center justify-center gap-2">
+                    <Users className="w-3 h-3" />
+                    Authorized Recovery Personnel
+                  </p>
+                  
+                  <div className="grid grid-cols-3 gap-3">
                     {/* Father */}
-                    <div className="flex-shrink-0 w-24 space-y-2">
-                      <div className="w-20 h-20 mx-auto bg-gray-100 rounded-xl overflow-hidden border border-black/5 shadow-sm">
+                    <div className="space-y-2">
+                      <div className="aspect-square bg-gray-50 rounded-2xl overflow-hidden border-2 border-white shadow-sm ring-1 ring-black/5">
                         {scannedStudent.fatherPhotoUrl ? (
                           <img src={scannedStudent.fatherPhotoUrl} alt="Father" className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Users className="w-8 h-8 text-gray-200" />
+                          <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50/50">
+                            <Users className="w-6 h-6 text-gray-200" />
+                            <span className="text-[8px] text-gray-400 mt-1">No Photo</span>
                           </div>
                         )}
                       </div>
                       <div className="text-center">
-                        <p className="text-[8px] text-gray-400 font-bold uppercase leading-none mb-1">Father</p>
-                        <p className="text-[10px] font-bold text-gray-800 line-clamp-1">{scannedStudent.fatherName || 'Not Listed'}</p>
+                        <p className="text-[10px] font-bold text-gray-900 line-clamp-1">{scannedStudent.fatherName || 'Father'}</p>
+                        <p className="text-[8px] text-gray-400 font-bold uppercase">Father</p>
                       </div>
                     </div>
 
                     {/* Mother */}
-                    <div className="flex-shrink-0 w-24 space-y-2">
-                      <div className="w-20 h-20 mx-auto bg-gray-100 rounded-xl overflow-hidden border border-black/5 shadow-sm">
+                    <div className="space-y-2">
+                      <div className="aspect-square bg-gray-50 rounded-2xl overflow-hidden border-2 border-white shadow-sm ring-1 ring-black/5">
                         {scannedStudent.motherPhotoUrl ? (
                           <img src={scannedStudent.motherPhotoUrl} alt="Mother" className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Users className="w-8 h-8 text-gray-200" />
+                          <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50/50">
+                            <Users className="w-6 h-6 text-gray-200" />
+                            <span className="text-[8px] text-gray-400 mt-1">No Photo</span>
                           </div>
                         )}
                       </div>
                       <div className="text-center">
-                        <p className="text-[8px] text-gray-400 font-bold uppercase leading-none mb-1">Mother</p>
-                        <p className="text-[10px] font-bold text-gray-800 line-clamp-1">{scannedStudent.motherName || 'Not Listed'}</p>
+                        <p className="text-[10px] font-bold text-gray-900 line-clamp-1">{scannedStudent.motherName || 'Mother'}</p>
+                        <p className="text-[8px] text-gray-400 font-bold uppercase">Mother</p>
                       </div>
                     </div>
-
+ 
                     {/* Driver */}
-                    <div className="flex-shrink-0 w-24 space-y-2">
-                      <div className="w-20 h-20 mx-auto bg-gray-100 rounded-xl overflow-hidden border border-black/5 shadow-sm">
+                    <div className="space-y-2">
+                      <div className="aspect-square bg-gray-50 rounded-2xl overflow-hidden border-2 border-white shadow-sm ring-1 ring-black/5">
                         {scannedStudent.driverPhotoUrl ? (
                           <img src={scannedStudent.driverPhotoUrl} alt="Driver" className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Users className="w-8 h-8 text-gray-200" />
+                          <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50/50">
+                            <Users className="w-6 h-6 text-gray-200" />
+                            <span className="text-[8px] text-gray-400 mt-1">No Photo</span>
                           </div>
                         )}
                       </div>
                       <div className="text-center">
-                        <p className="text-[8px] text-gray-400 font-bold uppercase leading-none mb-1">Driver</p>
-                        <p className="text-[10px] font-bold text-gray-800 line-clamp-1">{scannedStudent.driverName || 'Not Listed'}</p>
+                        <p className="text-[10px] font-bold text-gray-900 line-clamp-1">{scannedStudent.driverName || 'Driver'}</p>
+                        <p className="text-[8px] text-gray-400 font-bold uppercase">Driver</p>
                       </div>
                     </div>
                   </div>
