@@ -229,20 +229,29 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
-      canvas.width = 1000;
+      // A6 Size Equivalent (1240 x 1754) for printing 4 on A4 page
+      canvas.width = 1240;
+      const originalWidth = 1000;
       const studentsHeight = Math.ceil(family.students.length / 2) * 200 + 100;
-      canvas.height = 800 + studentsHeight;
+      const requiredOriginalHeight = 850 + studentsHeight; // Increased from 800
+      canvas.height = Math.max(1754, requiredOriginalHeight * 1.25); // Minimum A6 height, or taller if needed
+      
+      const scaleX = 1240 / 1000;
+      const scaleY = canvas.height / requiredOriginalHeight;
+      // We will use 1.24 scale for both to keep aspect ratio perfect, if it fits
+      // Actually, since A6 width is 1240, scale is exactly 1.24.
+      ctx.scale(1.24, 1.24);
 
       ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(0, 0, 1000, requiredOriginalHeight * 1.2);
 
       ctx.fillStyle = '#2563eb';
-      ctx.fillRect(0, 0, canvas.width, 100);
+      ctx.fillRect(0, 0, 1000, 100);
       
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 40px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('GROUP GATE PASS', canvas.width / 2, 65);
+      ctx.fillText('GROUP GATE PASS', 500, 65);
 
       const loadImage = (src: string): Promise<HTMLImageElement | null> => {
         return new Promise((resolve) => {
@@ -296,12 +305,12 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
       const qrDataUrl = await QRCode.toDataURL(`${appUrl}/?verify=${familyId}`, { width: 350, margin: 1 });
       const qrImg = await loadImage(qrDataUrl);
       if (qrImg) {
-        ctx.drawImage(qrImg, (canvas.width - 350) / 2, qrStartY, 350, 350);
+        ctx.drawImage(qrImg, (1000 - 350) / 2, qrStartY, 350, 350);
       }
 
       const guardiansStartY = qrStartY + 400;
       ctx.fillStyle = '#f9fafb';
-      ctx.fillRect(50, guardiansStartY, canvas.width - 100, 350);
+      ctx.fillRect(50, guardiansStartY, 1000 - 100, 350);
       
       ctx.fillStyle = '#374151';
       ctx.font = 'bold 28px sans-serif';
@@ -361,22 +370,23 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
-      // Card Dimensions
-      canvas.width = 1000;
-      canvas.height = 1400;
+      // Card Dimensions at 300 DPI for exactly 4 pcs per A4 page (A6 size equivalent 1240x1754)
+      canvas.width = 1240;
+      canvas.height = 1754;
+      ctx.scale(1.24, 1.25); // Scale up from internal 1000x1400 coordinate system
 
       // Background
       ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(0, 0, 1000, 1400);
 
       // Header Banner
       ctx.fillStyle = '#10b981'; // Emerald 500
-      ctx.fillRect(0, 0, canvas.width, 100);
+      ctx.fillRect(0, 0, 1000, 100);
       
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 40px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('STUDENT IDENTITY CARD', canvas.width / 2, 65);
+      ctx.fillText('STUDENT GATE PASS', 500, 65);
 
       // Helper to load images
       const loadImage = (src: string): Promise<HTMLImageElement | null> => {
@@ -430,12 +440,12 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
       const qrDataUrl = await QRCode.toDataURL(`${appUrl}/?verify=${qrData}`, { width: 400, margin: 1 });
       const qrImg = await loadImage(qrDataUrl);
       if (qrImg) {
-        ctx.drawImage(qrImg, canvas.width - 450, 450, 400, 400);
+        ctx.drawImage(qrImg, 1000 - 450, 450, 400, 400);
       }
 
       // 4. Draw Family & Driver Section
       ctx.fillStyle = '#f9fafb';
-      ctx.fillRect(50, 880, canvas.width - 100, 450);
+      ctx.fillRect(50, 880, 1000 - 100, 450);
       
       ctx.fillStyle = '#374151';
       ctx.font = 'bold 36px sans-serif';
@@ -480,7 +490,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
       ctx.fillStyle = '#9ca3af';
       ctx.font = '16px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('This card is for official use only. If found, please return to school office.', canvas.width/2, 1370);
+      ctx.fillText('This card is for official use only. If found, please return to school office.', 1000/2, 1370);
 
       // Trigger Download
       const finalUrl = canvas.toDataURL('image/png', 1.0);

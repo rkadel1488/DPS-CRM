@@ -11,11 +11,12 @@ import {
   QrCode,
   CheckCircle2,
   AlertTriangle,
-  Phone
+  Phone,
+  Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { db } from '../firebase';
-import { addDoc, collection, onSnapshot, query, doc, serverTimestamp, updateDoc, getDoc } from 'firebase/firestore';
+import { addDoc, collection, onSnapshot, query, doc, serverTimestamp, updateDoc, getDoc, deleteDoc } from 'firebase/firestore';
 import { UserProfile, Student, GatePass } from '../types';
 import { handleFirestoreError, OperationType } from '../App';
 import { Html5Qrcode } from 'html5-qrcode';
@@ -259,6 +260,15 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
     }
   };
 
+  const handleDeleteGatePass = async (passId: string) => {
+    if (!window.confirm('Are you sure you want to delete this gate pass?')) return;
+    try {
+      await deleteDoc(doc(db, 'gate_passes', passId));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, 'gate_passes');
+    }
+  };
+
   const sendSMSNotification = async (phone: string, studentName: string, date: string) => {
     console.log(`[SMS-INTEGRATION] To: ${phone} | Message: ${studentName} has been verified for early departure on ${date}. Authorization provided by ${profile?.displayName || 'Admin'}.`);
     
@@ -333,15 +343,23 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
                 <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600">
                   <Ticket className="w-6 h-6" />
                 </div>
-                <div className="flex flex-col items-end">
-                  <span className={`text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider ${
-                    pass.status === 'active' ? 'bg-orange-50 text-orange-600' : 
-                    pass.status === 'returned' ? 'bg-emerald-50 text-emerald-600' : 
-                    'bg-red-50 text-red-600'
-                  }`}>
-                    {pass.status}
-                  </span>
-                  <p className="text-[10px] text-gray-400 mt-1">
+                <div className="flex flex-col items-end gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider ${
+                      pass.status === 'active' ? 'bg-orange-50 text-orange-600' : 
+                      pass.status === 'returned' ? 'bg-emerald-50 text-emerald-600' : 
+                      'bg-red-50 text-red-600'
+                    }`}>
+                      {pass.status}
+                    </span>
+                    <button 
+                      onClick={() => handleDeleteGatePass(pass.id)}
+                      className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-gray-400">
                     {pass.createdAt?.toDate ? pass.createdAt.toDate().toLocaleDateString() : new Date(pass.createdAt).toLocaleDateString()}
                   </p>
                 </div>
