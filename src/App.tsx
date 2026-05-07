@@ -925,7 +925,7 @@ function SettingsView({ profile, isAdmin }: { profile: UserProfile | null, isAdm
             {[
               { label: 'Email Alerts', desc: 'Receive daily summary reports' },
               { label: 'Push Notifications', desc: 'Real-time alerts for bus delays' },
-              { label: 'Low Balance SMS', desc: 'Automated alerts for student accounts' },
+              { label: 'Low Balance WhatsApp', desc: 'Automated alerts for student accounts' },
             ].map((item, i) => (
               <div key={i} className="flex items-center justify-between">
                 <div>
@@ -941,7 +941,7 @@ function SettingsView({ profile, isAdmin }: { profile: UserProfile | null, isAdm
         </div>
         <div className="p-6">
           <h3 className="font-bold text-gray-900 mb-1 flex items-center gap-2">
-            SMS Gate Pass Integration
+            WhatsApp Gate Pass Integration
             <span className="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full uppercase tracking-tighter">Integration System</span>
           </h3>
           <p className="text-sm text-gray-500 mb-4">Configure the service provider for sending automated verification alerts.</p>

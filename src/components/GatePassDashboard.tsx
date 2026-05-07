@@ -231,16 +231,16 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
       
       studentNames = studentNames.slice(0, -2); // Remove trailing comma and space
 
-      // Send SMS logic via the integration hook
+      // Send WhatsApp logic via the integration hook
       if (phone !== "N/A") {
-        await sendSMSNotification(phone, studentNames, scannedDate);
+        await sendWhatsAppNotification(phone, studentNames, scannedDate);
       }
 
       // Close the modal and the scanner
       setScannedStudents(null);
       setIsScanning(false);
       
-      alert(`✅ Verification Successful\n\nStudents: ${studentNames}\nTime: ${scannedDate}\n\nGate pass has been recorded and an SMS notification was sent to ${phone}.`);
+      alert(`✅ Verification Successful\n\nStudents: ${studentNames}\nTime: ${scannedDate}\n\nGate pass has been recorded and a WhatsApp notification was initiated for ${phone}.`);
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'gate_passes');
     } finally {
@@ -269,11 +269,20 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
     }
   };
 
-  const sendSMSNotification = async (phone: string, studentName: string, date: string) => {
-    console.log(`[SMS-INTEGRATION] To: ${phone} | Message: ${studentName} has been verified for early departure on ${date}. Authorization provided by ${profile?.displayName || 'Admin'}.`);
+  const sendWhatsAppNotification = async (phone: string, studentName: string, date: string) => {
+    // Standardize phone number (remove spaces, ensure country code)
+    // Note: Assuming phone already includes country code, or you might need to append it.
+    const cleanPhone = phone.replace(/[^0-9]/g, '');
+    const message = encodeURIComponent(`Hello, ${studentName} has been verified for early departure on ${date}. Authorization provided by ${profile?.displayName || 'Admin'}.`);
     
-    // This function acts as a hook for the SMS service integration
-    // Configuration can be found in Settings -> SMS Gate Pass Integration
+    console.log(`[WHATSAPP-INTEGRATION] To: ${cleanPhone} | Message: ${message}`);
+    
+    // For manual sending: Open WhatsApp Web/App in a new tab
+    const url = `https://wa.me/${cleanPhone}?text=${message}`;
+    window.open(url, '_blank');
+    
+    // For automated sending via API (like Twilio or Meta Graph API),
+    // you would make an API call to your backend server here instead of window.open.
   };
 
   return (
@@ -529,7 +538,7 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
                 <div className="bg-gray-50 p-4 rounded-2xl flex items-center gap-4 border border-black/5">
                   <Phone className="w-5 h-5 text-gray-400" />
                   <div className="text-left">
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Primary SMS Alert Contact</p>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Primary WhatsApp Alert Contact</p>
                     <p className="font-bold text-gray-900">{scannedStudents[0].phoneNumber || 'No number linked'}</p>
                   </div>
                 </div>
@@ -635,7 +644,7 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
                   </button>
                 </div>
                 <p className="text-[10px] text-gray-400 text-center italic mt-2">
-                   Clicking verify will issue an active gate pass for all listed students and send an automated SMS.
+                   Clicking verify will issue an active gate pass for all listed students and initiate a WhatsApp message.
                 </p>
               </div>
             </motion.div>

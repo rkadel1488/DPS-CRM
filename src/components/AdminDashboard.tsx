@@ -1652,7 +1652,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Parent Phone Number (For SMS Notifications)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Parent Phone Number (For WhatsApp Notifications)</label>
                 <input 
                   type="tel" 
                   required
@@ -1757,7 +1757,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                 </div>
 
                 <div className="w-full max-w-sm">
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Primary Contact Number (For SMS Alerts)</label>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Primary Contact Number (For WhatsApp Alerts)</label>
                   <input type="text" value={newFamily.phoneNumber} onChange={e => setNewFamily({...newFamily, phoneNumber: e.target.value})} className="w-full px-4 py-2 bg-gray-50 border border-black/10 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="+1234567890" />
                 </div>
               </div>
@@ -1980,7 +1980,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Parent Phone Number (For SMS Notifications)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Parent Phone Number (For WhatsApp Notifications)</label>
                 <input 
                   type="tel" 
                   required
