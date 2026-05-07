@@ -66,6 +66,7 @@ export interface Student {
   motherPhotoUrl?: string;
   driverName?: string;
   driverPhotoUrl?: string;
+  familyId?: string;
 }
 
 export interface Meal {

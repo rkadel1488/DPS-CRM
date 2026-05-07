@@ -193,6 +193,8 @@ function AppContent() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [adminAction, setAdminAction] = useState<'add_student' | 'add_teacher' | 'add_staff' | 'add_parent' | null>(null);
+  const [initialVerifyId, setInitialVerifyId] = useState<string | null>(null);
+
   const [isQuickScanning, setIsQuickScanning] = useState(false);
 
   useEffect(() => {
@@ -224,6 +226,15 @@ function AppContent() {
   
   const isMainAdmin = profile?.email === MAIN_ADMIN_EMAIL;
   const isAdmin = isMainAdmin || profile?.role === 'admin';
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const verifyId = params.get('verify');
+    if (verifyId && profile && (isAdmin || profile.role === 'teacher' || profile.role === 'staff')) {
+      setInitialVerifyId(verifyId);
+      setActiveTab('gatepass');
+    }
+  }, [profile, isAdmin]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -648,7 +659,7 @@ function AppContent() {
               transition={{ duration: 0.2 }}
             >
               {activeTab === 'dashboard' && <DashboardOverview profile={profile} isAdmin={isAdmin} setActiveTab={setActiveTab} setAdminAction={setAdminAction} setIsQuickScanning={setIsQuickScanning} />}
-              {activeTab === 'gatepass' && <GatePassDashboard profile={profile} isAdmin={isAdmin} initialScan={isQuickScanning} />}
+              {activeTab === 'gatepass' && <GatePassDashboard profile={profile} isAdmin={isAdmin} initialScan={isQuickScanning} verifyId={initialVerifyId} />}
               {activeTab === 'canteen' && <CanteenDashboard profile={profile} isAdmin={isAdmin} />}
               {activeTab === 'transport' && <TransportDashboard profile={profile} isAdmin={isAdmin} />}
               {activeTab === 'library' && <LibraryDashboard profile={profile} isAdmin={isAdmin} />}

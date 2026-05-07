@@ -36,6 +36,14 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
   const [activeTab, setActiveTab] = useState<'students' | 'teachers' | 'staff' | 'parents'>('students');
   const [editingStaff, setEditingStaff] = useState<UserProfile | null>(null);
   const [isAddingStudent, setIsAddingStudent] = useState(false);
+  const [isAddingFamily, setIsAddingFamily] = useState(false);
+  const [newFamily, setNewFamily] = useState({
+    fatherName: '', fatherPhotoUrl: '',
+    motherName: '', motherPhotoUrl: '',
+    driverName: '', driverPhotoUrl: '',
+    phoneNumber: '',
+    students: [{ name: '', studentId: '', grade: '', section: '', photoUrl: '' }]
+  });
   const [isAddingStaff, setIsAddingStaff] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState<string | null>(null);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
@@ -121,6 +129,232 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
     }
   };
 
+  const compressImage = (file: File): Promise<string> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          const MAX_SIZE = 400;
+
+          if (width > height) {
+            if (width > MAX_SIZE) {
+              height *= MAX_SIZE / width;
+              width = MAX_SIZE;
+            }
+          } else {
+            if (height > MAX_SIZE) {
+              width *= MAX_SIZE / height;
+              height = MAX_SIZE;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+             ctx.fillStyle = '#ffffff';
+             ctx.fillRect(0, 0, width, height);
+             ctx.drawImage(img, 0, 0, width, height);
+          }
+          resolve(canvas.toDataURL('image/jpeg', 0.5));
+        };
+        img.src = e.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleImageUploadFamily = async (e: React.ChangeEvent<HTMLInputElement>, type: 'father' | 'mother' | 'driver' | 'student', studentIndex?: number) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const base64String = await compressImage(file);
+    
+    if (type === 'student' && studentIndex !== undefined) {
+      const updatedStudents = [...newFamily.students];
+      updatedStudents[studentIndex].photoUrl = base64String;
+      setNewFamily({ ...newFamily, students: updatedStudents });
+    } else {
+      const field = `${type}PhotoUrl`;
+      setNewFamily({ ...newFamily, [field]: base64String });
+    }
+  };
+
+  const handleAddFamily = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isAdmin) return;
+    try {
+      const familyId = `FAM-${Date.now()}`;
+      for (const student of newFamily.students) {
+        if (!student.name) continue;
+        await addDoc(collection(db, 'students'), {
+          ...student,
+          fatherName: newFamily.fatherName,
+          fatherPhotoUrl: newFamily.fatherPhotoUrl,
+          motherName: newFamily.motherName,
+          motherPhotoUrl: newFamily.motherPhotoUrl,
+          driverName: newFamily.driverName,
+          driverPhotoUrl: newFamily.driverPhotoUrl,
+          phoneNumber: newFamily.phoneNumber,
+          familyId: familyId,
+          balance: 0,
+          parentId: '',
+          routeId: ''
+        });
+      }
+      
+      await downloadGroupQRCode(newFamily, familyId);
+      
+      setIsAddingFamily(false);
+      setNewFamily({
+        fatherName: '', fatherPhotoUrl: '',
+        motherName: '', motherPhotoUrl: '',
+        driverName: '', driverPhotoUrl: '',
+        phoneNumber: '',
+        students: [{ name: '', studentId: '', grade: '', section: '', photoUrl: '' }]
+      });
+      alert('Family Gate Pass added successfully! You can download the QR Code from the students list.');
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, 'students');
+    }
+  };
+
+  const downloadGroupQRCode = async (family: typeof newFamily, familyId: string) => {
+    try {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      canvas.width = 1000;
+      const studentsHeight = Math.ceil(family.students.length / 2) * 200 + 100;
+      canvas.height = 800 + studentsHeight;
+
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = '#2563eb';
+      ctx.fillRect(0, 0, canvas.width, 100);
+      
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 40px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('GROUP GATE PASS', canvas.width / 2, 65);
+
+      const loadImage = (src: string): Promise<HTMLImageElement | null> => {
+        return new Promise((resolve) => {
+          if (!src) resolve(null);
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = () => resolve(img);
+          img.onerror = () => resolve(null);
+          img.src = src;
+        });
+      };
+
+      ctx.fillStyle = '#374151';
+      ctx.font = 'bold 30px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('STUDENTS', 50, 160);
+
+      for (let i = 0; i < family.students.length; i++) {
+        const student = family.students[i];
+        if (!student.name) continue;
+        const row = Math.floor(i / 2);
+        const col = i % 2;
+        
+        const startX = 50 + (col * 450);
+        const startY = 200 + (row * 180);
+        const imgSize = 140;
+        const studentImg = await loadImage(student.photoUrl || '');
+        
+        ctx.strokeStyle = '#e5e7eb';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(startX, startY, imgSize, imgSize);
+        if (studentImg) {
+          ctx.drawImage(studentImg, startX, startY, imgSize, imgSize);
+        } else {
+          ctx.fillStyle = '#f3f4f6';
+          ctx.fillRect(startX, startY, imgSize, imgSize);
+        }
+
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#111827';
+        ctx.font = 'bold 28px sans-serif';
+        ctx.fillText(student.name.substring(0, 20), startX + imgSize + 20, startY + 40);
+        
+        ctx.fillStyle = '#4b5563';
+        ctx.font = '22px sans-serif';
+        ctx.fillText(`Grade: ${student.grade} - ${student.section}`, startX + imgSize + 20, startY + 80);
+      }
+
+      const qrStartY = 200 + Math.ceil(family.students.length / 2) * 180 + 50;
+      const appUrl = typeof window !== 'undefined' ? window.location.origin : '';
+      const qrDataUrl = await QRCode.toDataURL(`${appUrl}/?verify=${familyId}`, { width: 350, margin: 1 });
+      const qrImg = await loadImage(qrDataUrl);
+      if (qrImg) {
+        ctx.drawImage(qrImg, (canvas.width - 350) / 2, qrStartY, 350, 350);
+      }
+
+      const guardiansStartY = qrStartY + 400;
+      ctx.fillStyle = '#f9fafb';
+      ctx.fillRect(50, guardiansStartY, canvas.width - 100, 350);
+      
+      ctx.fillStyle = '#374151';
+      ctx.font = 'bold 28px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('AUTHORIZED RECOVERY PERSONNEL', 80, guardiansStartY + 45);
+
+      const items = [
+        { label: 'FATHER', name: family.fatherName, photo: family.fatherPhotoUrl },
+        { label: 'MOTHER', name: family.motherName, photo: family.motherPhotoUrl },
+        { label: 'DRIVER', name: family.driverName, photo: family.driverPhotoUrl },
+      ];
+
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        const startX = 80 + (i * 280);
+        const startY = guardiansStartY + 70;
+        const imgSize = 200;
+
+        const itemImg = await loadImage(item.photo || '');
+        ctx.strokeStyle = '#d1d5db';
+        ctx.strokeRect(startX, startY, imgSize, imgSize);
+        if (itemImg) {
+          ctx.drawImage(itemImg, startX, startY, imgSize, imgSize);
+        } else {
+          ctx.fillStyle = '#e5e7eb';
+          ctx.fillRect(startX, startY, imgSize, imgSize);
+        }
+
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#6b7280';
+        ctx.font = 'bold 18px sans-serif';
+        ctx.fillText(item.label, startX + imgSize/2, startY + imgSize + 25);
+        
+        ctx.fillStyle = '#111827';
+        ctx.font = 'bold 22px sans-serif';
+        const displayName = item.name || 'Not Provided';
+        ctx.fillText(displayName.length > 18 ? displayName.substring(0, 15) + '...' : displayName, startX + imgSize/2, startY + imgSize + 55);
+      }
+
+      const finalUrl = canvas.toDataURL('image/png', 1.0);
+      const link = document.createElement('a');
+      link.href = finalUrl;
+      link.download = `GROUP_GATE_PASS_${familyId}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+    } catch (err) {
+      console.error('Group ID Card Generation error:', err);
+      alert('Failed to generate full group ID card.');
+    }
+  };
+
   const downloadQRCode = async (student: Student) => {
     try {
       const canvas = document.createElement('canvas');
@@ -191,8 +425,9 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
       }
 
       // 3. Generate and Draw QR Code
-      const qrData = student.id || student.studentId || student.name;
-      const qrDataUrl = await QRCode.toDataURL(qrData, { width: 400, margin: 1 });
+      const qrData = student.familyId || student.id || student.studentId || student.name;
+      const appUrl = typeof window !== 'undefined' ? window.location.origin : '';
+      const qrDataUrl = await QRCode.toDataURL(`${appUrl}/?verify=${qrData}`, { width: 400, margin: 1 });
       const qrImg = await loadImage(qrDataUrl);
       if (qrImg) {
         ctx.drawImage(qrImg, canvas.width - 450, 450, 400, 400);
@@ -262,22 +497,18 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
     }
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, isEdit: boolean, type: 'student' | 'father' | 'mother' | 'driver') => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, isEdit: boolean, type: 'student' | 'father' | 'mother' | 'driver') => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64String = reader.result as string;
-      const field = type === 'student' ? 'photoUrl' : `${type}PhotoUrl`;
-      
-      if (isEdit && editingStudent) {
-        setEditingStudent({ ...editingStudent, [field]: base64String });
-      } else {
-        setNewStudent({ ...newStudent, [field]: base64String });
-      }
-    };
-    reader.readAsDataURL(file);
+    const base64String = await compressImage(file);
+    const field = type === 'student' ? 'photoUrl' : `${type}PhotoUrl`;
+    
+    if (isEdit && editingStudent) {
+      setEditingStudent({ ...editingStudent, [field]: base64String });
+    } else {
+      setNewStudent({ ...newStudent, [field]: base64String });
+    }
   };
 
   const handleEditStudent = async (e: React.FormEvent) => {
@@ -487,13 +718,22 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
             </label>
           )}
           {activeTab === 'students' && isAdmin && (
-            <button 
-              onClick={() => setIsAddingStudent(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-xl text-sm font-bold hover:bg-gray-800 transition-all"
-            >
-              <UserPlus className="w-4 h-4" />
-              Add Student
-            </button>
+            <>
+              <button 
+                onClick={() => setIsAddingFamily(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition-all"
+              >
+                <QrCode className="w-4 h-4" />
+                Add Group Gate Pass
+              </button>
+              <button 
+                onClick={() => setIsAddingStudent(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-xl text-sm font-bold hover:bg-gray-800 transition-all"
+              >
+                <UserPlus className="w-4 h-4" />
+                Add Student
+              </button>
+            </>
           )}
           {activeTab === 'teachers' && isAdmin && (
             <button 
@@ -1425,6 +1665,149 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                   className="flex-1 px-4 py-2 bg-emerald-500 text-white rounded-xl font-bold hover:bg-emerald-600 transition-all"
                 >
                   Save Changes
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+
+      {isAddingFamily && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-3xl w-full max-w-4xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]"
+          >
+            <div className="p-6 border-b border-black/5 shrink-0 flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">Add Group Gate Pass</h3>
+                <p className="text-xs text-gray-500">Create a shared gate pass for multiple students</p>
+              </div>
+              <button onClick={() => setIsAddingFamily(false)} className="p-2 hover:bg-gray-100 rounded-full">
+                <XCircle className="w-5 h-5 text-gray-400" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddFamily} className="flex-1 overflow-y-auto p-6 space-y-8">
+              
+              <div className="space-y-4">
+                <h4 className="text-sm font-bold text-gray-900 flex items-center gap-2"><Users className="w-4 h-4"/> 1. Family & Pickup Details</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Father */}
+                  <div className="space-y-2">
+                    <div className="flex flex-col items-center gap-3 p-4 bg-gray-50 rounded-2xl border border-black/5">
+                      <div className="w-20 h-20 rounded-xl bg-white border border-black/5 flex items-center justify-center overflow-hidden">
+                        {newFamily.fatherPhotoUrl ? <img src={newFamily.fatherPhotoUrl} className="w-full h-full object-cover" /> : <Camera className="w-8 h-8 text-gray-300" />}
+                      </div>
+                      <label className="flex items-center gap-2 px-3 py-1.5 bg-gray-900 text-white rounded-lg text-[10px] uppercase font-bold cursor-pointer hover:bg-black transition-all">
+                        <Upload className="w-3 h-3" /> Upload Photo
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUploadFamily(e, 'father')} />
+                      </label>
+                      <div className="w-full mt-2">
+                        <label className="block text-xs font-medium text-gray-500 mb-1 text-center">Father's Name</label>
+                        <input type="text" value={newFamily.fatherName} onChange={e => setNewFamily({...newFamily, fatherName: e.target.value})} className="w-full px-3 py-1.5 bg-white border border-black/10 rounded-lg text-sm text-center focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Enter Name..." />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Mother */}
+                  <div className="space-y-2">
+                    <div className="flex flex-col items-center gap-3 p-4 bg-gray-50 rounded-2xl border border-black/5">
+                      <div className="w-20 h-20 rounded-xl bg-white border border-black/5 flex items-center justify-center overflow-hidden">
+                        {newFamily.motherPhotoUrl ? <img src={newFamily.motherPhotoUrl} className="w-full h-full object-cover" /> : <Camera className="w-8 h-8 text-gray-300" />}
+                      </div>
+                      <label className="flex items-center gap-2 px-3 py-1.5 bg-gray-900 text-white rounded-lg text-[10px] uppercase font-bold cursor-pointer hover:bg-black transition-all">
+                        <Upload className="w-3 h-3" /> Upload Photo
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUploadFamily(e, 'mother')} />
+                      </label>
+                      <div className="w-full mt-2">
+                        <label className="block text-xs font-medium text-gray-500 mb-1 text-center">Mother's Name</label>
+                        <input type="text" value={newFamily.motherName} onChange={e => setNewFamily({...newFamily, motherName: e.target.value})} className="w-full px-3 py-1.5 bg-white border border-black/10 rounded-lg text-sm text-center focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Enter Name..." />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Driver */}
+                  <div className="space-y-2">
+                    <div className="flex flex-col items-center gap-3 p-4 bg-gray-50 rounded-2xl border border-black/5">
+                      <div className="w-20 h-20 rounded-xl bg-white border border-black/5 flex items-center justify-center overflow-hidden">
+                        {newFamily.driverPhotoUrl ? <img src={newFamily.driverPhotoUrl} className="w-full h-full object-cover" /> : <Camera className="w-8 h-8 text-gray-300" />}
+                      </div>
+                      <label className="flex items-center gap-2 px-3 py-1.5 bg-gray-900 text-white rounded-lg text-[10px] uppercase font-bold cursor-pointer hover:bg-black transition-all">
+                        <Upload className="w-3 h-3" /> Upload Photo
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUploadFamily(e, 'driver')} />
+                      </label>
+                      <div className="w-full mt-2">
+                        <label className="block text-xs font-medium text-gray-500 mb-1 text-center">Driver's Name</label>
+                        <input type="text" value={newFamily.driverName} onChange={e => setNewFamily({...newFamily, driverName: e.target.value})} className="w-full px-3 py-1.5 bg-white border border-black/10 rounded-lg text-sm text-center focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Enter Name..." />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="w-full max-w-sm">
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Primary Contact Number (For SMS Alerts)</label>
+                  <input type="text" value={newFamily.phoneNumber} onChange={e => setNewFamily({...newFamily, phoneNumber: e.target.value})} className="w-full px-4 py-2 bg-gray-50 border border-black/10 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="+1234567890" />
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-bold text-gray-900 flex items-center gap-2"><GraduationCap className="w-4 h-4"/> 2. Students in Group</h4>
+                  <button type="button" onClick={() => setNewFamily({...newFamily, students: [...newFamily.students, { name: '', studentId: '', grade: '', section: '', photoUrl: '' }]})} className="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-all">
+                    + Add Student
+                  </button>
+                </div>
+                
+                <div className="space-y-4">
+                  {newFamily.students.map((student, index) => (
+                    <div key={index} className="flex flex-col lg:flex-row items-center lg:items-start gap-4 p-4 rounded-2xl border border-black/5 bg-gray-50/50">
+                      <div className="flex flex-col items-center gap-2 shrink-0">
+                        <div className="w-20 h-20 rounded-xl bg-white border border-black/5 flex items-center justify-center overflow-hidden">
+                          {student.photoUrl ? <img src={student.photoUrl} className="w-full h-full object-cover" /> : <Camera className="w-8 h-8 text-gray-300" />}
+                        </div>
+                        <label className="flex items-center gap-2 px-3 py-1.5 bg-gray-900 text-white rounded-lg text-[10px] uppercase font-bold cursor-pointer hover:bg-black transition-all">
+                          <Upload className="w-3 h-3" /> Upload
+                          <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUploadFamily(e, 'student', index)} />
+                        </label>
+                      </div>
+                      
+                      <div className="flex-1 grid grid-cols-2 lg:grid-cols-4 gap-4 w-full">
+                        <div>
+                          <label className="block text-[10px] uppercase font-bold text-gray-400 mb-1">Full Name *</label>
+                          <input required type="text" value={student.name} onChange={e => { const s = [...newFamily.students]; s[index].name = e.target.value; setNewFamily({...newFamily, students: s}) }} className="w-full px-3 py-2 text-sm bg-white border border-black/10 rounded-lg outline-none focus:border-blue-500" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] uppercase font-bold text-gray-400 mb-1">Student ID (Opt)</label>
+                          <input type="text" value={student.studentId} onChange={e => { const s = [...newFamily.students]; s[index].studentId = e.target.value; setNewFamily({...newFamily, students: s}) }} className="w-full px-3 py-2 text-sm bg-white border border-black/10 rounded-lg outline-none focus:border-blue-500" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] uppercase font-bold text-gray-400 mb-1">Grade *</label>
+                          <input required type="text" value={student.grade} onChange={e => { const s = [...newFamily.students]; s[index].grade = e.target.value; setNewFamily({...newFamily, students: s}) }} className="w-full px-3 py-2 text-sm bg-white border border-black/10 rounded-lg outline-none focus:border-blue-500" placeholder="e.g. 10th" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] uppercase font-bold text-gray-400 mb-1">Section *</label>
+                          <input required type="text" value={student.section} onChange={e => { const s = [...newFamily.students]; s[index].section = e.target.value; setNewFamily({...newFamily, students: s}) }} className="w-full px-3 py-2 text-sm bg-white border border-black/10 rounded-lg outline-none focus:border-blue-500" placeholder="e.g. A" />
+                        </div>
+                      </div>
+
+                      {newFamily.students.length > 1 && (
+                        <button type="button" onClick={() => { const s = [...newFamily.students]; s.splice(index, 1); setNewFamily({...newFamily, students: s}) }} className="p-2 text-red-400 hover:bg-red-50 rounded-lg shrink-0 mt-4 lg:mt-0">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="pt-4 shrink-0 flex gap-3">
+                <button type="button" onClick={() => setIsAddingFamily(false)} className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-all">
+                  Cancel
+                </button>
+                <button type="submit" className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all">
+                  Save Group & Generate QR
                 </button>
               </div>
             </form>

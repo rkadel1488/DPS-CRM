@@ -20,16 +20,28 @@ import { UserProfile, Student, GatePass } from '../types';
 import { handleFirestoreError, OperationType } from '../App';
 import { Html5Qrcode } from 'html5-qrcode';
 
-export default function GatePassDashboard({ profile, isAdmin, initialScan = false }: { profile: UserProfile | null, isAdmin: boolean, initialScan?: boolean }) {
+export default function GatePassDashboard({ profile, isAdmin, initialScan = false, verifyId = null }: { profile: UserProfile | null, isAdmin: boolean, initialScan?: boolean, verifyId?: string | null }) {
   const [gatePasses, setGatePasses] = useState<GatePass[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [isAddingGatePass, setIsAddingGatePass] = useState(false);
   const [newGatePass, setNewGatePass] = useState({ studentId: '', reason: '', departureTime: new Date().toISOString().slice(0, 16) });
   const [gatePassSearch, setGatePassSearch] = useState('');
   const [isScanning, setIsScanning] = useState(initialScan);
-  const [scannedStudent, setScannedStudent] = useState<Student | null>(null);
+  const [scannedStudents, setScannedStudents] = useState<Student[] | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [selectedPickup, setSelectedPickup] = useState<'father' | 'mother' | 'driver' | null>(null);
+
+  useEffect(() => {
+    if (verifyId && students.length > 0) {
+      const decodedText = verifyId;
+      const matchedStudents = students.filter(s => s.id === decodedText || s.studentId === decodedText || (s.familyId && s.familyId === decodedText));
+      if (matchedStudents.length > 0) {
+        setScannedStudents(matchedStudents);
+        setIsScanning(false);
+      }
+    }
+  }, [verifyId, students]);
 
   useEffect(() => {
     if (initialScan) {
@@ -61,9 +73,17 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
             { facingMode: "environment" },
             config,
             (decodedText) => {
-              const student = students.find(s => s.id === decodedText || s.studentId === decodedText);
-              if (student && isMounted) {
-                setScannedStudent(student);
+              let extractedId = decodedText;
+              try {
+                if (decodedText.includes('verify=')) {
+                  const url = new URL(decodedText);
+                  extractedId = url.searchParams.get('verify') || decodedText;
+                }
+              } catch(e) {}
+              const matchedStudents = students.filter(s => s.id === extractedId || s.studentId === extractedId || (s.familyId && s.familyId === extractedId));
+              if (matchedStudents.length > 0 && isMounted) {
+                setSelectedPickup(null);
+                setScannedStudents(matchedStudents);
                 setIsScanning(false);
                 if (html5QrCode) {
                   html5QrCode.stop().catch(err => console.error("Error stopping scanner", err));
@@ -81,9 +101,17 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
               cameras[0].id,
               config,
               (decodedText) => {
-                const student = students.find(s => s.id === decodedText || s.studentId === decodedText);
-                if (student && isMounted) {
-                  setScannedStudent(student);
+                let extractedId = decodedText;
+                try {
+                  if (decodedText.includes('verify=')) {
+                    const url = new URL(decodedText);
+                    extractedId = url.searchParams.get('verify') || decodedText;
+                  }
+                } catch(e) {}
+                const matchedStudents = students.filter(s => s.id === extractedId || s.studentId === extractedId || (s.familyId && s.familyId === extractedId));
+                if (matchedStudents.length > 0 && isMounted) {
+                  setSelectedPickup(null);
+                  setScannedStudents(matchedStudents);
                   setIsScanning(false);
                   if (html5QrCode) {
                     html5QrCode.stop().catch(err => console.error("Error stopping scanner", err));
@@ -168,38 +196,50 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
   };
 
   const handleVerifyAndIssue = async () => {
-    if (!profile || !scannedStudent) return;
+    if (!profile || !scannedStudents || scannedStudents.length === 0) return;
     setIsVerifying(true);
 
     try {
       const now = new Date();
       const scannedDate = now.toLocaleString();
       
-      const passData = {
-        studentId: scannedStudent.id,
-        studentName: scannedStudent.name,
-        reason: "QR Verified Early Check-out",
-        departureTime: now.toISOString(),
-        verifiedAt: serverTimestamp(),
-        status: 'active' as const,
-        authorizedBy: profile.displayName || profile.email || 'Admin',
-        createdAt: serverTimestamp(),
-        qrVerified: true
-      };
+      let phone = "N/A";
+      let studentNames = "";
 
-      await addDoc(collection(db, 'gate_passes'), passData);
+      for (const student of scannedStudents) {
+        if (student.phoneNumber && phone === "N/A") {
+          phone = student.phoneNumber;
+        }
+        studentNames += student.name + ", ";
+        
+        const passData = {
+          studentId: student.id,
+          studentName: student.name,
+          reason: "QR Verified Early Check-out",
+          departureTime: now.toISOString(),
+          verifiedAt: serverTimestamp(),
+          status: 'active' as const,
+          authorizedBy: profile.displayName || profile.email || 'Admin',
+          pickedUpBy: selectedPickup,
+          createdAt: serverTimestamp(),
+          qrVerified: true
+        };
+
+        await addDoc(collection(db, 'gate_passes'), passData);
+      }
+      
+      studentNames = studentNames.slice(0, -2); // Remove trailing comma and space
 
       // Send SMS logic via the integration hook
-      const phone = scannedStudent.phoneNumber || "N/A";
       if (phone !== "N/A") {
-        await sendSMSNotification(phone, scannedStudent.name, scannedDate);
+        await sendSMSNotification(phone, studentNames, scannedDate);
       }
 
       // Close the modal and the scanner
-      setScannedStudent(null);
+      setScannedStudents(null);
       setIsScanning(false);
       
-      alert(`✅ Verification Successful\n\nStudent: ${scannedStudent.name}\nTime: ${scannedDate}\n\nGate pass has been recorded and an SMS notification was sent to ${phone}.`);
+      alert(`✅ Verification Successful\n\nStudents: ${studentNames}\nTime: ${scannedDate}\n\nGate pass has been recorded and an SMS notification was sent to ${phone}.`);
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'gate_passes');
     } finally {
@@ -420,142 +460,165 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
 
       {/* Scanned Result Modal */}
       <AnimatePresence>
-        {scannedStudent && (
+        {scannedStudents && scannedStudents.length > 0 && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
-              className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl relative"
+              className="bg-white rounded-3xl p-6 md:p-8 w-full max-w-2xl shadow-2xl relative max-h-[90vh] flex flex-col"
             >
               <button 
-                onClick={() => setScannedStudent(null)}
-                className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full transition-all"
+                onClick={() => setScannedStudents(null)}
+                className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full transition-all z-10"
               >
                 <X className="w-5 h-5 text-gray-400" />
               </button>
 
-              <div className="text-center space-y-4 max-h-[85vh] overflow-y-auto px-1">
-                <div className="w-24 h-24 bg-blue-50 rounded-full flex items-center justify-center mx-auto ring-4 ring-blue-100 overflow-hidden">
-                  {scannedStudent.photoUrl ? (
-                    <img src={scannedStudent.photoUrl} alt={scannedStudent.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <Users className="w-10 h-10 text-blue-600" />
-                  )}
-                </div>
-                <div>
-                  <h3 className="text-2xl font-bold text-gray-900">{scannedStudent.name}</h3>
-                  <p className="text-blue-600 font-bold font-mono text-sm tracking-widest">{scannedStudent.studentId || 'ID Pending'}</p>
+              <div className="text-center mb-6 shrink-0">
+                <h2 className="text-2xl font-bold text-gray-900">Gate Pass Verification</h2>
+                <p className="text-sm text-gray-500">Review students and authorized pickup personnel</p>
+              </div>
+
+              <div className="overflow-y-auto space-y-6 flex-1 pr-2">
+                
+                {/* Students List */}
+                <div className="space-y-3">
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider text-left">Students Checked Out ({scannedStudents.length})</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {scannedStudents.map((student) => (
+                      <div key={student.id} className="flex gap-4 p-4 rounded-2xl bg-blue-50/50 border border-blue-100">
+                        <div className="w-16 h-16 bg-white rounded-xl flex items-center justify-center shrink-0 border border-black/5 overflow-hidden">
+                          {student.photoUrl ? (
+                            <img src={student.photoUrl} alt={student.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <Users className="w-6 h-6 text-blue-300" />
+                          )}
+                        </div>
+                        <div className="text-left flex-1">
+                          <h3 className="font-bold text-gray-900 leading-tight">{student.name}</h3>
+                          <p className="text-xs text-blue-600 font-mono mt-0.5">{student.studentId || 'ID Pending'}</p>
+                          <div className="flex items-center gap-2 mt-2">
+                            <span className="text-[10px] font-bold text-gray-500 bg-white px-2 py-0.5 rounded shadow-sm border border-black/5">{student.grade} - {student.section}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 pb-4">
-                  <div className="bg-gray-50 p-3 rounded-2xl">
-                    <p className="text-[10px] text-gray-400 font-bold uppercase">Grade</p>
-                    <p className="font-bold text-gray-900">{scannedStudent.grade}</p>
-                  </div>
-                  <div className="bg-gray-50 p-3 rounded-2xl">
-                    <p className="text-[10px] text-gray-400 font-bold uppercase">Section</p>
-                    <p className="font-bold text-gray-900">{scannedStudent.section}</p>
-                  </div>
-                  <div className="bg-gray-50 p-3 rounded-2xl col-span-2 flex items-center gap-3">
-                    <Phone className="w-4 h-4 text-gray-400" />
-                    <div className="text-left">
-                      <p className="text-[10px] text-gray-400 font-bold uppercase">Parent Contact</p>
-                      <p className="font-bold text-gray-900">{scannedStudent.phoneNumber || 'No number linked'}</p>
-                    </div>
+                {/* Primary Contact */}
+                <div className="bg-gray-50 p-4 rounded-2xl flex items-center gap-4 border border-black/5">
+                  <Phone className="w-5 h-5 text-gray-400" />
+                  <div className="text-left">
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Primary SMS Alert Contact</p>
+                    <p className="font-bold text-gray-900">{scannedStudents[0].phoneNumber || 'No number linked'}</p>
                   </div>
                 </div>
 
-                <div className="space-y-4 py-6 border-y border-black/5">
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider text-center flex items-center justify-center gap-2">
-                    <Users className="w-3 h-3" />
+                {/* Recovery Personnel */}
+                <div className="space-y-4 pt-2">
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider text-left flex items-center gap-2">
+                    <Users className="w-4 h-4" />
                     Authorized Recovery Personnel
                   </p>
                   
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-3 gap-4">
                     {/* Father */}
-                    <div className="space-y-2">
-                      <div className="aspect-square bg-gray-50 rounded-2xl overflow-hidden border-2 border-white shadow-sm ring-1 ring-black/5">
-                        {scannedStudent.fatherPhotoUrl ? (
-                          <img src={scannedStudent.fatherPhotoUrl} alt="Father" className="w-full h-full object-cover" />
+                    <div 
+                      className={`space-y-2 cursor-pointer transition-all ${selectedPickup === 'father' ? 'scale-105' : 'hover:scale-105 opacity-70'}`}
+                      onClick={() => setSelectedPickup('father')}
+                    >
+                      <div className={`aspect-square rounded-2xl overflow-hidden shadow-sm ring-2 ${selectedPickup === 'father' ? 'ring-blue-500 ring-offset-2' : 'ring-black/5 bg-gray-50'}`}>
+                        {scannedStudents[0].fatherPhotoUrl ? (
+                          <img src={scannedStudents[0].fatherPhotoUrl} alt="Father" className="w-full h-full object-cover" />
                         ) : (
                           <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50/50">
-                            <Users className="w-6 h-6 text-gray-200" />
-                            <span className="text-[8px] text-gray-400 mt-1">No Photo</span>
+                            <Users className="w-8 h-8 text-gray-200" />
+                            <span className="text-[8px] text-gray-400 mt-2">No Photo</span>
                           </div>
                         )}
                       </div>
                       <div className="text-center">
-                        <p className="text-[10px] font-bold text-gray-900 line-clamp-1">{scannedStudent.fatherName || 'Father'}</p>
-                        <p className="text-[8px] text-gray-400 font-bold uppercase">Father</p>
+                        <p className={`text-xs font-bold line-clamp-1 ${selectedPickup === 'father' ? 'text-blue-600' : 'text-gray-900'}`}>{scannedStudents[0].fatherName || 'Father'}</p>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">Father</p>
                       </div>
                     </div>
 
                     {/* Mother */}
-                    <div className="space-y-2">
-                      <div className="aspect-square bg-gray-50 rounded-2xl overflow-hidden border-2 border-white shadow-sm ring-1 ring-black/5">
-                        {scannedStudent.motherPhotoUrl ? (
-                          <img src={scannedStudent.motherPhotoUrl} alt="Mother" className="w-full h-full object-cover" />
+                    <div 
+                      className={`space-y-2 cursor-pointer transition-all ${selectedPickup === 'mother' ? 'scale-105' : 'hover:scale-105 opacity-70'}`}
+                      onClick={() => setSelectedPickup('mother')}
+                    >
+                      <div className={`aspect-square rounded-2xl overflow-hidden shadow-sm ring-2 ${selectedPickup === 'mother' ? 'ring-blue-500 ring-offset-2' : 'ring-black/5 bg-gray-50'}`}>
+                        {scannedStudents[0].motherPhotoUrl ? (
+                          <img src={scannedStudents[0].motherPhotoUrl} alt="Mother" className="w-full h-full object-cover" />
                         ) : (
                           <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50/50">
-                            <Users className="w-6 h-6 text-gray-200" />
-                            <span className="text-[8px] text-gray-400 mt-1">No Photo</span>
+                            <Users className="w-8 h-8 text-gray-200" />
+                            <span className="text-[8px] text-gray-400 mt-2">No Photo</span>
                           </div>
                         )}
                       </div>
                       <div className="text-center">
-                        <p className="text-[10px] font-bold text-gray-900 line-clamp-1">{scannedStudent.motherName || 'Mother'}</p>
-                        <p className="text-[8px] text-gray-400 font-bold uppercase">Mother</p>
+                        <p className={`text-xs font-bold line-clamp-1 ${selectedPickup === 'mother' ? 'text-blue-600' : 'text-gray-900'}`}>{scannedStudents[0].motherName || 'Mother'}</p>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">Mother</p>
                       </div>
                     </div>
- 
+  
                     {/* Driver */}
-                    <div className="space-y-2">
-                      <div className="aspect-square bg-gray-50 rounded-2xl overflow-hidden border-2 border-white shadow-sm ring-1 ring-black/5">
-                        {scannedStudent.driverPhotoUrl ? (
-                          <img src={scannedStudent.driverPhotoUrl} alt="Driver" className="w-full h-full object-cover" />
+                    <div 
+                      className={`space-y-2 cursor-pointer transition-all ${selectedPickup === 'driver' ? 'scale-105' : 'hover:scale-105 opacity-70'}`}
+                      onClick={() => setSelectedPickup('driver')}
+                    >
+                      <div className={`aspect-square rounded-2xl overflow-hidden shadow-sm ring-2 ${selectedPickup === 'driver' ? 'ring-blue-500 ring-offset-2' : 'ring-black/5 bg-gray-50'}`}>
+                        {scannedStudents[0].driverPhotoUrl ? (
+                          <img src={scannedStudents[0].driverPhotoUrl} alt="Driver" className="w-full h-full object-cover" />
                         ) : (
                           <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50/50">
-                            <Users className="w-6 h-6 text-gray-200" />
-                            <span className="text-[8px] text-gray-400 mt-1">No Photo</span>
+                            <Users className="w-8 h-8 text-gray-200" />
+                            <span className="text-[8px] text-gray-400 mt-2">No Photo</span>
                           </div>
                         )}
                       </div>
                       <div className="text-center">
-                        <p className="text-[10px] font-bold text-gray-900 line-clamp-1">{scannedStudent.driverName || 'Driver'}</p>
-                        <p className="text-[8px] text-gray-400 font-bold uppercase">Driver</p>
+                        <p className={`text-xs font-bold line-clamp-1 ${selectedPickup === 'driver' ? 'text-blue-600' : 'text-gray-900'}`}>{scannedStudents[0].driverName || 'Driver'}</p>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">Driver</p>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="space-y-3 pt-4">
-                  <button
-                    disabled={isVerifying}
-                    onClick={handleVerifyAndIssue}
-                    className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-bold flex items-center justify-center gap-3 shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all disabled:opacity-50"
-                  >
-                    {isVerifying ? (
-                      <Clock className="w-5 h-5 animate-spin" />
-                    ) : (
-                      <CheckCircle2 className="w-5 h-5" />
-                    )}
-                    Mark as Verified & Notify
-                  </button>
+              </div>
+
+              <div className="space-y-3 pt-6 mt-4 border-t border-black/5 shrink-0">
+                <button
+                  disabled={isVerifying || !selectedPickup}
+                  onClick={handleVerifyAndIssue}
+                  className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-bold flex items-center justify-center gap-3 shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all disabled:opacity-50"
+                >
+                  {isVerifying ? (
+                    <Clock className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="w-5 h-5" />
+                  )}
+                  {selectedPickup ? 'Mark as Verified & Notify' : 'Select Pickup Person to Verify'}
+                </button>
+                <div className="flex gap-2">
                   <button
                     disabled={isVerifying}
                     onClick={() => {
-                      setScannedStudent(null);
+                      setScannedStudents(null);
                       setIsScanning(true);
                     }}
-                    className="w-full py-4 bg-gray-100 text-gray-700 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-gray-200 transition-all disabled:opacity-50"
+                    className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-gray-200 transition-all disabled:opacity-50"
                   >
                     Scan Another
                   </button>
-                  <p className="text-[10px] text-gray-400 italic">
-                     Clicking verify will issue an active gate pass and send an automated SMS to the linked phone number.
-                  </p>
                 </div>
+                <p className="text-[10px] text-gray-400 text-center italic mt-2">
+                   Clicking verify will issue an active gate pass for all listed students and send an automated SMS.
+                </p>
               </div>
             </motion.div>
           </div>
