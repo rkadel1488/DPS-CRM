@@ -944,41 +944,33 @@ function SettingsView({ profile, isAdmin }: { profile: UserProfile | null, isAdm
             WhatsApp Gate Pass Integration
             <span className="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full uppercase tracking-tighter">Meta Webhook</span>
           </h3>
-          <p className="text-sm text-gray-500 mb-4">Paste the following credentials into your Meta App Dashboard under WhatsApp &gt; Configuration to enable live message notifications.</p>
+          <p className="text-sm text-gray-500 mb-4">Because this AI Studio preview environment is protected by a security login screen, Meta's automated servers cannot verify the webhook. You have two options:</p>
           <div className="space-y-4">
             
             <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100">
               <p className="text-sm text-amber-800 font-bold mb-2">
-                ⚠️ Crucial Step: Deploy the Server
+                Option 1: Skip Webhook (Send Messages Only)
               </p>
               <p className="text-xs text-amber-900 mb-2">
-                The Meta Webhook requires a public URL. The URL below points to your public Shared link, but <strong>you must deploy your latest code</strong> first!
+                You do <strong>not</strong> need a webhook to send outgoing Gate Pass notifications! You just need to add the following variables in the AI Studio Settings menu (bottom left gear icon -&gt; Secrets):
               </p>
-              <ol className="list-decimal pl-4 text-xs text-amber-900 space-y-2 font-medium">
-                <li>Click the <strong>Share</strong> button at the top right of the AI Studio editor.</li>
-                <li>Wait for the green success message: "Your app has been shared."</li>
-                <li><em>Only after sharing</em>, go to Meta and click <strong>Verify and save</strong>.</li>
-              </ol>
+              <ul className="list-disc pl-4 text-xs text-amber-900 space-y-1 font-medium">
+                <li><code>WHATSAPP_ACCESS_TOKEN</code></li>
+                <li><code>WHATSAPP_PHONE_NUMBER_ID</code></li>
+              </ul>
+              <p className="text-[10px] text-amber-800 mt-2">You can get these from the Meta App Dashboard under WhatsApp &gt; API Setup.</p>
             </div>
 
-            <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Callback URL (Copy this exactly)</label>
-              <div className="flex gap-2">
-                <input type="text" readOnly value="https://ais-pre-co43ounewo7pgjbhevuog5-142792436471.asia-southeast1.run.app/api/whatsapp/webhook" className="w-full p-3 bg-white border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-mono text-xs text-blue-700 font-bold select-all" />
-              </div>
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Verify Token (Copy this exactly)</label>
-              <input type="text" readOnly value="my_super_secret_verify_token_123" className="w-full p-3 bg-white border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-mono text-xs text-blue-700 font-bold select-all" />
-            </div>
             <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100">
-              <p className="text-xs text-blue-700 font-medium leading-relaxed mb-2">
-                <strong>Meta Dashboard Setup:</strong>
+              <p className="text-sm text-blue-800 font-bold mb-2">
+                Option 2: Deploy for Full Webhook Setup
               </p>
-              <ol className="list-decimal pl-4 text-xs text-blue-700 space-y-2">
-                <li>Paste the <strong>Callback URL</strong> and <strong>Verify Token</strong> into the Meta App Dashboard webhook settings.</li>
-                <li>Click <strong>Verify and save</strong>.</li>
-                <li>Once verified, click <strong>Manage</strong> under Webhook fields and subscribe to the `messages` event.</li>
+              <p className="text-xs text-blue-900 mb-2">
+                If you strictly need to receive incoming messages or read receipts, you must deploy this app to Cloud Run to bypass the security screen:
+              </p>
+              <ol className="list-decimal pl-4 text-xs text-blue-900 space-y-2 font-medium">
+                <li>Click the <strong>Share</strong> button at the top right, and click the dropdown arrow next to Copy Link, then select <strong>Deploy to Cloud Run</strong>.</li>
+                <li>Once deployed, use your new Cloud Run URL + <code>/api/whatsapp/webhook</code> as the Callback URL in Meta.</li>
               </ol>
             </div>
           </div>
