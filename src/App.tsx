@@ -947,13 +947,18 @@ function SettingsView({ profile, isAdmin }: { profile: UserProfile | null, isAdm
           <p className="text-sm text-gray-500 mb-4">Paste the following credentials into your Meta App Dashboard under WhatsApp &gt; Configuration to enable live message notifications.</p>
           <div className="space-y-4">
             
-            <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100">
-              <p className="text-sm text-emerald-800 font-bold mb-2">
-                ✅ Verification Details Ready
+            <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100">
+              <p className="text-sm text-amber-800 font-bold mb-2">
+                ⚠️ Crucial Step: Deploy the Server
               </p>
-              <p className="text-xs text-emerald-700">
-                Your backend is online and ready to accept Meta's verification requests.
+              <p className="text-xs text-amber-900 mb-2">
+                The Meta Webhook requires a public URL. The URL below points to your public Shared link, but <strong>you must deploy your latest code</strong> first!
               </p>
+              <ol className="list-decimal pl-4 text-xs text-amber-900 space-y-2 font-medium">
+                <li>Click the <strong>Share</strong> button at the top right of the AI Studio editor.</li>
+                <li>Wait for the green success message: "Your app has been shared."</li>
+                <li><em>Only after sharing</em>, go to Meta and click <strong>Verify and save</strong>.</li>
+              </ol>
             </div>
 
             <div>
