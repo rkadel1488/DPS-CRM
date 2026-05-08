@@ -963,14 +963,15 @@ function SettingsView({ profile, isAdmin }: { profile: UserProfile | null, isAdm
 
             <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100">
               <p className="text-sm text-blue-800 font-bold mb-2">
-                Option 2: Deploy for Full Webhook Setup
+                Option 2: Setup Full Webhook (Since you deployed via GitHub)
               </p>
               <p className="text-xs text-blue-900 mb-2">
-                If you strictly need to receive incoming messages or read receipts, you must deploy this app to Cloud Run to bypass the security screen:
+                If you strictly need to receive incoming messages or read receipts, and you have exported to GitHub and deployed it (e.g., to Vercel, Render, Cloud Run, etc.):
               </p>
               <ol className="list-decimal pl-4 text-xs text-blue-900 space-y-2 font-medium">
-                <li>Click the <strong>Share</strong> button at the top right, and click the dropdown arrow next to Copy Link, then select <strong>Deploy to Cloud Run</strong>.</li>
-                <li>Once deployed, use your new Cloud Run URL + <code>/api/whatsapp/webhook</code> as the Callback URL in Meta.</li>
+                <li>Your Callback URL will be: <strong><code>https://{'<YOUR_PRODUCTION_DOMAIN>'}/api/whatsapp/webhook</code></strong></li>
+                <li>Your Verify Token will be: <strong><code>my_super_secret_verify_token_123</code></strong> (Unless you changed it in your .env file)</li>
+                <li>Go to the Meta App Dashboard, paste those values into the webhook configuration, and click <strong>Verify and save</strong>.</li>
               </ol>
             </div>
           </div>
