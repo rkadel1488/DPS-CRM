@@ -14,6 +14,10 @@ export default async function handler(req, res) {
   }
 
   try {
+    const messageBody = variables 
+      ? `Hello! ${variables.studentName} has been verified for early departure on ${variables.date}. Authorized by ${variables.admin}.`
+      : `Hello! This is an automated notification.`;
+
     const response = await fetch(`https://graph.facebook.com/v17.0/${PHONE_NUMBER_ID}/messages`, {
       method: 'POST',
       headers: {
@@ -25,12 +29,21 @@ export default async function handler(req, res) {
         to: phone,
         type: 'text',
         text: {
-          body: `Hello! This is an automated notification.` // Typically you'd use a template here instead
+          body: messageBody
         }
       }),
     });
 
     const data = await response.json();
+    
+    if (!response.ok) {
+      console.error('Meta API Error Response:', data);
+      return res.status(response.status).json({ 
+        error: 'Meta API Error', 
+        details: data 
+      });
+    }
+
     return res.status(200).json(data);
   } catch (error) {
     console.error('Error sending WhatsApp message:', error);

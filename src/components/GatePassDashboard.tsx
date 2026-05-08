@@ -295,7 +295,7 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
       if (!response.ok) {
         const errorData = await response.json();
         console.error('WhatsApp API Error:', errorData);
-        alert('Warning: Gate pass created but WhatsApp alert failed to send. Please check your Meta API variables setting (WHATSAPP_ACCESS_TOKEN and WHATSAPP_PHONE_NUMBER_ID).');
+        alert(`Warning: Gate pass created, but WhatsApp alert failed to send.\n\nReason: ${errorData.details?.error?.message || errorData.error || 'Unknown Error'}\n\nDid you verify the recipient phone number in the Meta Dashboard? Is Vercel deployed with the new ENV validbles?`);
       }
     } catch (err) {
       console.error('Failed to call WhatsApp send endpoint:', err);

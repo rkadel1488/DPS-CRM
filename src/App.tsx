@@ -963,20 +963,14 @@ function SettingsView({ profile, isAdmin }: { profile: UserProfile | null, isAdm
 
             <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100">
               <p className="text-sm text-emerald-800 font-bold mb-2">
-                ✅ Webhook Verified! Next Steps:
+                ✅ Webhook Verified! 
               </p>
-              <ol className="list-decimal pl-4 text-xs text-emerald-900 space-y-2 font-medium">
-                <li>On the Meta App Dashboard, click <strong>Manage</strong> under Webhook fields.</li>
-                <li>Find <strong>messages</strong> and click <strong>Subscribe</strong>.</li>
-                <li>Go to your <strong>Vercel Project &gt; Settings &gt; Environment Variables</strong>.</li>
-                <li>Add these two variables from the Meta Dashboard (WhatsApp &gt; API Setup):
-                  <ul className="list-disc pl-4 mt-1 font-mono text-[10px]">
-                    <li>WHATSAPP_ACCESS_TOKEN</li>
-                    <li>WHATSAPP_PHONE_NUMBER_ID</li>
-                  </ul>
-                </li>
-                <li>Redeploy your Vercel app so the variables take effect.</li>
-              </ol>
+              <p className="text-xs text-emerald-900 mb-2 font-bold">Why aren't my messages sending?</p>
+              <ul className="list-disc pl-4 text-xs text-emerald-900 space-y-2 font-medium">
+                <li>Under <strong>WhatsApp &gt; API Setup</strong>, you MUST add and verify the recipient phone number. Test phone numbers can only send messages to up to 5 verified phone numbers!</li>
+                <li>Ensure you have added <strong>WHATSAPP_ACCESS_TOKEN</strong> and <strong>WHATSAPP_PHONE_NUMBER_ID</strong> to Vercel/Render Environment Variables.</li>
+                <li><strong>CRITICAL:</strong> After adding environment variables to Vercel, you MUST redeploy your app for them to take effect.</li>
+              </ul>
             </div>
           </div>
         </div>
