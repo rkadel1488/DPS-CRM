@@ -963,15 +963,15 @@ function SettingsView({ profile, isAdmin }: { profile: UserProfile | null, isAdm
 
             <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100">
               <p className="text-sm text-blue-800 font-bold mb-2">
-                Option 2: Setup Full Webhook (Since you deployed via GitHub)
+                Option 2: Setup Full Webhook (For Vercel/GitHub)
               </p>
               <p className="text-xs text-blue-900 mb-2">
-                If you strictly need to receive incoming messages or read receipts, and you have exported to GitHub and deployed it (e.g., to Vercel, Render, Cloud Run, etc.):
+                The reason it failed is because Vercel only hosts the "Frontend", and ignored our backend <code>server.ts</code> file. I have just added the correct <strong>Serverless Functions</strong> (in the <code>/api</code> folder) so that Vercel will natively understand the webhook!
               </p>
               <ol className="list-decimal pl-4 text-xs text-blue-900 space-y-2 font-medium">
-                <li>Your Callback URL will be: <strong><code>https://{'<YOUR_PRODUCTION_DOMAIN>'}/api/whatsapp/webhook</code></strong></li>
-                <li>Your Verify Token will be: <strong><code>my_super_secret_verify_token_123</code></strong> (Unless you changed it in your .env file)</li>
-                <li>Go to the Meta App Dashboard, paste those values into the webhook configuration, and click <strong>Verify and save</strong>.</li>
+                <li>Export your app to GitHub again to push these new changes.</li>
+                <li>Wait 1-2 minutes for Vercel to auto-deploy your new commits.</li>
+                <li>Go to the Meta App Dashboard and click <strong>Verify and save</strong> again. It will now work!</li>
               </ol>
             </div>
           </div>
