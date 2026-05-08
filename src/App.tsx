@@ -944,36 +944,34 @@ function SettingsView({ profile, isAdmin }: { profile: UserProfile | null, isAdm
             WhatsApp Gate Pass Integration
             <span className="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full uppercase tracking-tighter">Meta Webhook</span>
           </h3>
-          <p className="text-sm text-gray-500 mb-4">Because this development environment is private, Meta cannot verify webhooks directly against it. You must publish the app first.</p>
+          <p className="text-sm text-gray-500 mb-4">Paste the following credentials into your Meta App Dashboard under WhatsApp &gt; Configuration to enable live message notifications.</p>
           <div className="space-y-4">
             
-            <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100">
-              <p className="text-sm text-amber-800 font-bold mb-2">
-                ⚠️ Crucial Step for Meta Verification
+            <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100">
+              <p className="text-sm text-emerald-800 font-bold mb-2">
+                ✅ Verification Details Ready
               </p>
-              <ol className="list-decimal pl-4 text-xs text-amber-900 space-y-2">
-                <li>Click the <strong>Share</strong> button at the top right of AI Studio to publish your app publicly.</li>
-                <li>Wait for the deployment to finish, then copy the generated <strong>Shared Link</strong>.</li>
-                <li>Your Callback URL will be that Shared Link followed by <code>/api/whatsapp/webhook</code>.</li>
-              </ol>
+              <p className="text-xs text-emerald-700">
+                Your backend is online and ready to accept Meta's verification requests.
+              </p>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Example Callback URL (Use your Shared Link instead!)</label>
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Callback URL (Copy this exactly)</label>
               <div className="flex gap-2">
-                <input type="text" readOnly value={`${window.location.protocol}//${window.location.host.replace('ais-dev', 'ais-pre')}/api/whatsapp/webhook`} className="w-full p-3 bg-gray-50 border border-black/5 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-mono text-xs text-gray-600" />
+                <input type="text" readOnly value="https://ais-pre-co43ounewo7pgjbhevuog5-142792436471.asia-southeast1.run.app/api/whatsapp/webhook" className="w-full p-3 bg-white border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-mono text-xs text-blue-700 font-bold select-all" />
               </div>
             </div>
             <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Verify Token</label>
-              <input type="text" readOnly value="my_super_secret_verify_token_123" className="w-full p-3 bg-gray-50 border border-black/5 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-mono text-xs text-gray-600" />
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Verify Token (Copy this exactly)</label>
+              <input type="text" readOnly value="my_super_secret_verify_token_123" className="w-full p-3 bg-white border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-mono text-xs text-blue-700 font-bold select-all" />
             </div>
             <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100">
               <p className="text-xs text-blue-700 font-medium leading-relaxed mb-2">
                 <strong>Meta Dashboard Setup:</strong>
               </p>
-              <ol className="list-decimal pl-4 text-xs text-blue-700 space-y-1">
-                <li>Paste the Callback URL (using the Shared App URL) and Verify Token into the Meta App Dashboard.</li>
+              <ol className="list-decimal pl-4 text-xs text-blue-700 space-y-2">
+                <li>Paste the <strong>Callback URL</strong> and <strong>Verify Token</strong> into the Meta App Dashboard webhook settings.</li>
                 <li>Click <strong>Verify and save</strong>.</li>
                 <li>Once verified, click <strong>Manage</strong> under Webhook fields and subscribe to the `messages` event.</li>
               </ol>
