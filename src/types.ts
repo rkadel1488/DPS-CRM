@@ -66,6 +66,8 @@ export interface Student {
   motherPhotoUrl?: string;
   driverName?: string;
   driverPhotoUrl?: string;
+  otherName?: string;
+  otherPhotoUrl?: string;
   familyId?: string;
 }
 

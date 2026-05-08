@@ -41,6 +41,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
     fatherName: '', fatherPhotoUrl: '',
     motherName: '', motherPhotoUrl: '',
     driverName: '', driverPhotoUrl: '',
+    otherName: '', otherPhotoUrl: '',
     phoneNumber: '',
     students: [{ name: '', studentId: '', grade: '', section: '', photoUrl: '' }]
   });
@@ -63,6 +64,8 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
     motherPhotoUrl: '',
     driverName: '',
     driverPhotoUrl: '',
+    otherName: '',
+    otherPhotoUrl: '',
     photoUrl: ''
   });
   const [newStaff, setNewStaff] = useState<StaffInvite>({ name: '', phoneNumber: '', role: 'staff', allowedTabs: ['dashboard'] });
@@ -121,6 +124,8 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
         motherPhotoUrl: '',
         driverName: '',
         driverPhotoUrl: '',
+        otherName: '',
+        otherPhotoUrl: '',
         photoUrl: ''
       });
       alert('Student added successfully!');
@@ -168,7 +173,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
     });
   };
 
-  const handleImageUploadFamily = async (e: React.ChangeEvent<HTMLInputElement>, type: 'father' | 'mother' | 'driver' | 'student', studentIndex?: number) => {
+  const handleImageUploadFamily = async (e: React.ChangeEvent<HTMLInputElement>, type: 'father' | 'mother' | 'driver' | 'other' | 'student', studentIndex?: number) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -199,6 +204,8 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
           motherPhotoUrl: newFamily.motherPhotoUrl,
           driverName: newFamily.driverName,
           driverPhotoUrl: newFamily.driverPhotoUrl,
+          otherName: (newFamily as any).otherName || '',
+          otherPhotoUrl: (newFamily as any).otherPhotoUrl || '',
           phoneNumber: newFamily.phoneNumber,
           familyId: familyId,
           balance: 0,
@@ -214,6 +221,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
         fatherName: '', fatherPhotoUrl: '',
         motherName: '', motherPhotoUrl: '',
         driverName: '', driverPhotoUrl: '',
+        otherName: '', otherPhotoUrl: '',
         phoneNumber: '',
         students: [{ name: '', studentId: '', grade: '', section: '', photoUrl: '' }]
       });
@@ -321,13 +329,14 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
         { label: 'FATHER', name: family.fatherName, photo: family.fatherPhotoUrl },
         { label: 'MOTHER', name: family.motherName, photo: family.motherPhotoUrl },
         { label: 'DRIVER', name: family.driverName, photo: family.driverPhotoUrl },
+        { label: 'OTHER', name: family.otherName, photo: family.otherPhotoUrl },
       ];
 
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
-        const startX = 80 + (i * 280);
+        const startX = 80 + (i * 215);
         const startY = guardiansStartY + 70;
-        const imgSize = 200;
+        const imgSize = 180;
 
         const itemImg = await loadImage(item.photo || '');
         ctx.strokeStyle = '#d1d5db';
@@ -455,13 +464,14 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
         { label: 'FATHER', name: student.fatherName, photo: student.fatherPhotoUrl },
         { label: 'MOTHER', name: student.motherName, photo: student.motherPhotoUrl },
         { label: 'DRIVER', name: student.driverName, photo: student.driverPhotoUrl },
+        { label: 'OTHER', name: student.otherName, photo: student.otherPhotoUrl },
       ];
 
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
-        const startX = 80 + (i * 300);
+        const startX = 80 + (i * 215);
         const startY = 960;
-        const imgSize = 240;
+        const imgSize = 180;
 
         // Photo
         const itemImg = await loadImage(item.photo || '');
@@ -507,7 +517,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
     }
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, isEdit: boolean, type: 'student' | 'father' | 'mother' | 'driver') => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, isEdit: boolean, type: 'student' | 'father' | 'mother' | 'driver' | 'other') => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -1636,6 +1646,32 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                     />
                   </div>
                 </div>
+
+                <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl">
+                  <div className="relative">
+                    <div className="w-16 h-16 rounded-xl bg-white border border-black/5 flex items-center justify-center overflow-hidden">
+                      {editingStudent.otherPhotoUrl ? (
+                        <img src={editingStudent.otherPhotoUrl} alt="Other" className="w-full h-full object-cover" />
+                      ) : (
+                        <Camera className="w-6 h-6 text-gray-300" />
+                      )}
+                    </div>
+                    <label className="absolute -bottom-1 -right-1 p-1.5 bg-gray-900 text-white rounded-lg shadow-sm cursor-pointer hover:bg-black transition-all">
+                      <Upload className="w-3 h-3" />
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, true, 'other')} />
+                    </label>
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Other Name</label>
+                    <input 
+                      type="text" 
+                      placeholder="Other Name"
+                      value={editingStudent.otherName || ''}
+                      onChange={e => setEditingStudent({...editingStudent, otherName: e.target.value})}
+                      className="w-full px-3 py-1.5 bg-white border border-black/10 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                    />
+                  </div>
+                </div>
               </div>
 
               <div>
@@ -1703,7 +1739,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
               
               <div className="space-y-4">
                 <h4 className="text-sm font-bold text-gray-900 flex items-center gap-2"><Users className="w-4 h-4"/> 1. Family & Pickup Details</h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                   {/* Father */}
                   <div className="space-y-2">
                     <div className="flex flex-col items-center gap-3 p-4 bg-gray-50 rounded-2xl border border-black/5">
@@ -1751,6 +1787,23 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                       <div className="w-full mt-2">
                         <label className="block text-xs font-medium text-gray-500 mb-1 text-center">Driver's Name</label>
                         <input type="text" value={newFamily.driverName} onChange={e => setNewFamily({...newFamily, driverName: e.target.value})} className="w-full px-3 py-1.5 bg-white border border-black/10 rounded-lg text-sm text-center focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Enter Name..." />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Other */}
+                  <div className="space-y-2">
+                    <div className="flex flex-col items-center gap-3 p-4 bg-gray-50 rounded-2xl border border-black/5">
+                      <div className="w-20 h-20 rounded-xl bg-white border border-black/5 flex items-center justify-center overflow-hidden">
+                        {newFamily.otherPhotoUrl ? <img src={newFamily.otherPhotoUrl} className="w-full h-full object-cover" /> : <Camera className="w-8 h-8 text-gray-300" />}
+                      </div>
+                      <label className="flex items-center gap-2 px-3 py-1.5 bg-gray-900 text-white rounded-lg text-[10px] uppercase font-bold cursor-pointer hover:bg-black transition-all">
+                        <Upload className="w-3 h-3" /> Upload Photo
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUploadFamily(e, 'other')} />
+                      </label>
+                      <div className="w-full mt-2">
+                        <label className="block text-xs font-medium text-gray-500 mb-1 text-center">Other Name</label>
+                        <input type="text" value={newFamily.otherName || ''} onChange={e => setNewFamily({...newFamily, otherName: e.target.value})} className="w-full px-3 py-1.5 bg-white border border-black/10 rounded-lg text-sm text-center focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Enter Name..." />
                       </div>
                     </div>
                   </div>
@@ -1960,6 +2013,32 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                       placeholder="Driver's Name"
                       value={newStudent.driverName}
                       onChange={e => setNewStudent({...newStudent, driverName: e.target.value})}
+                      className="w-full px-3 py-1.5 bg-white border border-black/10 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl">
+                  <div className="relative">
+                    <div className="w-16 h-16 rounded-xl bg-white border border-black/5 flex items-center justify-center overflow-hidden">
+                      {newStudent.otherPhotoUrl ? (
+                        <img src={newStudent.otherPhotoUrl} alt="Other" className="w-full h-full object-cover" />
+                      ) : (
+                        <Camera className="w-6 h-6 text-gray-300" />
+                      )}
+                    </div>
+                    <label className="absolute -bottom-1 -right-1 p-1.5 bg-gray-900 text-white rounded-lg shadow-sm cursor-pointer hover:bg-black transition-all">
+                      <Upload className="w-3 h-3" />
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, false, 'other')} />
+                    </label>
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Other Name</label>
+                    <input 
+                      type="text" 
+                      placeholder="Other Name"
+                      value={newStudent.otherName || ''}
+                      onChange={e => setNewStudent({...newStudent, otherName: e.target.value})}
                       className="w-full px-3 py-1.5 bg-white border border-black/10 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
                     />
                   </div>

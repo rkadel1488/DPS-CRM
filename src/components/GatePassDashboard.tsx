@@ -31,7 +31,7 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
   const [scannedStudents, setScannedStudents] = useState<Student[] | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
-  const [selectedPickup, setSelectedPickup] = useState<'father' | 'mother' | 'driver' | null>(null);
+  const [selectedPickup, setSelectedPickup] = useState<'father' | 'mother' | 'driver' | 'other' | null>(null);
 
   useEffect(() => {
     if (verifyId && students.length > 0) {
@@ -550,7 +550,7 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
                     Authorized Recovery Personnel
                   </p>
                   
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-4 gap-4">
                     {/* Father */}
                     <div 
                       className={`space-y-2 cursor-pointer transition-all ${selectedPickup === 'father' ? 'scale-105' : 'hover:scale-105 opacity-70'}`}
@@ -611,6 +611,27 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
                       <div className="text-center">
                         <p className={`text-xs font-bold line-clamp-1 ${selectedPickup === 'driver' ? 'text-blue-600' : 'text-gray-900'}`}>{scannedStudents[0].driverName || 'Driver'}</p>
                         <p className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">Driver</p>
+                      </div>
+                    </div>
+
+                    {/* Other */}
+                    <div 
+                      className={`space-y-2 cursor-pointer transition-all ${selectedPickup === 'other' ? 'scale-105' : 'hover:scale-105 opacity-70'}`}
+                      onClick={() => setSelectedPickup('other')}
+                    >
+                      <div className={`aspect-square rounded-2xl overflow-hidden shadow-sm ring-2 ${selectedPickup === 'other' ? 'ring-blue-500 ring-offset-2' : 'ring-black/5 bg-gray-50'}`}>
+                        {scannedStudents[0].otherPhotoUrl ? (
+                          <img src={scannedStudents[0].otherPhotoUrl} alt="Other" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50/50">
+                            <Users className="w-8 h-8 text-gray-200" />
+                            <span className="text-[8px] text-gray-400 mt-2">No Photo</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-center">
+                        <p className={`text-xs font-bold line-clamp-1 ${selectedPickup === 'other' ? 'text-blue-600' : 'text-gray-900'}`}>{scannedStudents[0].otherName || 'Other'}</p>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">Other</p>
                       </div>
                     </div>
                   </div>
