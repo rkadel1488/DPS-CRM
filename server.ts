@@ -20,13 +20,16 @@ async function startServer() {
     const mode = req.query['hub.mode'];
     const token = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
+    
+    console.log('[WEBHOOK VERIFICATION] Request received:', { mode, token, challenge });
 
     if (mode && token) {
       if (mode === 'subscribe' && token === WHATSAPP_VERIFY_TOKEN) {
-        console.log('WEBHOOK_VERIFIED');
+        console.log('WEBHOOK_VERIFIED successfully');
         // IMPORTANT: Must send strictly the integer challenge as a response
-        res.status(200).send(challenge);
+        res.status(200).type('text/plain').send(challenge);
       } else {
+        console.log('WEBHOOK VERIFICATION FAILED: Token mismatch', { expected: WHATSAPP_VERIFY_TOKEN, received: token });
         // Responds with '403 Forbidden' if verify tokens do not match
         res.sendStatus(403);
       }

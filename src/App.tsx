@@ -944,12 +944,24 @@ function SettingsView({ profile, isAdmin }: { profile: UserProfile | null, isAdm
             WhatsApp Gate Pass Integration
             <span className="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full uppercase tracking-tighter">Meta Webhook</span>
           </h3>
-          <p className="text-sm text-gray-500 mb-4">You need to configure these values in your Meta App Dashboard under WhatsApp &gt; Configuration.</p>
+          <p className="text-sm text-gray-500 mb-4">Because this development environment is private, Meta cannot verify webhooks directly against it. You must publish the app first.</p>
           <div className="space-y-4">
+            
+            <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100">
+              <p className="text-sm text-amber-800 font-bold mb-2">
+                ⚠️ Crucial Step for Meta Verification
+              </p>
+              <ol className="list-decimal pl-4 text-xs text-amber-900 space-y-2">
+                <li>Click the <strong>Share</strong> button at the top right of AI Studio to publish your app publicly.</li>
+                <li>Wait for the deployment to finish, then copy the generated <strong>Shared Link</strong>.</li>
+                <li>Your Callback URL will be that Shared Link followed by <code>/api/whatsapp/webhook</code>.</li>
+              </ol>
+            </div>
+
             <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Callback URL</label>
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Example Callback URL (Use your Shared Link instead!)</label>
               <div className="flex gap-2">
-                <input type="text" readOnly value={`${window.location.protocol}//${window.location.host}/api/whatsapp/webhook`} className="w-full p-3 bg-gray-50 border border-black/5 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-mono text-xs text-gray-600" />
+                <input type="text" readOnly value={`${window.location.protocol}//${window.location.host.replace('ais-dev', 'ais-pre')}/api/whatsapp/webhook`} className="w-full p-3 bg-gray-50 border border-black/5 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-mono text-xs text-gray-600" />
               </div>
             </div>
             <div>
@@ -958,10 +970,10 @@ function SettingsView({ profile, isAdmin }: { profile: UserProfile | null, isAdm
             </div>
             <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100">
               <p className="text-xs text-blue-700 font-medium leading-relaxed mb-2">
-                <strong>Next Steps:</strong>
+                <strong>Meta Dashboard Setup:</strong>
               </p>
               <ol className="list-decimal pl-4 text-xs text-blue-700 space-y-1">
-                <li>Paste the Callback URL and Verify Token into the Meta App Dashboard.</li>
+                <li>Paste the Callback URL (using the Shared App URL) and Verify Token into the Meta App Dashboard.</li>
                 <li>Click <strong>Verify and save</strong>.</li>
                 <li>Once verified, click <strong>Manage</strong> under Webhook fields and subscribe to the `messages` event.</li>
               </ol>
