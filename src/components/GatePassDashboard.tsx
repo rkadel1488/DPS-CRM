@@ -270,19 +270,36 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
   };
 
   const sendWhatsAppNotification = async (phone: string, studentName: string, date: string) => {
-    // Standardize phone number (remove spaces, ensure country code)
-    // Note: Assuming phone already includes country code, or you might need to append it.
+    // Standardize phone number for the API
     const cleanPhone = phone.replace(/[^0-9]/g, '');
-    const message = encodeURIComponent(`Hello, ${studentName} has been verified for early departure on ${date}. Authorization provided by ${profile?.displayName || 'Admin'}.`);
     
-    console.log(`[WHATSAPP-INTEGRATION] To: ${cleanPhone} | Message: ${message}`);
+    console.log(`[WHATSAPP-INTEGRATION] Calling API to send message to ${cleanPhone}`);
     
-    // For manual sending: Open WhatsApp Web/App in a new tab
-    const url = `https://wa.me/${cleanPhone}?text=${message}`;
-    window.open(url, '_blank');
-    
-    // For automated sending via API (like Twilio or Meta Graph API),
-    // you would make an API call to your backend server here instead of window.open.
+    try {
+      const response = await fetch('/api/whatsapp/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          phone: cleanPhone,
+          templateName: 'gate_pass_alert',
+          variables: {
+            studentName,
+            date,
+            admin: profile?.displayName || 'Admin'
+          }
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('WhatsApp API Error:', errorData);
+        alert('Warning: Gate pass created but WhatsApp alert failed to send. Please check your Meta API variables setting (WHATSAPP_ACCESS_TOKEN and WHATSAPP_PHONE_NUMBER_ID).');
+      }
+    } catch (err) {
+      console.error('Failed to call WhatsApp send endpoint:', err);
+    }
   };
 
   return (

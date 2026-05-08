@@ -961,17 +961,21 @@ function SettingsView({ profile, isAdmin }: { profile: UserProfile | null, isAdm
               <p className="text-[10px] text-amber-800 mt-2">You can get these from the Meta App Dashboard under WhatsApp &gt; API Setup.</p>
             </div>
 
-            <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100">
-              <p className="text-sm text-blue-800 font-bold mb-2">
-                Option 2: Setup Full Webhook (For Vercel/GitHub)
+            <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100">
+              <p className="text-sm text-emerald-800 font-bold mb-2">
+                ✅ Webhook Verified! Next Steps:
               </p>
-              <p className="text-xs text-blue-900 mb-2">
-                The reason it failed is because Vercel only hosts the "Frontend", and ignored our backend <code>server.ts</code> file. I have just added the correct <strong>Serverless Functions</strong> (in the <code>/api</code> folder) so that Vercel will natively understand the webhook!
-              </p>
-              <ol className="list-decimal pl-4 text-xs text-blue-900 space-y-2 font-medium">
-                <li>Export your app to GitHub again to push these new changes.</li>
-                <li>Wait 1-2 minutes for Vercel to auto-deploy your new commits.</li>
-                <li>Go to the Meta App Dashboard and click <strong>Verify and save</strong> again. It will now work!</li>
+              <ol className="list-decimal pl-4 text-xs text-emerald-900 space-y-2 font-medium">
+                <li>On the Meta App Dashboard, click <strong>Manage</strong> under Webhook fields.</li>
+                <li>Find <strong>messages</strong> and click <strong>Subscribe</strong>.</li>
+                <li>Go to your <strong>Vercel Project &gt; Settings &gt; Environment Variables</strong>.</li>
+                <li>Add these two variables from the Meta Dashboard (WhatsApp &gt; API Setup):
+                  <ul className="list-disc pl-4 mt-1 font-mono text-[10px]">
+                    <li>WHATSAPP_ACCESS_TOKEN</li>
+                    <li>WHATSAPP_PHONE_NUMBER_ID</li>
+                  </ul>
+                </li>
+                <li>Redeploy your Vercel app so the variables take effect.</li>
               </ol>
             </div>
           </div>
