@@ -32,6 +32,7 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
   const [isVerifying, setIsVerifying] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [selectedPickup, setSelectedPickup] = useState<'father' | 'mother' | 'driver' | 'other' | null>(null);
+  const [otherPersonName, setOtherPersonName] = useState('');
 
   useEffect(() => {
     if (verifyId && students.length > 0) {
@@ -206,6 +207,13 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
       
       let phone = "N/A";
       let studentNames = "";
+      
+      const firstStudent = scannedStudents[0];
+      let tickedPerson = '';
+      if (selectedPickup === 'father') tickedPerson = firstStudent.fatherName || 'Father';
+      else if (selectedPickup === 'mother') tickedPerson = firstStudent.motherName || 'Mother';
+      else if (selectedPickup === 'driver') tickedPerson = firstStudent.driverName || 'Driver';
+      else if (selectedPickup === 'other') tickedPerson = otherPersonName || firstStudent.otherName || 'Other';
 
       for (const student of scannedStudents) {
         if (student.phoneNumber && phone === "N/A") {
@@ -222,6 +230,7 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
           status: 'active' as const,
           authorizedBy: profile.displayName || profile.email || 'Admin',
           pickedUpBy: selectedPickup,
+          pickedUpByName: tickedPerson,
           createdAt: serverTimestamp(),
           qrVerified: true
         };
@@ -233,12 +242,13 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
 
       // Send WhatsApp logic via the integration hook
       if (phone !== "N/A") {
-        await sendWhatsAppNotification(phone, studentNames, scannedDate);
+        await sendWhatsAppNotification(phone, studentNames, scannedDate, tickedPerson);
       }
 
       // Close the modal and the scanner
       setScannedStudents(null);
       setIsScanning(false);
+      setOtherPersonName('');
       
       alert(`✅ Verification Successful\n\nStudents: ${studentNames}\nTime: ${scannedDate}\n\nGate pass has been recorded and a WhatsApp notification was initiated for ${phone}.`);
     } catch (error) {
@@ -269,7 +279,7 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
     }
   };
 
-  const sendWhatsAppNotification = async (phone: string, studentName: string, date: string) => {
+  const sendWhatsAppNotification = async (phone: string, studentName: string, date: string, tickedPerson: string) => {
     // Standardize phone number for the API
     const cleanPhone = phone.replace(/[^0-9]/g, '');
     
@@ -287,6 +297,7 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
           variables: {
             studentName,
             date,
+            tickedPerson,
             admin: profile?.displayName || 'Admin'
           }
         })
@@ -652,13 +663,29 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
                       </div>
                     </div>
                   </div>
+                  
+                  {selectedPickup === 'other' && (
+                    <div className="mt-4 p-4 bg-gray-50 rounded-2xl border border-black/5 animate-in fade-in slide-in-from-top-2">
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                        Name of the person picking up
+                      </label>
+                      <input
+                        type="text"
+                        value={otherPersonName}
+                        onChange={(e) => setOtherPersonName(e.target.value)}
+                        placeholder="E.g., Uncle John"
+                        className="w-full px-4 py-3 bg-white border border-black/5 rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none transition-all placeholder:text-gray-300"
+                        autoFocus
+                      />
+                    </div>
+                  )}
                 </div>
 
               </div>
 
               <div className="space-y-3 pt-6 mt-4 border-t border-black/5 shrink-0">
                 <button
-                  disabled={isVerifying || !selectedPickup}
+                  disabled={isVerifying || !selectedPickup || (selectedPickup === 'other' && !otherPersonName.trim() && !scannedStudents[0]?.otherName)}
                   onClick={handleVerifyAndIssue}
                   className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-bold flex items-center justify-center gap-3 shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all disabled:opacity-50"
                 >
