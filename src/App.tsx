@@ -902,6 +902,46 @@ function DashboardOverview({ profile, isAdmin, setActiveTab, setAdminAction, set
 }
 
 function SettingsView({ profile, isAdmin }: { profile: UserProfile | null, isAdmin: boolean }) {
+  const [smsEndpoint, setSmsEndpoint] = useState('');
+  const [smsApiKey, setSmsApiKey] = useState('');
+  const [smsSenderId, setSmsSenderId] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const docSnap = await getDoc(doc(db, 'settings', 'sms'));
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setSmsEndpoint(data.endpoint || '');
+          setSmsApiKey(data.apiKey || '');
+          setSmsSenderId(data.senderId || '');
+        }
+      } catch (e) {
+        console.error("Failed to fetch settings:", e);
+      }
+    };
+    fetchSettings();
+  }, []);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await setDoc(doc(db, 'settings', 'sms'), {
+        endpoint: smsEndpoint,
+        apiKey: smsApiKey,
+        senderId: smsSenderId,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      alert('Settings saved successfully!');
+    } catch (e) {
+      console.error("Failed to save settings:", e);
+      alert('Failed to save settings.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <div className="max-w-2xl mx-auto">
       <h2 className="text-3xl font-bold text-gray-900 mb-8">Settings</h2>
@@ -942,21 +982,39 @@ function SettingsView({ profile, isAdmin }: { profile: UserProfile | null, isAdm
         <div className="p-6">
           <h3 className="font-bold text-gray-900 mb-1 flex items-center gap-2">
             SMS Gate Pass Integration
-            <span className="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full uppercase tracking-tighter">Custom API</span>
+            <span className="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full uppercase tracking-tighter">Custom API / Twilio</span>
           </h3>
-          <p className="text-sm text-gray-500 mb-4">Configure your preferred SMS provider to send notifications.</p>
+          <p className="text-sm text-gray-500 mb-4">Configure your preferred SMS provider to send notifications. To use Twilio, fill out the Twilio specific fields below.</p>
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">API Endpoint URL</label>
-              <input type="text" placeholder="e.g., https://api.smsprovider.com/v1/send" className="w-full p-3 bg-gray-50 border border-black/5 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-gray-300 text-sm" />
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Twilio Account SID (or Custom API URL)</label>
+              <input 
+                type="text" 
+                value={smsEndpoint}
+                onChange={(e) => setSmsEndpoint(e.target.value)}
+                placeholder="e.g., ACxxxxxxxx or https://api.smsprovider.com/v1/send" 
+                className="w-full p-3 bg-gray-50 border border-black/5 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-gray-300 text-sm" 
+              />
             </div>
             <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">API Key / Token</label>
-              <input type="password" placeholder="Enter your provider's API key (Leave blank to use ENV vars)" className="w-full p-3 bg-gray-50 border border-black/5 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-gray-300 text-sm" />
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Twilio Auth Token (or Custom API Key)</label>
+              <input 
+                type="password" 
+                value={smsApiKey}
+                onChange={(e) => setSmsApiKey(e.target.value)}
+                placeholder="Leave blank to use ENV string" 
+                className="w-full p-3 bg-gray-50 border border-black/5 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-gray-300 text-sm" 
+              />
             </div>
             <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Sender ID / From Number</label>
-              <input type="text" placeholder="e.g., SCHOOL-SMS or +1234567890" className="w-full p-3 bg-gray-50 border border-black/5 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-gray-300 text-sm" />
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Twilio Phone Number (or Custom Sender ID)</label>
+              <input 
+                type="text" 
+                value={smsSenderId}
+                onChange={(e) => setSmsSenderId(e.target.value)}
+                placeholder="e.g., +1234567890 or SCHOOL" 
+                className="w-full p-3 bg-gray-50 border border-black/5 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-gray-300 text-sm" 
+              />
             </div>
 
             <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100">
@@ -964,17 +1022,18 @@ function SettingsView({ profile, isAdmin }: { profile: UserProfile | null, isAdm
                 Example Implementation
               </p>
               <p className="text-xs text-amber-900 mb-2 font-medium">
-                When a gate pass is verified, we will send the SMS by calling your Endpoint URL using the parameters you define above. Leave the fields blank if you are injecting the keys through Vercel/Render Environment Variables.
+                When a gate pass is verified, we will send the SMS by passing these configs to the backend. We currently support Twilio explicitly but you can configure it via ENV strings too without filling the fields.
               </p>
             </div>
           </div>
         </div>
         <div className="p-6">
           <button 
-            onClick={() => alert('Settings saved successfully!')}
-            className="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all"
+            onClick={handleSave}
+            disabled={isSaving}
+            className="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
           >
-            Save Changes
+            {isSaving ? 'Saving...' : 'Save Changes'}
           </button>
         </div>
       </div>

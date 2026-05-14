@@ -153,11 +153,13 @@ service cloud.firestore {
 
     match /gate_passes/{passId} {
       allow list: if isStaff() || isDriver();
-      // Parents can list only their children's gate passes if we added studentId filter, 
-      // but isParentOf uses get() which is limited/forbidden in list. 
-      // For now, only staff/drivers can list all.
       allow get: if isStaff() || isDriver() || (isAuthenticated() && isParentOf(resource.data.studentId));
       allow write: if isStaff();
+    }
+
+    match /settings/{settingId} {
+      allow read: if isStaff();
+      allow write: if isAdmin();
     }
   }
 }

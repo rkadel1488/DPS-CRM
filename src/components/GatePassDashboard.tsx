@@ -286,6 +286,16 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
     
     console.log(`[SMS-INTEGRATION] Calling API to send message to ${cleanPhone}`);
     
+    let customApi = null;
+    try {
+      const dbSettings = await getDoc(doc(db, 'settings', 'sms'));
+      if (dbSettings.exists()) {
+        customApi = dbSettings.data();
+      }
+    } catch (e) {
+      console.log('No custom SMS settings found in DB, relying on ENV vars.');
+    }
+
     try {
       const response = await fetch('/api/sms/send', {
         method: 'POST',
@@ -294,6 +304,7 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
         },
         body: JSON.stringify({
           phone: cleanPhone,
+          customApi,
           variables: {
             studentName,
             date,
@@ -306,7 +317,7 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
       if (!response.ok) {
         const errorData = await response.json();
         console.error('SMS API Error:', errorData);
-        alert(`Warning: Gate pass created, but SMS alert failed to send.\n\nReason: ${errorData.details?.message || errorData.error || 'Unknown Error'}\n\nDid you verify Vercel is deployed with TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN?`);
+        alert(`Warning: Gate pass created, but SMS alert failed to send.\n\nReason: ${errorData.details?.message || errorData.error || 'Unknown Error'}\n\nDid you verify Vercel is deployed with TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN, or enter API Keys in Settings?`);
       }
     } catch (err) {
       console.error('Failed to call SMS send endpoint:', err);
