@@ -941,36 +941,31 @@ function SettingsView({ profile, isAdmin }: { profile: UserProfile | null, isAdm
         </div>
         <div className="p-6">
           <h3 className="font-bold text-gray-900 mb-1 flex items-center gap-2">
-            WhatsApp Gate Pass Integration
-            <span className="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full uppercase tracking-tighter">Meta Webhook</span>
+            SMS Gate Pass Integration
+            <span className="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full uppercase tracking-tighter">Custom API</span>
           </h3>
-          <p className="text-sm text-gray-500 mb-4">Because this AI Studio preview environment is protected by a security login screen, Meta's automated servers cannot verify the webhook. You have two options:</p>
+          <p className="text-sm text-gray-500 mb-4">Configure your preferred SMS provider to send notifications.</p>
           <div className="space-y-4">
-            
-            <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100">
-              <p className="text-sm text-amber-800 font-bold mb-2">
-                Option 1: Skip Webhook (Send Messages Only)
-              </p>
-              <p className="text-xs text-amber-900 mb-2">
-                You do <strong>not</strong> need a webhook to send outgoing Gate Pass notifications! You just need to add the following variables in the AI Studio Settings menu (bottom left gear icon -&gt; Secrets):
-              </p>
-              <ul className="list-disc pl-4 text-xs text-amber-900 space-y-1 font-medium">
-                <li><code>WHATSAPP_ACCESS_TOKEN</code></li>
-                <li><code>WHATSAPP_PHONE_NUMBER_ID</code></li>
-              </ul>
-              <p className="text-[10px] text-amber-800 mt-2">You can get these from the Meta App Dashboard under WhatsApp &gt; API Setup.</p>
+            <div>
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">API Endpoint URL</label>
+              <input type="text" placeholder="e.g., https://api.smsprovider.com/v1/send" className="w-full p-3 bg-gray-50 border border-black/5 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-gray-300 text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">API Key / Token</label>
+              <input type="password" placeholder="Enter your provider's API key (Leave blank to use ENV vars)" className="w-full p-3 bg-gray-50 border border-black/5 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-gray-300 text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Sender ID / From Number</label>
+              <input type="text" placeholder="e.g., SCHOOL-SMS or +1234567890" className="w-full p-3 bg-gray-50 border border-black/5 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-gray-300 text-sm" />
             </div>
 
-            <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100">
-              <p className="text-sm text-emerald-800 font-bold mb-2">
-                ✅ Webhook Verified! 
+            <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100">
+              <p className="text-sm text-amber-800 font-bold mb-2">
+                Example Implementation
               </p>
-              <p className="text-xs text-emerald-900 mb-2 font-bold">Why aren't my messages sending?</p>
-              <ul className="list-disc pl-4 text-xs text-emerald-900 space-y-2 font-medium">
-                <li>Under <strong>WhatsApp &gt; API Setup</strong>, you MUST add and verify the recipient phone number. Test phone numbers can only send messages to up to 5 verified phone numbers!</li>
-                <li>Ensure you have added <strong>WHATSAPP_ACCESS_TOKEN</strong> and <strong>WHATSAPP_PHONE_NUMBER_ID</strong> to Vercel/Render Environment Variables.</li>
-                <li><strong>CRITICAL:</strong> After adding environment variables to Vercel, you MUST redeploy your app for them to take effect.</li>
-              </ul>
+              <p className="text-xs text-amber-900 mb-2 font-medium">
+                When a gate pass is verified, we will send the SMS by calling your Endpoint URL using the parameters you define above. Leave the fields blank if you are injecting the keys through Vercel/Render Environment Variables.
+              </p>
             </div>
           </div>
         </div>

@@ -10,77 +10,55 @@ async function startServer() {
   app.use(express.json());
 
   // ==========================================
-  // WHATSAPP WEBHOOK SETUP
+  // SMS SEND SETUP (Twilio)
   // ==========================================
-  // Replace this with a strong, random string. You will also put this token in the "Verify token" field in the Meta Dashboard.
-  const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN || 'my_super_secret_verify_token_123';
-
-  // 1. GET request for Webhook Verification (Meta will call this when you click "Verify and save")
-  app.get('/api/whatsapp/webhook', (req, res) => {
-    const mode = req.query['hub.mode'];
-    const token = req.query['hub.verify_token'];
-    const challenge = req.query['hub.challenge'];
+  app.post('/api/sms/send', async (req, res) => {
+    const { phone, variables } = req.body;
     
-    console.log('[WEBHOOK VERIFICATION] Request received:', { mode, token, challenge });
+    const ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
+    const AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
+    const FROM_NUMBER = process.env.TWILIO_PHONE_NUMBER;
 
-    if (mode && token) {
-      if (mode === 'subscribe' && token === WHATSAPP_VERIFY_TOKEN) {
-        console.log('WEBHOOK_VERIFIED successfully');
-        // IMPORTANT: Must send strictly the integer challenge as a response
-        res.status(200).type('text/plain').send(challenge);
-      } else {
-        console.log('WEBHOOK VERIFICATION FAILED: Token mismatch', { expected: WHATSAPP_VERIFY_TOKEN, received: token });
-        // Responds with '403 Forbidden' if verify tokens do not match
-        res.sendStatus(403);
-      }
-    } else {
-      res.status(400).send('Bad Request');
-    }
-  });
-
-  // 2. POST request for handling incoming messages/events from WhatsApp
-  app.post('/api/whatsapp/webhook', (req, res) => {
-    const body = req.body;
-
-    console.log('Incoming WhatsApp Webhook:', JSON.stringify(body, null, 2));
-
-    // Return a '200 OK' response to all requests to acknowledge receipt
-    res.status(200).send('EVENT_RECEIVED');
-  });
-
-  // Add an endpoint to trigger WhatsApp messages
-  app.post('/api/whatsapp/send', async (req, res) => {
-    const { phone, templateName, variables } = req.body;
-    
-    // To send messages, you need the Page Access Token and Phone Number ID from Meta
-    const ACCESS_TOKEN = process.env.WHATSAPP_ACCESS_TOKEN;
-    const PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;
-
-    if (!ACCESS_TOKEN || !PHONE_NUMBER_ID) {
-      return res.status(500).json({ error: 'WhatsApp API credentials not configured on the server.' });
+    if (!ACCOUNT_SID || !AUTH_TOKEN || !FROM_NUMBER) {
+      return res.status(500).json({ error: 'Twilio API credentials not configured on the server.' });
     }
 
     try {
-      const response = await fetch(`https://graph.facebook.com/v17.0/${PHONE_NUMBER_ID}/messages`, {
+      const messageBody = variables 
+        ? `Dear Parents, ${variables.studentName} has been Picked up By ${variables.tickedPerson} on ${variables.date}.`
+        : `Hello! This is an automated notification.`;
+
+      const authHeaders = {
+        'Authorization': 'Basic ' + Buffer.from(ACCOUNT_SID + ':' + AUTH_TOKEN).toString('base64'),
+        'Content-Type': 'application/x-www-form-urlencoded'
+      };
+
+      const formData = new URLSearchParams();
+      formData.append('To', phone);
+      formData.append('From', FROM_NUMBER);
+      formData.append('Body', messageBody);
+
+      const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${ACCOUNT_SID}/Messages.json`;
+
+      const response = await fetch(twilioUrl, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${ACCESS_TOKEN}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messaging_product: 'whatsapp',
-          to: phone,
-          type: 'text',
-          text: {
-            body: `Hello! This is an automated notification.` // Typically you'd use a template here instead
-          }
-        }),
+        headers: authHeaders,
+        body: formData.toString()
       });
 
       const data = await response.json();
+      
+      if (!response.ok) {
+        console.error('Twilio API Error Response:', data);
+        return res.status(response.status).json({ 
+          error: 'Twilio API Error', 
+          details: data 
+        });
+      }
+
       res.status(200).json(data);
     } catch (error) {
-      console.error('Error sending WhatsApp message:', error);
+      console.error('Error sending Twilio message:', error);
       res.status(500).json({ error: 'Failed to send message' });
     }
   });

@@ -240,9 +240,9 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
       
       studentNames = studentNames.slice(0, -2); // Remove trailing comma and space
 
-      // Send WhatsApp logic via the integration hook
+      // Send SMS logic via the integration hook
       if (phone !== "N/A") {
-        await sendWhatsAppNotification(phone, studentNames, scannedDate, tickedPerson);
+        await sendSmsNotification(phone, studentNames, scannedDate, tickedPerson);
       }
 
       // Close the modal and the scanner
@@ -250,7 +250,7 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
       setIsScanning(false);
       setOtherPersonName('');
       
-      alert(`✅ Verification Successful\n\nStudents: ${studentNames}\nTime: ${scannedDate}\n\nGate pass has been recorded and a WhatsApp notification was initiated for ${phone}.`);
+      alert(`✅ Verification Successful\n\nStudents: ${studentNames}\nTime: ${scannedDate}\n\nGate pass has been recorded and an SMS notification was initiated for ${phone}.`);
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'gate_passes');
     } finally {
@@ -279,21 +279,21 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
     }
   };
 
-  const sendWhatsAppNotification = async (phone: string, studentName: string, date: string, tickedPerson: string) => {
-    // Standardize phone number for the API
-    const cleanPhone = phone.replace(/[^0-9]/g, '');
+  const sendSmsNotification = async (phone: string, studentName: string, date: string, tickedPerson: string) => {
+    // Standardize phone number for the API (add generic country code if needed, but Twilio needs E.164)
+    // Basic stripping of spaces/dashes
+    const cleanPhone = phone.replace(/[^\d+]/g, '');
     
-    console.log(`[WHATSAPP-INTEGRATION] Calling API to send message to ${cleanPhone}`);
+    console.log(`[SMS-INTEGRATION] Calling API to send message to ${cleanPhone}`);
     
     try {
-      const response = await fetch('/api/whatsapp/send', {
+      const response = await fetch('/api/sms/send', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           phone: cleanPhone,
-          templateName: 'gate_pass_alert',
           variables: {
             studentName,
             date,
@@ -305,11 +305,11 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('WhatsApp API Error:', errorData);
-        alert(`Warning: Gate pass created, but WhatsApp alert failed to send.\n\nReason: ${errorData.details?.error?.message || errorData.error || 'Unknown Error'}\n\nDid you verify the recipient phone number in the Meta Dashboard? Is Vercel deployed with the new ENV validbles?`);
+        console.error('SMS API Error:', errorData);
+        alert(`Warning: Gate pass created, but SMS alert failed to send.\n\nReason: ${errorData.details?.message || errorData.error || 'Unknown Error'}\n\nDid you verify Vercel is deployed with TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN?`);
       }
     } catch (err) {
-      console.error('Failed to call WhatsApp send endpoint:', err);
+      console.error('Failed to call SMS send endpoint:', err);
     }
   };
 
