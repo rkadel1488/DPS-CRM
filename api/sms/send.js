@@ -5,19 +5,18 @@ export default async function handler(req, res) {
 
   const { phone, variables, customApi } = req.body;
   
-  // Mapping from Settings View:
-  // customApi.endpoint -> Twilio Account SID (AC...) OR Custom URL (http...)
-  // customApi.apiKey -> Twilio Auth Token OR Custom API Key
-  // customApi.senderId -> Twilio Phone Number OR Custom Sender ID
-
-  const isCustomUrl = customApi?.endpoint && customApi.endpoint.startsWith('http');
+  // customApi.apiKey = key
+  // customApi.endpoint = campaign
+  // customApi.routeId = routeid
+  // customApi.senderId = senderid
   
-  const twilioSid = (!isCustomUrl ? customApi?.endpoint : null) || process.env.TWILIO_ACCOUNT_SID;
-  const twilioToken = customApi?.apiKey || process.env.TWILIO_AUTH_TOKEN;
-  const fromNumber = customApi?.senderId || process.env.TWILIO_PHONE_NUMBER || process.env.TWILIO_SENDER_ID || '+1234567890';
+  const smsKey = customApi?.apiKey;
+  const smsCampaign = customApi?.endpoint;
+  const smsRouteId = customApi?.routeId;
+  const smsSenderId = customApi?.senderId;
 
-  if (!isCustomUrl && !twilioSid && !twilioToken) {
-    return res.status(500).json({ error: 'SMS Provider credentials not configured on the server or in settings.' });
+  if (!smsKey || !smsCampaign || !smsRouteId || !smsSenderId) {
+    return res.status(500).json({ error: 'SMS Provider credentials not configured properly in settings.' });
   }
 
   try {
@@ -25,61 +24,43 @@ export default async function handler(req, res) {
       ? `Dear Parents, ${variables.studentName} has been Picked up By ${variables.tickedPerson} on ${variables.date}.`
       : `Hello! This is an automated notification.`;
 
-    if (isCustomUrl && !customApi.endpoint.includes('twilio.com')) {
-      // Very generic SMS API integration
-      const headers = { 'Content-Type': 'application/json' };
-      if (customApi.apiKey) headers['Authorization'] = `Bearer ${customApi.apiKey}`;
-      
-      const response = await fetch(customApi.endpoint, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          to: phone,
-          from: customApi.senderId,
-          text: messageBody,
-          msg: messageBody
-        })
-      });
-      const data = await response.text();
-      try {
-        return res.status(response.status).json(JSON.parse(data));
-      } catch (e) {
-        return res.status(response.status).send(data);
-      }
-    }
-
-    // Default to Twilio
-    const authHeaders = {
-      'Authorization': 'Basic ' + Buffer.from(twilioSid + ':' + twilioToken).toString('base64'),
-      'Content-Type': 'application/x-www-form-urlencoded'
-    };
-
     const formData = new URLSearchParams();
-    formData.append('To', phone);
-    formData.append('From', fromNumber);
-    formData.append('Body', messageBody);
+    formData.append('key', smsKey);
+    formData.append('campaign', smsCampaign);
+    formData.append('routeid', smsRouteId);
+    formData.append('type', 'text');
+    formData.append('contacts', phone); // e.g. 984XXXXXXX
+    formData.append('senderid', smsSenderId);
+    formData.append('msg', messageBody);
 
-    const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`;
-
-    const response = await fetch(twilioUrl, {
+    const response = await fetch('https://sms.smspasal.com/smsapi/index.php', {
       method: 'POST',
-      headers: authHeaders,
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
       body: formData.toString()
     });
 
-    const data = await response.json();
+    const data = await response.text();
+    let parsedData = data;
+    try {
+      if (data.trim().startsWith('{') || data.trim().startsWith('[')) {
+        parsedData = JSON.parse(data);
+      }
+    } catch(e) {}
     
     if (!response.ok) {
-      console.error('Twilio API Error Response:', data);
+      console.error('SMS Pasal API Error Response:', parsedData);
       return res.status(response.status).json({ 
-        error: 'Twilio API Error', 
-        details: data 
+        error: 'SMS Pasal API Error', 
+        details: parsedData 
       });
     }
 
-    return res.status(200).json(data);
+    return res.status(200).json({ success: true, response: parsedData });
   } catch (error) {
     console.error('Error sending SMS message:', error);
     return res.status(500).json({ error: 'Failed to send message' });
   }
 }
+

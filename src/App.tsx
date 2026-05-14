@@ -902,9 +902,10 @@ function DashboardOverview({ profile, isAdmin, setActiveTab, setAdminAction, set
 }
 
 function SettingsView({ profile, isAdmin }: { profile: UserProfile | null, isAdmin: boolean }) {
-  const [smsEndpoint, setSmsEndpoint] = useState('');
-  const [smsApiKey, setSmsApiKey] = useState('');
-  const [smsSenderId, setSmsSenderId] = useState('');
+  const [smsEndpoint, setSmsEndpoint] = useState(''); // Stores campaign ID
+  const [smsApiKey, setSmsApiKey] = useState(''); // Stores API Key
+  const [smsSenderId, setSmsSenderId] = useState(''); // Stores Sender ID
+  const [smsRouteId, setSmsRouteId] = useState(''); // Stores Route ID
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -916,6 +917,7 @@ function SettingsView({ profile, isAdmin }: { profile: UserProfile | null, isAdm
           setSmsEndpoint(data.endpoint || '');
           setSmsApiKey(data.apiKey || '');
           setSmsSenderId(data.senderId || '');
+          setSmsRouteId(data.routeId || '');
         }
       } catch (e) {
         console.error("Failed to fetch settings:", e);
@@ -931,6 +933,7 @@ function SettingsView({ profile, isAdmin }: { profile: UserProfile | null, isAdm
         endpoint: smsEndpoint,
         apiKey: smsApiKey,
         senderId: smsSenderId,
+        routeId: smsRouteId,
         updatedAt: serverTimestamp()
       }, { merge: true });
       alert('Settings saved successfully!');
@@ -982,47 +985,59 @@ function SettingsView({ profile, isAdmin }: { profile: UserProfile | null, isAdm
         <div className="p-6">
           <h3 className="font-bold text-gray-900 mb-1 flex items-center gap-2">
             SMS Gate Pass Integration
-            <span className="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full uppercase tracking-tighter">Custom API / Twilio</span>
+            <span className="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full uppercase tracking-tighter">SMS Pasal API</span>
           </h3>
-          <p className="text-sm text-gray-500 mb-4">Configure your preferred SMS provider to send notifications. To use Twilio, fill out the Twilio specific fields below.</p>
+          <p className="text-sm text-gray-500 mb-4">Configure your SMS Pasal credentials to send notifications when gate passes are issued.</p>
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Twilio Account SID (or Custom API URL)</label>
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">API Key</label>
               <input 
-                type="text" 
-                value={smsEndpoint}
-                onChange={(e) => setSmsEndpoint(e.target.value)}
-                placeholder="e.g., ACxxxxxxxx or https://api.smsprovider.com/v1/send" 
-                className="w-full p-3 bg-gray-50 border border-black/5 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-gray-300 text-sm" 
+                 type="text" 
+                 value={smsApiKey}
+                 onChange={(e) => setSmsApiKey(e.target.value)}
+                 placeholder="e.g., 26A056A31B21AA" 
+                 className="w-full p-3 bg-gray-50 border border-black/5 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-gray-300 text-sm" 
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Twilio Auth Token (or Custom API Key)</label>
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Sender ID</label>
               <input 
-                type="password" 
-                value={smsApiKey}
-                onChange={(e) => setSmsApiKey(e.target.value)}
-                placeholder="Leave blank to use ENV string" 
-                className="w-full p-3 bg-gray-50 border border-black/5 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-gray-300 text-sm" 
+                 type="text" 
+                 value={smsSenderId}
+                 onChange={(e) => setSmsSenderId(e.target.value)}
+                 placeholder="Any Approved Sender ID" 
+                 className="w-full p-3 bg-gray-50 border border-black/5 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-gray-300 text-sm" 
               />
             </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Twilio Phone Number (or Custom Sender ID)</label>
-              <input 
-                type="text" 
-                value={smsSenderId}
-                onChange={(e) => setSmsSenderId(e.target.value)}
-                placeholder="e.g., +1234567890 or SCHOOL" 
-                className="w-full p-3 bg-gray-50 border border-black/5 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-gray-300 text-sm" 
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Campaign ID</label>
+                <input 
+                  type="text" 
+                  value={smsEndpoint}
+                  onChange={(e) => setSmsEndpoint(e.target.value)}
+                  placeholder="e.g., 9550" 
+                  className="w-full p-3 bg-gray-50 border border-black/5 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-gray-300 text-sm" 
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Route ID</label>
+                <input 
+                  type="text" 
+                  value={smsRouteId}
+                  onChange={(e) => setSmsRouteId(e.target.value)}
+                  placeholder="e.g., 10259" 
+                  className="w-full p-3 bg-gray-50 border border-black/5 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-gray-300 text-sm" 
+                />
+              </div>
             </div>
 
             <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100">
               <p className="text-sm text-amber-800 font-bold mb-2">
-                Example Implementation
+                 API Configuration Saved Securely
               </p>
               <p className="text-xs text-amber-900 mb-2 font-medium">
-                When a gate pass is verified, we will send the SMS by passing these configs to the backend. We currently support Twilio explicitly but you can configure it via ENV strings too without filling the fields.
+                 SMS Pasal will be used to send automated messages to parents upon successful verification of the gate pass.
               </p>
             </div>
           </div>
