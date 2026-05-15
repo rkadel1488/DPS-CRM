@@ -374,6 +374,25 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
   };
 
   const downloadQRCode = async (student: Student) => {
+    if (student.familyId) {
+      const familyStudents = students.filter(s => s.familyId === student.familyId);
+      const reconstructedFamily = {
+        fatherName: student.fatherName || '', fatherPhotoUrl: student.fatherPhotoUrl || '',
+        motherName: student.motherName || '', motherPhotoUrl: student.motherPhotoUrl || '',
+        driverName: student.driverName || '', driverPhotoUrl: student.driverPhotoUrl || '',
+        otherName: student.otherName || '', otherPhotoUrl: student.otherPhotoUrl || '',
+        phoneNumber: student.phoneNumber || '',
+        students: familyStudents.map(s => ({
+          name: s.name,
+          studentId: s.studentId || s.id,
+          grade: s.grade,
+          section: s.section,
+          photoUrl: s.photoUrl || ''
+        }))
+      };
+      return downloadGroupQRCode(reconstructedFamily as any, student.familyId);
+    }
+
     try {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
