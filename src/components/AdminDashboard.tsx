@@ -28,6 +28,7 @@ import { Student, UserProfile, UserRole, StaffInvite } from '../types';
 import { MAIN_ADMIN_EMAIL } from '../constants';
 import { handleFirestoreError, OperationType } from '../App';
 import * as xlsx from 'xlsx';
+import { addAppNotification } from '../utils';
 
 export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialAction, onActionComplete }: { profile: UserProfile | null, isAdmin: boolean, isMainAdmin: boolean, initialAction?: 'add_student' | 'add_teacher' | 'add_staff' | 'add_parent' | null, onActionComplete?: () => void }) {
   const [students, setStudents] = useState<Student[]>([]);
@@ -109,6 +110,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
     if (!isAdmin) return;
     try {
       const docRef = await addDoc(collection(db, 'students'), newStudent);
+      await addAppNotification('Student Added', `${newStudent.name} was added.`, 'info');
       setIsAddingStudent(false);
       setNewStudent({ 
         name: '', 
@@ -566,6 +568,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
     if (!studentToDelete || !isAdmin) return;
     try {
       await deleteDoc(doc(db, 'students', studentToDelete));
+      await addAppNotification('Student Deleted', `A student record was deleted.`, 'warning');
       setStudentToDelete(null);
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `students/${studentToDelete}`);
@@ -597,6 +600,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
     if (!isAdmin) return;
     try {
       await setDoc(doc(db, 'staff_invites', newStaff.phoneNumber), newStaff);
+      await addAppNotification('Staff Invited', `${newStaff.name} was invited as ${newStaff.role}.`, 'info');
       setIsAddingStaff(false);
       setNewStaff({ name: '', phoneNumber: '', role: 'staff', allowedTabs: ['dashboard'] });
       alert('User added successfully. They can now log in using their phone number.');

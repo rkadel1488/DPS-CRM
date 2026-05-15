@@ -19,6 +19,7 @@ import { db } from '../firebase';
 import { addDoc, collection, onSnapshot, query, doc, serverTimestamp, updateDoc, getDoc, deleteDoc } from 'firebase/firestore';
 import { UserProfile, Student, GatePass } from '../types';
 import { handleFirestoreError, OperationType } from '../App';
+import { addAppNotification } from '../utils';
 import { Html5Qrcode } from 'html5-qrcode';
 
 export default function GatePassDashboard({ profile, isAdmin, initialScan = false, verifyId = null }: { profile: UserProfile | null, isAdmin: boolean, initialScan?: boolean, verifyId?: string | null }) {
@@ -190,6 +191,7 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
         authorizedBy: profile.displayName || profile.email || 'Admin',
         createdAt: serverTimestamp()
       });
+      await addAppNotification('Gate Pass Issued', `Gate pass issued for ${student.name}.`, 'warning');
       setIsAddingGatePass(false);
       setNewGatePass({ studentId: '', reason: '', departureTime: new Date().toISOString().slice(0, 16) });
     } catch (error) {
@@ -238,6 +240,8 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
         await addDoc(collection(db, 'gate_passes'), passData);
       }
       
+      await addAppNotification('QR Verified', `Students verified for pickup: ${studentNames}`, 'info');
+
       studentNames = studentNames.slice(0, -2); // Remove trailing comma and space
 
       // Send SMS logic via the integration hook
@@ -265,6 +269,8 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
         updateData.arrivalTime = new Date().toISOString();
       }
       await updateDoc(doc(db, 'gate_passes', passId), updateData);
+      const studentName = gatePasses.find(p => p.id === passId)?.studentName || '';
+      await addAppNotification('Gate Pass Updated', `Gate pass for ${studentName} marked as ${status}.`, 'success');
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, 'gate_passes');
     }
@@ -274,6 +280,7 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
     if (!window.confirm('Are you sure you want to delete this gate pass?')) return;
     try {
       await deleteDoc(doc(db, 'gate_passes', passId));
+      await addAppNotification('Gate Pass Deleted', `A gate pass was removed.`, 'info');
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, 'gate_passes');
     }

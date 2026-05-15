@@ -138,6 +138,15 @@ export interface TransportAttendance {
   markedBy: string;
 }
 
+export interface AppNotification {
+  id: string;
+  title: string;
+  message: string;
+  type: 'info' | 'success' | 'warning' | 'error';
+  createdAt: any;
+  readBy: string[];
+}
+
 export interface GatePass {
   id: string;
   studentId: string;

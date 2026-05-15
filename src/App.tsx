@@ -43,7 +43,7 @@ import {
   addDoc,
   serverTimestamp
 } from 'firebase/firestore';
-import { StaffInvite, UserProfile, UserRole } from './types';
+import { StaffInvite, UserProfile, UserRole, AppNotification } from './types';
 import { MAIN_ADMIN_EMAIL } from './constants';
 
 // Components
@@ -223,9 +223,19 @@ function AppContent() {
   const [loginError, setLoginError] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
   
   const isMainAdmin = profile?.email === MAIN_ADMIN_EMAIL;
   const isAdmin = isMainAdmin || profile?.role === 'admin';
+
+  useEffect(() => {
+    if (!user) return;
+    const q = query(collection(db, 'app_notifications'), orderBy('createdAt', 'desc'), limit(50));
+    const unsubscribeNotifications = onSnapshot(q, (snapshot) => {
+      setNotifications(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AppNotification)));
+    });
+    return () => unsubscribeNotifications();
+  }, [user]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -586,7 +596,9 @@ function AppContent() {
                 className="relative p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-all"
               >
                 <Bell className="w-6 h-6" />
-                <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full"></span>
+                {notifications.filter(n => !n.readBy?.includes(user?.uid || '')).length > 0 && (
+                  <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full"></span>
+                )}
               </button>
               
               <AnimatePresence>
@@ -598,38 +610,80 @@ function AppContent() {
                     transition={{ duration: 0.2 }}
                     className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-black/5 overflow-hidden z-50"
                   >
-                    <div className="p-4 border-b border-black/5 flex justify-between items-center">
+                    <div className="p-4 border-b border-black/5 flex justify-between items-center bg-gray-50/50">
                       <h3 className="font-semibold text-gray-900">Notifications</h3>
-                      <button className="text-xs text-emerald-600 font-medium hover:text-emerald-700">Mark all as read</button>
+                      <button 
+                        onClick={async () => {
+                          const unreadNodes = notifications.filter(n => !n.readBy?.includes(user?.uid || ''));
+                          for (const node of unreadNodes) {
+                            try {
+                              await updateDoc(doc(db, 'app_notifications', node.id), {
+                                readBy: [...(node.readBy || []), user?.uid]
+                              });
+                            } catch(e) {}
+                          }
+                        }}
+                        className="text-xs text-emerald-600 font-medium hover:text-emerald-700"
+                      >
+                        Mark all as read
+                      </button>
                     </div>
-                    <div className="max-h-96 overflow-y-auto">
-                      <div className="p-4 border-b border-black/5 hover:bg-gray-50 transition-colors cursor-pointer">
-                        <div className="flex gap-3">
-                          <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                            <Bell className="w-5 h-5 text-emerald-600" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">Welcome to DPS CRM</p>
-                            <p className="text-xs text-gray-500 mt-1">Your account has been successfully set up.</p>
-                            <p className="text-xs text-gray-400 mt-2">Just now</p>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="p-4 hover:bg-gray-50 transition-colors cursor-pointer">
-                        <div className="flex gap-3">
-                          <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                            <Bell className="w-5 h-5 text-blue-600" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">System Update</p>
-                            <p className="text-xs text-gray-500 mt-1">New features have been added to the Transport module.</p>
-                            <p className="text-xs text-gray-400 mt-2">2 hours ago</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="p-3 border-t border-black/5 text-center">
-                      <button className="text-sm text-gray-500 hover:text-gray-700 font-medium">View all notifications</button>
+                    <div className="max-h-96 overflow-y-auto divide-y divide-black/5">
+                      {notifications.length === 0 ? (
+                        <div className="p-6 text-center text-sm text-gray-500">No notifications yet.</div>
+                      ) : (
+                        notifications.map((notif) => {
+                          const isUnread = !notif.readBy?.includes(user?.uid || '');
+                          const timeAgo = notif.createdAt?.seconds 
+                            ? Math.floor((Date.now() / 1000 - notif.createdAt.seconds) / 60)
+                            : 0;
+                          
+                          let timeString = 'Just now';
+                          if (timeAgo > 60*24) timeString = `${Math.floor(timeAgo / (60*24))}d ago`;
+                          else if (timeAgo > 60) timeString = `${Math.floor(timeAgo / 60)}h ago`;
+                          else if (timeAgo > 0) timeString = `${timeAgo}m ago`;
+
+                          return (
+                            <div 
+                              key={notif.id} 
+                              className={`p-4 transition-colors cursor-pointer ${isUnread ? 'bg-emerald-50/30' : 'hover:bg-gray-50'}`}
+                              onClick={async () => {
+                                if (isUnread) {
+                                  try {
+                                    await updateDoc(doc(db, 'app_notifications', notif.id), {
+                                      readBy: [...(notif.readBy || []), user?.uid]
+                                    });
+                                  } catch(e) {}
+                                }
+                              }}
+                            >
+                              <div className="flex gap-3">
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                                  notif.type === 'success' ? 'bg-emerald-100' :
+                                  notif.type === 'warning' ? 'bg-amber-100' :
+                                  notif.type === 'error' ? 'bg-red-100' : 'bg-blue-100'
+                                }`}>
+                                  <Bell className={`w-5 h-5 ${
+                                    notif.type === 'success' ? 'text-emerald-600' :
+                                    notif.type === 'warning' ? 'text-amber-600' :
+                                    notif.type === 'error' ? 'text-red-600' : 'text-blue-600'
+                                  }`} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex justify-between items-start gap-2">
+                                    <p className={`text-sm font-medium truncate ${isUnread ? 'text-gray-900' : 'text-gray-700'}`}>
+                                      {notif.title}
+                                    </p>
+                                    {isUnread && <div className="w-2 h-2 rounded-full bg-emerald-500 mt-1.5 flex-shrink-0" />}
+                                  </div>
+                                  <p className="text-xs text-gray-500 mt-0.5 line-clamp-2 leading-relaxed">{notif.message}</p>
+                                  <p className="text-[10px] text-gray-400 mt-2 font-medium">{timeString}</p>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
                     </div>
                   </motion.div>
                 )}

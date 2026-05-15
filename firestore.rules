@@ -161,5 +161,9 @@ service cloud.firestore {
       allow read: if isStaff();
       allow write: if isAdmin();
     }
+    match /app_notifications/{notificationId} {
+      allow read: if isStaff();
+      allow write: if isStaff();
+    }
   }
 }
