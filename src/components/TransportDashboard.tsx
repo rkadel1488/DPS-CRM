@@ -18,7 +18,7 @@ import { db } from '../firebase';
 import { addDoc, collection, onSnapshot, query, doc, setDoc, serverTimestamp, updateDoc, deleteDoc } from 'firebase/firestore';
 import { Vehicle, Route, BoardingLog, UserProfile, Student, TransportAttendance } from '../types';
 import { handleFirestoreError, OperationType } from '../App';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline, CircleMarker } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -32,15 +32,25 @@ let DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
-function MapBoundsUpdater({ vehicles, selectedVehicleId, centerTrigger }: { vehicles: Vehicle[], selectedVehicleId: string, centerTrigger: number }) {
+function MapBoundsUpdater({ vehicles, routes, selectedVehicleId, centerTrigger }: { vehicles: Vehicle[], routes: Route[], selectedVehicleId: string, centerTrigger: number }) {
   const map = useMap();
   useEffect(() => {
     let targetVehicles = vehicles.filter(v => v.currentLat && v.currentLng);
     if (selectedVehicleId !== 'all') {
       targetVehicles = targetVehicles.filter(v => v.id === selectedVehicleId);
     }
-    if (targetVehicles.length > 0) {
-      const bounds = L.latLngBounds(targetVehicles.map(v => [v.currentLat!, v.currentLng!]));
+    
+    let points: L.LatLngExpression[] = targetVehicles.map(v => [v.currentLat!, v.currentLng!]);
+    
+    if (selectedVehicleId !== 'all') {
+      const trackingRoute = routes.find(r => r.vehicleId === selectedVehicleId);
+      if (trackingRoute && trackingRoute.stops) {
+        trackingRoute.stops.forEach(s => points.push([s.lat, s.lng]));
+      }
+    }
+
+    if (points.length > 0) {
+      const bounds = L.latLngBounds(points);
       map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
     } else {
       // If no vehicles, try to get user's current location
@@ -57,7 +67,7 @@ function MapBoundsUpdater({ vehicles, selectedVehicleId, centerTrigger }: { vehi
         );
       }
     }
-  }, [vehicles, map, selectedVehicleId, centerTrigger]);
+  }, [vehicles, routes, map, selectedVehicleId, centerTrigger]);
   return null;
 }
 
@@ -166,7 +176,12 @@ export default function TransportDashboard({ profile, isAdmin }: { profile: User
     e.preventDefault();
     if (!isAdmin) return;
     try {
-      const routeData = { ...newRoute };
+      const mockStops = [
+        { name: 'Start Point', lat: 40.7100, lng: -74.0150 },
+        { name: 'Midway Station', lat: 40.7150, lng: -74.0050 },
+        { name: 'School Campus', lat: 40.7200, lng: -73.9950 }
+      ];
+      const routeData = { ...newRoute, stops: newRoute.stops.length > 0 ? newRoute.stops : mockStops };
       if (!routeData.vehicleId) {
         delete (routeData as any).vehicleId;
       }
@@ -559,7 +574,7 @@ export default function TransportDashboard({ profile, isAdmin }: { profile: User
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                   />
-                  <MapBoundsUpdater vehicles={vehicles} selectedVehicleId={selectedTrackingVehicleId} centerTrigger={centerTrigger} />
+                  <MapBoundsUpdater vehicles={vehicles} routes={routes} selectedVehicleId={selectedTrackingVehicleId} centerTrigger={centerTrigger} />
                   {vehicles.filter(v => v.currentLat && v.currentLng).map(bus => (
                     <Marker key={bus.id} position={[bus.currentLat!, bus.currentLng!]}>
                       <Popup>
@@ -569,6 +584,37 @@ export default function TransportDashboard({ profile, isAdmin }: { profile: User
                       </Popup>
                     </Marker>
                   ))}
+                  {(() => {
+                    const trackingRoute = selectedTrackingVehicleId !== 'all' ? routes.find(r => r.vehicleId === selectedTrackingVehicleId) : null;
+                    if (!trackingRoute || !trackingRoute.stops || trackingRoute.stops.length === 0) return null;
+                    return (
+                      <>
+                        <Polyline 
+                          positions={trackingRoute.stops.map(s => [s.lat, s.lng])} 
+                          color="#3b82f6" 
+                          weight={4} 
+                          opacity={0.8}
+                          dashArray="5, 10"
+                        />
+                        {trackingRoute.stops.map((stop, idx) => (
+                          <CircleMarker 
+                            key={`stop-${idx}`} 
+                            center={[stop.lat, stop.lng]} 
+                            radius={6} 
+                            fillColor="#ffffff" 
+                            color="#3b82f6" 
+                            weight={2} 
+                            fillOpacity={1}
+                          >
+                            <Popup>
+                              <div className="font-bold">{stop.name}</div>
+                              <div className="text-xs text-gray-500">Stop {idx + 1}</div>
+                            </Popup>
+                          </CircleMarker>
+                        ))}
+                      </>
+                    );
+                  })()}
                 </MapContainer>
               </div>
               
