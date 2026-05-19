@@ -45,6 +45,7 @@ import {
 } from 'firebase/firestore';
 import { StaffInvite, UserProfile, UserRole, AppNotification } from './types';
 import { MAIN_ADMIN_EMAIL } from './constants';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 
 // Components
 import CanteenDashboard from './components/CanteenDashboard';
@@ -896,6 +897,30 @@ function DashboardOverview({ profile, isAdmin, setActiveTab, setAdminAction, set
             <h3 className="text-2xl font-bold text-gray-900 mt-1">{stat.value}</h3>
           </motion.div>
         ))}
+      </div>
+
+      {/* Visual Dashboards */}
+      <div className="bg-white p-6 rounded-3xl border border-black/5 shadow-sm">
+        <h3 className="text-xl font-bold text-gray-900 mb-6">System Overview</h3>
+        <div className="h-[300px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart 
+              data={[
+                { name: 'Students', count: stats.totalStudents, fill: '#3b82f6' },
+                { name: 'Active Buses', count: stats.activeBuses, fill: '#10b981' },
+                { name: 'Gate Passes', count: stats.activeGatePasses, fill: '#f97316' },
+                { name: 'Lunch Regs', count: stats.canteenLunchRegs, fill: '#6366f1' },
+              ]}
+              margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#6B7280', fontSize: 12}} />
+              <YAxis axisLine={false} tickLine={false} tick={{fill: '#6B7280', fontSize: 12}} />
+              <RechartsTooltip cursor={{fill: '#F3F4F6'}} contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
+              <Bar dataKey="count" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

@@ -29,6 +29,9 @@ import { MAIN_ADMIN_EMAIL } from '../constants';
 import { handleFirestoreError, OperationType } from '../App';
 import * as xlsx from 'xlsx';
 import { addAppNotification } from '../utils';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialAction, onActionComplete }: { profile: UserProfile | null, isAdmin: boolean, isMainAdmin: boolean, initialAction?: 'add_student' | 'add_teacher' | 'add_staff' | 'add_parent' | null, onActionComplete?: () => void }) {
   const [students, setStudents] = useState<Student[]>([]);
@@ -735,6 +738,30 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
     e.target.value = '';
   };
 
+  const exportPDFReport = () => {
+    const doc = new jsPDF();
+    doc.text(`Report: ${activeTab.toUpperCase()}`, 14, 15);
+    
+    if (activeTab === 'students') {
+      const tableData = students.map(s => [s.name, s.grade || '-', s.section || '-', s.phoneNumber || '-', s.balance || 0]);
+      autoTable(doc, {
+        head: [['Name', 'Grade', 'Section', 'Phone', 'Balance']],
+        body: tableData,
+        startY: 20,
+      });
+    } else {
+      const targetRole = activeTab === 'teachers' ? 'teacher' : activeTab === 'parents' ? 'parent' : 'staff';
+      const filteredStaff = staff.filter(s => s.role === targetRole);
+      const tableData = filteredStaff.map(s => [s.displayName || '-', s.role, s.phoneNumber || '-']);
+      autoTable(doc, {
+        head: [['Name', 'Role', 'Phone']],
+        body: tableData,
+        startY: 20,
+      });
+    }
+    doc.save(`${activeTab}-report.pdf`);
+  };
+
   const availableTabs = [
     { id: 'dashboard', label: 'Dashboard' },
     { id: 'gatepass', label: 'Gate Pass' },
@@ -754,11 +781,20 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
         </div>
         <div className="flex flex-wrap gap-3">
           {isAdmin && (
-            <label className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl text-sm font-bold hover:bg-emerald-100 transition-all cursor-pointer">
-              <Upload className="w-4 h-4" />
-              Import Excel
-              <input type="file" accept=".xlsx, .xls" className="hidden" onChange={handleImportExcel} />
-            </label>
+            <>
+              <button 
+                onClick={exportPDFReport}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-xl text-sm font-bold hover:bg-blue-100 transition-all cursor-pointer"
+              >
+                <Download className="w-4 h-4" />
+                Export PDF
+              </button>
+              <label className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl text-sm font-bold hover:bg-emerald-100 transition-all cursor-pointer">
+                <Upload className="w-4 h-4" />
+                Import Excel
+                <input type="file" accept=".xlsx, .xls" className="hidden" onChange={handleImportExcel} />
+              </label>
+            </>
           )}
           {activeTab === 'students' && isAdmin && (
             <>
@@ -849,6 +885,38 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
             <button className="p-2 bg-gray-50 rounded-xl text-gray-500 hover:bg-gray-100">
               <Filter className="w-5 h-5" />
             </button>
+          </div>
+        </div>
+
+        {/* Visual Analytics */}
+        <div className="p-6 border-b border-black/5 bg-gray-50 flex flex-col lg:flex-row gap-6">
+          <div className="flex-1 bg-white p-4 rounded-2xl shadow-sm border border-black/5">
+             <h3 className="text-sm font-bold text-gray-900 mb-4">User Roles Breakdown</h3>
+             <div className="h-[200px]">
+               <ResponsiveContainer width="100%" height="100%">
+                 <PieChart>
+                   <Pie
+                     data={[
+                       { name: 'Students', value: students.length },
+                       { name: 'Teachers', value: staff.filter(s => s.role === 'teacher').length },
+                       { name: 'Parents', value: staff.filter(s => s.role === 'parent').length },
+                       { name: 'Staff', value: staff.filter(s => ['staff', 'admin'].includes(s.role)).length },
+                     ]}
+                     innerRadius={60}
+                     outerRadius={80}
+                     paddingAngle={5}
+                     dataKey="value"
+                   >
+                     <Cell fill="#3b82f6" />
+                     <Cell fill="#10b981" />
+                     <Cell fill="#f97316" />
+                     <Cell fill="#6366f1" />
+                   </Pie>
+                   <RechartsTooltip contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
+                   <Legend verticalAlign="bottom" height={36}/>
+                 </PieChart>
+               </ResponsiveContainer>
+             </div>
           </div>
         </div>
 
