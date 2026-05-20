@@ -18,7 +18,8 @@ import {
   ChevronRight,
   BookOpen,
   Ticket,
-  QrCode
+  QrCode,
+  School
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, db } from './firebase';
@@ -159,16 +160,16 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
       }
 
       return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-          <div className="bg-white p-8 rounded-3xl shadow-xl max-w-md w-full border border-red-100 text-center">
-            <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-6">
+        <div className="min-h-screen bg-white/60 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white/70 backdrop-blur-xl p-8 rounded-[1.5rem] shadow-2xl shadow-gray-200/40 max-w-md w-full border border-red-100 text-center">
+            <div className="w-16 h-16 bg-red-50 rounded-[1rem] flex items-center justify-center mx-auto mb-6">
               <AlertCircle className="w-8 h-8 text-red-500" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Application Error</h2>
+            <h2 className="text-2xl font-extrabold tracking-tight text-gray-900 mb-2">Application Error</h2>
             <p className="text-gray-500 mb-6">{errorMessage}</p>
             <button 
               onClick={() => window.location.reload()}
-              className="w-full py-3 bg-gray-900 text-white rounded-xl font-bold hover:bg-gray-800 transition-all"
+              className="w-full py-3 bg-gradient-to-r from-slate-700 to-slate-900 shadow-lg shadow-slate-900/20 text-white border-none text-white rounded-xl font-bold hover:from-slate-800 hover:to-slate-950 hover:shadow-xl hover:-translate-y-0.5 transition-all"
             >
               Reload Application
             </button>
@@ -394,7 +395,7 @@ function AppContent() {
 
   if (loading || (user && !profile)) {
     return (
-      <div className="min-h-screen bg-[#F5F5F4] flex items-center justify-center">
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
         <motion.div 
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
@@ -406,68 +407,132 @@ function AppContent() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#F5F5F4] flex items-center justify-center p-4">
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="max-w-md w-full bg-white rounded-3xl shadow-xl p-8 text-center border border-black/5"
-        >
-          <div className="w-24 h-24 rounded-2xl flex items-center justify-center mx-auto mb-6 overflow-hidden border border-black/5 shadow-sm bg-white">
-            <img src="https://dpsbiratnagar.edu.np/wp-content/uploads/2026/03/dps-logo-high-scaled.png" alt="DPS Logo" className="w-full h-full object-contain p-2" />
-          </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">DPS CRM</h1>
-          <p className="text-gray-500 mb-8">Canteen & Transport Management System</p>
-          
-          {isPhoneLogin ? (
-            <form onSubmit={handlePhoneLogin} className="space-y-4">
-              <div>
-                <input 
-                  type="tel" 
-                  placeholder="Enter Phone Number" 
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                  className="w-full p-4 bg-gray-50 border border-black/5 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500 text-center text-lg tracking-wider"
-                />
+      <div className="min-h-screen flex flex-col md:flex-row bg-[#F8FAFC]">
+        {/* Left Panel */}
+        <div className="hidden md:flex flex-col justify-between w-full md:w-[45%] lg:w-2/5 bg-[#1F8649] text-white p-12 relative overflow-hidden h-screen rounded-r-[2.5rem] shadow-2xl shadow-green-900/20 z-10">
+          <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-[#16A34A] rounded-full blur-[100px] opacity-40 -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
+          <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-[#0E6C34] rounded-full blur-[100px] opacity-40 translate-y-1/3 -translate-x-1/4 pointer-events-none"></div>
+
+          <div className="relative z-10 pt-4">
+            <div className="flex items-center gap-4 mb-24">
+              <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md shadow-xl shadow-gray-200/50 border border-white/20">
+                <School className="w-6 h-6 text-white" />
               </div>
-              {loginError && <p className="text-red-500 text-sm">{loginError}</p>}
-              <button
-                type="submit"
-                className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-semibold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200"
-              >
-                Login with Phone
-              </button>
-              <button
-                type="button"
-                onClick={() => { setIsPhoneLogin(false); setLoginError(''); }}
-                className="w-full py-4 bg-white text-gray-500 rounded-2xl font-medium hover:bg-gray-50 transition-all"
-              >
-                Back to Google Login
-              </button>
-            </form>
-          ) : (
-            <div className="space-y-4">
-              {loginError && <p className="text-red-500 text-sm">{loginError}</p>}
-              <button
-                onClick={handleLogin}
-                disabled={isLoggingIn}
-                className="w-full py-4 bg-gray-900 text-white rounded-2xl font-semibold hover:bg-gray-800 transition-all flex items-center justify-center gap-3 shadow-lg shadow-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="Google" />
-                {isLoggingIn ? 'Signing in...' : 'Sign in with Google'}
-              </button>
-              <button
-                onClick={() => setIsPhoneLogin(true)}
-                className="w-full py-4 bg-emerald-50 text-emerald-700 rounded-2xl font-semibold hover:bg-emerald-100 transition-all flex items-center justify-center gap-3"
-              >
-                Staff Login (Phone Number)
-              </button>
+              <div>
+                <h2 className="font-bold text-xl leading-tight font-sans tracking-tight">DPS CRM</h2>
+                <p className="text-emerald-100 text-sm font-medium">Canteen & Transport</p>
+              </div>
             </div>
-          )}
+            
+            <div className="max-w-md">
+              <h1 className="text-[3rem] lg:text-[3.5rem] font-extrabold mb-6 leading-[1.05] tracking-tight text-white drop-shadow-xl shadow-gray-200/50 font-sans">
+                Manage campus<br/>operations, effortlessly.
+              </h1>
+              <p className="text-emerald-50 text-lg leading-relaxed mb-12 font-medium opacity-90 max-w-sm">
+                One platform for gate passes, canteen, transport, and library management — built for administrators and parents.
+              </p>
+            </div>
+          </div>
           
-          <p className="mt-6 text-xs text-gray-400">
-            Secure access for authorized school personnel and parents.
-          </p>
-        </motion.div>
+          <div className="grid grid-cols-2 gap-4 relative z-10 w-full max-w-[420px] pb-8">
+            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-5 shadow-lg">
+              <div className="text-[2rem] font-bold mb-1 tracking-tight">1,284</div>
+              <div className="text-emerald-50 text-sm font-medium">Students enrolled</div>
+            </div>
+            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-5 shadow-lg">
+              <div className="text-[2rem] font-bold mb-1 tracking-tight">14</div>
+              <div className="text-emerald-50 text-sm font-medium">Active bus routes</div>
+            </div>
+            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-5 shadow-lg">
+              <div className="text-[2rem] font-bold mb-1 tracking-tight">962</div>
+              <div className="text-emerald-50 text-sm font-medium">Lunch registrations</div>
+            </div>
+            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-5 shadow-lg">
+              <div className="text-[2rem] font-bold mb-1 tracking-tight">38</div>
+              <div className="text-emerald-50 text-sm font-medium">Gate passes today</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Panel */}
+        <div className="flex-1 flex flex-col justify-center p-6 lg:p-12 relative h-screen overflow-y-auto">
+          <div className="max-w-[440px] w-full mx-auto">
+            <div className="bg-white/70 backdrop-blur-xl rounded-[2rem] shadow-xl shadow-gray-200/50 p-10 border border-white/80">
+              <div className="text-center mb-8">
+                <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-6 md:hidden">
+                  <School className="w-8 h-8 text-emerald-600" />
+                </div>
+                <h2 className="text-[2rem] font-bold text-gray-900 mb-3 font-sans tracking-tight">Welcome back</h2>
+                <p className="text-base text-gray-500 font-medium">
+                  Sign in to access your portal
+                </p>
+              </div>
+              
+              <div className="space-y-6">
+                {loginError && (
+                  <div className="bg-red-50 text-red-600 px-4 py-3 rounded-xl text-sm font-medium border border-red-100 flex items-center text-left">
+                    <AlertCircle className="w-4 h-4 mr-2 shrink-0" />
+                    {loginError}
+                  </div>
+                )}
+                
+                <button
+                  onClick={handleLogin}
+                  disabled={isLoggingIn}
+                  className="w-full h-[3.5rem] bg-gradient-to-r from-slate-700 to-slate-900 shadow-lg shadow-slate-900/20 text-white border-none text-white rounded-xl font-semibold hover:from-slate-800 hover:to-slate-950 hover:shadow-xl hover:-translate-y-0.5 hover:shadow-lg hover:shadow-gray-900/20 active:scale-[0.98] transition-all flex items-center justify-center gap-3 text-base outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 disabled:opacity-50"
+                >
+                  <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center shrink-0">
+                     <img src="https://www.google.com/favicon.ico" className="w-[14px] h-[14px]" alt="Google" />
+                  </div>
+                  {isLoggingIn ? 'Signing in...' : 'Continue with Google'}
+                </button>
+                
+                <div className="relative flex items-center justify-center py-2">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-white/60"></div>
+                  </div>
+                  <div className="relative bg-white px-4 text-[13px] font-bold text-gray-400 uppercase tracking-widest">
+                    Or
+                  </div>
+                </div>
+
+                <div className="text-left space-y-4">
+                  <label className="block text-sm font-bold text-gray-700">
+                    Staff Login via Phone
+                  </label>
+                  
+                  <form onSubmit={handlePhoneLogin} className="space-y-4">
+                    <div className="flex gap-0 overflow-hidden rounded-xl border border-white/60 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 transition-all bg-white shadow-xl shadow-gray-200/50">
+                      <div className="flex items-center gap-2 px-4 bg-white/50 border-r border-white/60 text-gray-700 font-bold text-base shrink-0">
+                        <img src="https://flagcdn.com/w20/in.png" alt="India flag" className="w-5" />
+                        <span>+91</span>
+                      </div>
+                      <input 
+                        type="tel" 
+                        placeholder="Mobile number" 
+                        value={phoneNumber}
+                        onChange={(e) => setPhoneNumber(e.target.value)}
+                        className="flex-1 px-4 py-3.5 outline-none text-gray-900 font-medium placeholder-gray-400 bg-transparent text-base"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      className="w-full h-[3.5rem] bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white rounded-xl font-bold hover:from-emerald-600 hover:to-teal-600 hover:shadow-xl hover:-translate-y-0.5 hover:shadow-lg hover:shadow-emerald-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-base outline-none focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2"
+                    >
+                      Send OTP <span className="font-serif">→</span>
+                    </button>
+                  </form>
+                </div>
+              </div>
+              
+              <div className="mt-8 text-center border-t border-white/80 pt-6">
+                <p className="text-sm text-gray-400 font-medium">
+                  Need access? <a href="#" className="text-emerald-600 font-bold hover:text-emerald-700 transition-colors">Contact Administrator</a>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -486,7 +551,13 @@ function AppContent() {
   });
 
   return (
-    <div className="min-h-screen bg-[#F5F5F4] flex relative">
+    <div className="min-h-screen bg-[#F8FAFC] flex relative overflow-hidden">
+      {/* Vibrant Background Mesh */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <div className="absolute top-[-20%] right-[-10%] w-[800px] h-[800px] bg-blue-400/10 rounded-full blur-[120px] mix-blend-multiply"></div>
+        <div className="absolute bottom-[-20%] left-[-10%] w-[800px] h-[800px] bg-emerald-400/15 rounded-full blur-[120px] mix-blend-multiply"></div>
+      </div>
+
       {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (
         <div 
@@ -499,7 +570,7 @@ function AppContent() {
       <motion.aside 
         initial={false}
         animate={{ width: isSidebarOpen ? 280 : 80 }}
-        className={`bg-white border-r border-black/5 flex flex-col z-50 fixed lg:sticky top-0 h-screen transition-transform duration-300 ${
+        className={`bg-white/70 backdrop-blur-3xl border-r border-white/60 flex flex-col z-50 fixed lg:sticky top-0 h-screen transition-transform duration-300 shadow-[4px_0_24px_rgba(0,0,0,0.02)] ${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
@@ -513,7 +584,7 @@ function AppContent() {
                 exit={{ opacity: 0 }}
                 className="flex items-center gap-3"
               >
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden border border-black/5 shadow-sm bg-white">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden border border-white/60 shadow-2xl shadow-gray-200/50 bg-white">
                   <img src="https://dpsbiratnagar.edu.np/wp-content/uploads/2026/03/dps-logo-high-scaled.png" alt="DPS Logo" className="w-full h-full object-contain p-1" />
                 </div>
                 <span className="font-bold text-xl tracking-tight">DPS CRM</span>
@@ -524,7 +595,7 @@ function AppContent() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto overflow-hidden border border-black/5 shadow-sm bg-white"
+                className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto overflow-hidden border border-white/60 shadow-2xl shadow-gray-200/50 bg-white"
               >
                 <img src="https://dpsbiratnagar.edu.np/wp-content/uploads/2026/03/dps-logo-high-scaled.png" alt="DPS Logo" className="w-full h-full object-contain p-1" />
               </motion.div>
@@ -540,18 +611,18 @@ function AppContent() {
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center gap-4 p-3 rounded-2xl transition-all ${
+                className={`w-full flex items-center gap-4 p-3.5 rounded-[1.25rem] transition-all group ${
                   isActive 
-                    ? 'bg-emerald-50 text-emerald-700 font-medium' 
-                    : 'text-gray-500 hover:bg-gray-50'
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-medium shadow-lg shadow-emerald-500/25' 
+                    : 'text-gray-500 hover:bg-white/50 hover:text-gray-900'
                 }`}
               >
-                <item.icon className={`w-6 h-6 ${isActive ? 'text-emerald-600' : ''}`} />
+                <item.icon className={`w-[22px] h-[22px] transition-transform ${isActive ? 'text-white' : 'group-hover:scale-110'}`} />
                 {isSidebarOpen && <span>{item.label}</span>}
                 {isActive && isSidebarOpen && (
                   <motion.div 
                     layoutId="active-pill"
-                    className="ml-auto w-1.5 h-6 bg-emerald-600 rounded-full"
+                    className="ml-auto w-1.5 h-6 bg-white rounded-full shadow-sm"
                   />
                 )}
               </button>
@@ -559,10 +630,10 @@ function AppContent() {
           })}
         </nav>
 
-        <div className="p-4 border-t border-black/5">
+        <div className="p-4 border-t border-white/60">
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-4 p-3 text-gray-500 hover:bg-red-50 hover:text-red-600 rounded-2xl transition-all"
+            className="w-full flex items-center gap-4 p-3 text-gray-500 hover:bg-red-50 hover:text-red-600 rounded-[1rem] transition-all"
           >
             <LogOut className="w-6 h-6" />
             {isSidebarOpen && <span>Logout</span>}
@@ -571,21 +642,21 @@ function AppContent() {
       </motion.aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col min-w-0">
-        <header className="h-20 bg-white border-b border-black/5 px-4 md:px-8 flex items-center justify-between sticky top-0 z-40">
+      <main className="flex-1 flex flex-col min-w-0 relative z-10">
+        <header className="h-24 bg-white/40 backdrop-blur-3xl border-b border-white/60 px-4 md:px-8 flex items-center justify-between sticky top-0 z-40">
           <div className="flex items-center gap-4">
             <button 
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="p-2 hover:bg-gray-100 rounded-lg lg:hidden"
+              className="p-2.5 bg-white/60 hover:bg-white shadow-sm rounded-xl lg:hidden transition-all"
             >
-              <MenuIcon className="w-6 h-6" />
+              <MenuIcon className="w-5 h-5 text-gray-700" />
             </button>
-            <div className="relative hidden md:block">
-              <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <div className="relative hidden md:block group">
+              <Search className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-500 transition-colors" />
               <input 
                 type="text" 
                 placeholder="Search students, routes..." 
-                className="pl-10 pr-4 py-2 bg-gray-100 border-none rounded-xl w-64 focus:ring-2 focus:ring-emerald-500 transition-all outline-none"
+                className="pl-11 pr-4 py-3 bg-white/60 backdrop-blur-sm shadow-sm border border-white/60 rounded-xl w-64 focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none text-sm font-medium"
               />
             </div>
           </div>
@@ -609,9 +680,9 @@ function AppContent() {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
                     transition={{ duration: 0.2 }}
-                    className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-black/5 overflow-hidden z-50"
+                    className="absolute right-0 mt-2 w-80 bg-white rounded-[1.5rem] shadow-2xl shadow-gray-200/40 border border-white/60 overflow-hidden z-50"
                   >
-                    <div className="p-4 border-b border-black/5 flex justify-between items-center bg-gray-50/50">
+                    <div className="p-4 border-b border-white/60 flex justify-between items-center bg-white/60 backdrop-blur-md/50">
                       <h3 className="font-semibold text-gray-900">Notifications</h3>
                       <button 
                         onClick={async () => {
@@ -629,7 +700,7 @@ function AppContent() {
                         Mark all as read
                       </button>
                     </div>
-                    <div className="max-h-96 overflow-y-auto divide-y divide-black/5">
+                    <div className="max-h-96 overflow-y-auto divide-y divide-gray-100/80">
                       {notifications.length === 0 ? (
                         <div className="p-6 text-center text-sm text-gray-500">No notifications yet.</div>
                       ) : (
@@ -647,7 +718,7 @@ function AppContent() {
                           return (
                             <div 
                               key={notif.id} 
-                              className={`p-4 transition-colors cursor-pointer ${isUnread ? 'bg-emerald-50/30' : 'hover:bg-gray-50'}`}
+                              className={`p-4 transition-colors cursor-pointer ${isUnread ? 'bg-emerald-50/30' : 'hover:bg-white/60 backdrop-blur-md'}`}
                               onClick={async () => {
                                 if (isUnread) {
                                   try {
@@ -690,14 +761,14 @@ function AppContent() {
                 )}
               </AnimatePresence>
             </div>
-            <div className="flex items-center gap-3 pl-4 md:pl-6 border-l border-black/5">
+            <div className="flex items-center gap-3 pl-4 md:pl-6 border-l border-white/60">
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-semibold text-gray-900">{profile?.displayName}</p>
                 <p className="text-xs text-gray-500 capitalize">{profile?.role}</p>
               </div>
               <img 
                 src={user.photoURL || `https://ui-avatars.com/api/?name=${profile?.displayName}`} 
-                className="w-10 h-10 rounded-xl border border-black/5"
+                className="w-10 h-10 rounded-xl border border-white/60"
                 alt="Profile"
               />
             </div>
@@ -810,21 +881,21 @@ function DashboardOverview({ profile, isAdmin, setActiveTab, setAdminAction, set
     <div className="space-y-8 relative">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-bold text-gray-900">Welcome back, {profile?.displayName.split(' ')[0]}!</h2>
+          <h2 className="text-[2.25rem] font-extrabold tracking-tight text-gray-900">Welcome back, {profile?.displayName.split(' ')[0]}!</h2>
           <p className="text-gray-500 mt-1">Here's what's happening across campus today.</p>
         </div>
         <div className="flex gap-3 relative">
           <button 
             onClick={handleDownloadReport}
             disabled={isDownloading}
-            className="px-4 py-2 bg-white border border-black/5 rounded-xl text-sm font-medium hover:bg-gray-50 transition-all disabled:opacity-50"
+            className="px-4 py-2 bg-white border border-white/60 rounded-xl text-sm font-medium hover:bg-white/60 backdrop-blur-md transition-all disabled:opacity-50"
           >
             {isDownloading ? 'Downloading...' : 'Download Report'}
           </button>
           <div className="relative">
             <button 
               onClick={() => setShowQuickAction(!showQuickAction)}
-              className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-medium hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100"
+              className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white rounded-xl text-sm font-medium hover:from-emerald-600 hover:to-teal-600 hover:shadow-xl hover:-translate-y-0.5 transition-all shadow-lg shadow-emerald-100"
             >
               Quick Action
             </button>
@@ -835,30 +906,30 @@ function DashboardOverview({ profile, isAdmin, setActiveTab, setAdminAction, set
                   initial={{ opacity: 0, y: 10, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                  className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-black/5 overflow-hidden z-50"
+                  className="absolute right-0 mt-2 w-48 bg-white rounded-[1.5rem] shadow-2xl shadow-gray-200/40 border border-white/60 overflow-hidden z-50"
                 >
                   <div className="p-2 space-y-1">
                     <button 
                       onClick={() => { setShowQuickAction(false); setActiveTab('admin'); setAdminAction('add_student'); }}
-                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-xl transition-all"
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-white/60 backdrop-blur-md rounded-xl transition-all"
                     >
                       Add Student
                     </button>
                     <button 
                       onClick={() => { setShowQuickAction(false); setActiveTab('admin'); setAdminAction('add_teacher'); }}
-                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-xl transition-all"
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-white/60 backdrop-blur-md rounded-xl transition-all"
                     >
                       Add Teacher
                     </button>
                     <button 
                       onClick={() => { setShowQuickAction(false); setActiveTab('admin'); setAdminAction('add_staff'); }}
-                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-xl transition-all"
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-white/60 backdrop-blur-md rounded-xl transition-all"
                     >
                       Add Staff
                     </button>
                     <button 
                       onClick={() => { setShowQuickAction(false); setActiveTab('admin'); setAdminAction('add_parent'); }}
-                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-xl transition-all"
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-white/60 backdrop-blur-md rounded-xl transition-all"
                     >
                       Add Parent
                     </button>
@@ -871,37 +942,40 @@ function DashboardOverview({ profile, isAdmin, setActiveTab, setAdminAction, set
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 relative z-10 w-full mb-4">
         {[
-          { label: 'Total Students', value: stats.totalStudents, icon: Users, color: 'bg-blue-500', trend: 'Registered' },
-          { label: 'Active Buses', value: stats.activeBuses, icon: Bus, color: 'bg-emerald-500', trend: 'Fleet' },
-          { label: 'Gate Passes', value: stats.activeGatePasses, icon: Ticket, color: 'bg-orange-500', trend: 'Active' },
-          { label: 'Lunch Regs', value: stats.canteenLunchRegs, icon: Utensils, color: 'bg-indigo-500', trend: 'Active' },
+          { label: 'Total Students', value: stats.totalStudents, icon: Users, color: 'from-blue-400 to-indigo-500', bg: 'bg-blue-50/50', trend: 'Registered' },
+          { label: 'Active Buses', value: stats.activeBuses, icon: Bus, color: 'from-emerald-400 to-teal-500', bg: 'bg-emerald-50/50', trend: 'Fleet' },
+          { label: 'Gate Passes', value: stats.activeGatePasses, icon: Ticket, color: 'from-orange-400 to-rose-400', bg: 'bg-orange-50/50', trend: 'Active' },
+          { label: 'Lunch Regs', value: stats.canteenLunchRegs, icon: Utensils, color: 'from-violet-400 to-purple-500', bg: 'bg-violet-50/50', trend: 'Active' },
         ].map((stat, i) => (
           <motion.div 
             key={i}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: i * 0.1 }}
-            className="bg-white p-6 rounded-3xl border border-black/5 shadow-sm"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.1, duration: 0.4, ease: "easeOut" }}
+            className="group relative overflow-hidden bg-white/70 backdrop-blur-2xl p-8 rounded-[2rem] border border-white/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] transition-all hover:-translate-y-1 cursor-default"
           >
-            <div className="flex items-center justify-between mb-4">
-              <div className={`${stat.color} p-3 rounded-2xl text-white`}>
+            <div className={`absolute -right-4 -top-4 w-32 h-32 bg-gradient-to-br ${stat.color} rounded-full blur-[40px] opacity-20 group-hover:opacity-30 transition-opacity`}></div>
+            <div className="relative z-10 flex items-center justify-between mb-6">
+              <div className={`bg-gradient-to-br ${stat.color} p-4 rounded-2xl text-white shadow-lg`}>
                 <stat.icon className="w-6 h-6" />
               </div>
-              <span className="text-xs font-bold px-2 py-1 rounded-full bg-gray-50 text-gray-500">
+              <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${stat.bg} border border-white/60 text-gray-600 shadow-sm`}>
                 {stat.trend}
               </span>
             </div>
-            <p className="text-gray-500 text-sm font-medium">{stat.label}</p>
-            <h3 className="text-2xl font-bold text-gray-900 mt-1">{stat.value}</h3>
+            <div className="relative z-10">
+              <p className="text-gray-500 text-xs font-bold mb-1 uppercase tracking-wider">{stat.label}</p>
+              <h3 className="text-[2.25rem] font-extrabold tracking-tight text-gray-900 leading-none">{stat.value}</h3>
+            </div>
           </motion.div>
         ))}
       </div>
 
       {/* Visual Dashboards */}
-      <div className="bg-white p-6 rounded-3xl border border-black/5 shadow-sm">
-        <h3 className="text-xl font-bold text-gray-900 mb-6">System Overview</h3>
+      <div className="bg-white/70 backdrop-blur-xl p-8 rounded-[2rem] border border-white/60 shadow-2xl shadow-gray-200/50">
+        <h3 className="text-[1.35rem] font-extrabold tracking-tight text-gray-900 mb-6">System Overview</h3>
         <div className="h-[300px]">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart 
@@ -925,9 +999,9 @@ function DashboardOverview({ profile, isAdmin, setActiveTab, setAdminAction, set
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Fleet Status Card */}
-        <div className="lg:col-span-2 bg-emerald-600 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden">
+        <div className="lg:col-span-2 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none rounded-[1.5rem] p-8 text-white shadow-2xl shadow-gray-200/40 relative overflow-hidden">
           <div className="relative z-10 max-w-md">
-            <h3 className="text-2xl font-bold mb-3">Fleet Status Overview</h3>
+            <h3 className="text-2xl font-extrabold tracking-tight mb-3">Fleet Status Overview</h3>
             <p className="text-emerald-100 text-lg mb-6">Total {stats.activeBuses} buses are currently registered and operational in the system.</p>
             <button 
               onClick={() => setActiveTab('transport')}
@@ -941,7 +1015,7 @@ function DashboardOverview({ profile, isAdmin, setActiveTab, setAdminAction, set
 
         {/* Quick Actions - Restricted to Admin */}
         <div className="space-y-6">
-          <div className="bg-gray-900 rounded-3xl p-6 text-white shadow-xl">
+          <div className="bg-gradient-to-r from-slate-700 to-slate-900 shadow-lg shadow-slate-900/20 text-white border-none rounded-[1.5rem] p-6 text-white shadow-2xl shadow-gray-200/40">
             <h3 className="font-bold text-lg mb-4">Management Actions</h3>
             <div className="grid grid-cols-2 gap-3">
               {[
@@ -959,7 +1033,7 @@ function DashboardOverview({ profile, isAdmin, setActiveTab, setAdminAction, set
                       if (action.quickScan) setIsQuickScanning?.(true);
                       setActiveTab(action.tab);
                     }}
-                    className={`flex flex-col items-center justify-center p-4 rounded-2xl transition-all gap-2 ${
+                    className={`flex flex-col items-center justify-center p-4 rounded-[1rem] transition-all gap-2 ${
                       isDisabled 
                         ? 'bg-white/5 text-white/20 cursor-not-allowed' 
                         : 'bg-white/10 hover:bg-white/20 text-white'
@@ -1026,14 +1100,14 @@ function SettingsView({ profile, isAdmin }: { profile: UserProfile | null, isAdm
 
   return (
     <div className="max-w-2xl mx-auto">
-      <h2 className="text-3xl font-bold text-gray-900 mb-8">Settings</h2>
-      <div className="bg-white rounded-3xl border border-black/5 shadow-sm divide-y divide-black/5">
+      <h2 className="text-[2.25rem] font-extrabold tracking-tight text-gray-900 mb-8">Settings</h2>
+      <div className="bg-white/70 backdrop-blur-xl rounded-[2rem] border border-white/60 shadow-2xl shadow-gray-200/50 divide-y divide-[#E2E8F0]">
         <div className="p-6">
           <h3 className="font-bold text-gray-900 mb-4">Profile Information</h3>
           <div className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Display Name</label>
-              <input type="text" defaultValue={profile?.displayName} className="w-full p-3 bg-gray-50 border-none rounded-xl outline-none focus:ring-2 focus:ring-emerald-500" />
+              <input type="text" defaultValue={profile?.displayName} className="w-full p-3 bg-white/60 backdrop-blur-md border-none rounded-xl outline-none focus:ring-2 focus:ring-emerald-500" />
             </div>
             <div>
               <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Email Address</label>
@@ -1055,7 +1129,7 @@ function SettingsView({ profile, isAdmin }: { profile: UserProfile | null, isAdm
                   <p className="text-sm text-gray-500">{item.desc}</p>
                 </div>
                 <div className="w-12 h-6 bg-emerald-500 rounded-full relative cursor-pointer">
-                  <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full shadow-sm"></div>
+                  <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full shadow-2xl shadow-gray-200/50"></div>
                 </div>
               </div>
             ))}
@@ -1075,7 +1149,7 @@ function SettingsView({ profile, isAdmin }: { profile: UserProfile | null, isAdm
                  value={smsApiKey}
                  onChange={(e) => setSmsApiKey(e.target.value)}
                  placeholder="e.g., 26A056A31B21AA" 
-                 className="w-full p-3 bg-gray-50 border border-black/5 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-gray-300 text-sm" 
+                 className="w-full p-3 bg-white/60 backdrop-blur-md border border-white/60 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-gray-300 text-sm" 
               />
             </div>
             <div>
@@ -1085,7 +1159,7 @@ function SettingsView({ profile, isAdmin }: { profile: UserProfile | null, isAdm
                  value={smsSenderId}
                  onChange={(e) => setSmsSenderId(e.target.value)}
                  placeholder="Any Approved Sender ID" 
-                 className="w-full p-3 bg-gray-50 border border-black/5 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-gray-300 text-sm" 
+                 className="w-full p-3 bg-white/60 backdrop-blur-md border border-white/60 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-gray-300 text-sm" 
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -1096,7 +1170,7 @@ function SettingsView({ profile, isAdmin }: { profile: UserProfile | null, isAdm
                   value={smsEndpoint}
                   onChange={(e) => setSmsEndpoint(e.target.value)}
                   placeholder="e.g., 9550" 
-                  className="w-full p-3 bg-gray-50 border border-black/5 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-gray-300 text-sm" 
+                  className="w-full p-3 bg-white/60 backdrop-blur-md border border-white/60 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-gray-300 text-sm" 
                 />
               </div>
               <div>
@@ -1106,12 +1180,12 @@ function SettingsView({ profile, isAdmin }: { profile: UserProfile | null, isAdm
                   value={smsRouteId}
                   onChange={(e) => setSmsRouteId(e.target.value)}
                   placeholder="e.g., 10259" 
-                  className="w-full p-3 bg-gray-50 border border-black/5 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-gray-300 text-sm" 
+                  className="w-full p-3 bg-white/60 backdrop-blur-md border border-white/60 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-gray-300 text-sm" 
                 />
               </div>
             </div>
 
-            <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100">
+            <div className="bg-amber-50 p-4 rounded-[1rem] border border-amber-100">
               <p className="text-sm text-amber-800 font-bold mb-2">
                  API Configuration Saved Securely
               </p>
@@ -1125,7 +1199,7 @@ function SettingsView({ profile, isAdmin }: { profile: UserProfile | null, isAdm
           <button 
             onClick={handleSave}
             disabled={isSaving}
-            className="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white rounded-xl font-bold hover:from-emerald-600 hover:to-teal-600 hover:shadow-xl hover:-translate-y-0.5 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {isSaving ? 'Saving...' : 'Save Changes'}
           </button>

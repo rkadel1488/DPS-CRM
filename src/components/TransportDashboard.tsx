@@ -283,10 +283,10 @@ export default function TransportDashboard({ profile, isAdmin }: { profile: User
     <div className="space-y-6">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Transport Management</h2>
+          <h2 className="text-2xl font-extrabold tracking-tight text-gray-900">Transport Management</h2>
           <p className="text-gray-500">Monitor fleet, optimize routes, and track students.</p>
         </div>
-        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 bg-white p-1 rounded-2xl border border-black/5 shadow-sm">
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 bg-white p-1 rounded-[1rem] border border-white/80 shadow-2xl shadow-gray-200/50">
           {[
             { id: 'fleet', label: 'Fleet', icon: Bus },
             { id: 'routes', label: 'Routes', icon: Navigation },
@@ -298,8 +298,8 @@ export default function TransportDashboard({ profile, isAdmin }: { profile: User
               onClick={() => setActiveTab(tab.id as any)}
               className={`flex items-center justify-center sm:justify-start gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                 activeTab === tab.id 
-                  ? 'bg-emerald-600 text-white shadow-md' 
-                  : 'text-gray-500 hover:bg-gray-50'
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white shadow-md' 
+                  : 'text-gray-500 hover:bg-white/60 backdrop-blur-md'
               }`}
             >
               <tab.icon className="w-4 h-4" />
@@ -317,10 +317,10 @@ export default function TransportDashboard({ profile, isAdmin }: { profile: User
                 <motion.div 
                   key={bus.id}
                   layout
-                  className="bg-white p-6 rounded-3xl border border-black/5 shadow-sm hover:shadow-md transition-all"
+                  className="bg-white/70 backdrop-blur-xl p-8 rounded-[2rem] border border-white/60 shadow-2xl shadow-gray-200/50 hover:shadow-md transition-all"
                 >
                   <div className="flex justify-between items-start mb-6">
-                    <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600">
+                    <div className="w-14 h-14 bg-emerald-50 rounded-[1rem] flex items-center justify-center text-emerald-600">
                       <Bus className="w-8 h-8" />
                     </div>
                     <div className="text-right">
@@ -350,7 +350,7 @@ export default function TransportDashboard({ profile, isAdmin }: { profile: User
                     )}
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2 pt-4 border-t border-black/5">
+                  <div className="grid grid-cols-3 gap-2 pt-4 border-t border-white/60">
                     <div className="text-center">
                       <Fuel className="w-4 h-4 text-gray-400 mx-auto mb-1" />
                       <span className="text-[10px] font-bold text-gray-900">85%</span>
@@ -365,7 +365,7 @@ export default function TransportDashboard({ profile, isAdmin }: { profile: User
                     </div>
                   </div>
 
-                  <div className="mt-4 pt-4 border-t border-black/5 space-y-2">
+                  <div className="mt-4 pt-4 border-t border-white/60 space-y-2">
                     <button
                       onClick={() => toggleBroadcast(bus.id)}
                       className={`w-full py-2 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
@@ -388,13 +388,13 @@ export default function TransportDashboard({ profile, isAdmin }: { profile: User
                   </div>
                 </motion.div>
               )) : (
-                <div className="col-span-full py-20 text-center bg-white rounded-3xl border border-dashed border-gray-300">
+                <div className="col-span-full py-20 text-center bg-white rounded-[2rem] border border-dashed border-gray-300">
                   <Bus className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-500">No vehicles registered. Add your first bus!</p>
                   {isAdmin && (
                     <button 
                       onClick={() => setIsAddingVehicle(true)}
-                      className="mt-4 px-6 py-2 bg-emerald-600 text-white rounded-xl font-bold"
+                      className="mt-4 px-6 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white rounded-xl font-bold"
                     >
                       Register Vehicle
                     </button>
@@ -408,7 +408,7 @@ export default function TransportDashboard({ profile, isAdmin }: { profile: User
             <div className="mt-6 flex justify-end">
               <button 
                 onClick={() => setIsAddingVehicle(true)}
-                className="px-6 py-2 bg-emerald-600 text-white rounded-xl font-bold flex items-center gap-2"
+                className="px-6 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white rounded-xl font-bold flex items-center gap-2"
               >
                 <Plus className="w-5 h-5" /> Register Vehicle
               </button>
@@ -418,8 +418,8 @@ export default function TransportDashboard({ profile, isAdmin }: { profile: User
           {activeTab === 'routes' && (
             <div className="space-y-4">
               {routes.length > 0 ? routes.map((route) => (
-                <div key={route.id} className="bg-white p-6 rounded-3xl border border-black/5 shadow-sm flex items-center gap-6">
-                  <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600">
+                <div key={route.id} className="bg-white/70 backdrop-blur-xl p-8 rounded-[2rem] border border-white/60 shadow-2xl shadow-gray-200/50 flex items-center gap-6">
+                  <div className="w-12 h-12 bg-blue-50 rounded-[1rem] flex items-center justify-center text-blue-600">
                     <Navigation className="w-6 h-6" />
                   </div>
                   <div className="flex-1">
@@ -441,7 +441,7 @@ export default function TransportDashboard({ profile, isAdmin }: { profile: User
                   <div className="flex items-center gap-2">
                     <button 
                       onClick={() => alert('Route details coming soon!')}
-                      className="p-2 hover:bg-gray-50 rounded-xl transition-all"
+                      className="p-2 hover:bg-white/60 backdrop-blur-md rounded-xl transition-all"
                     >
                       <ChevronRight className="w-5 h-5 text-gray-400" />
                     </button>
@@ -457,13 +457,13 @@ export default function TransportDashboard({ profile, isAdmin }: { profile: User
                   </div>
                 </div>
               )) : (
-                <div className="py-20 text-center bg-white rounded-3xl border border-dashed border-gray-300">
+                <div className="py-20 text-center bg-white rounded-[2rem] border border-dashed border-gray-300">
                   <Navigation className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-500">No routes found.</p>
                   {isAdmin && (
                     <button 
                       onClick={() => setIsAddingRoute(true)}
-                      className="mt-4 px-6 py-2 bg-emerald-600 text-white rounded-xl font-bold"
+                      className="mt-4 px-6 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white rounded-xl font-bold"
                     >
                       Add Route
                     </button>
@@ -475,7 +475,7 @@ export default function TransportDashboard({ profile, isAdmin }: { profile: User
                 <div className="mt-6 flex justify-end">
                   <button 
                     onClick={() => setIsAddingRoute(true)}
-                    className="px-6 py-2 bg-emerald-600 text-white rounded-xl font-bold flex items-center gap-2"
+                    className="px-6 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white rounded-xl font-bold flex items-center gap-2"
                   >
                     <Plus className="w-5 h-5" /> Add Route
                   </button>
@@ -485,14 +485,14 @@ export default function TransportDashboard({ profile, isAdmin }: { profile: User
           )}
 
           {activeTab === 'attendance' && (
-            <div className="bg-white p-6 rounded-3xl border border-black/5 shadow-sm space-y-6">
+            <div className="bg-white/70 backdrop-blur-xl p-8 rounded-[2rem] border border-white/60 shadow-2xl shadow-gray-200/50 space-y-6">
               <div className="flex flex-col md:flex-row gap-4">
                 <div className="flex-1">
                   <label className="block text-sm font-bold text-gray-900 mb-2">Select Route</label>
                   <select
                     value={selectedRouteId}
                     onChange={(e) => setSelectedRouteId(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl bg-gray-50 border-none focus:ring-2 focus:ring-emerald-500 outline-none"
+                    className="w-full px-4 py-3 rounded-xl bg-white/60 backdrop-blur-md border-none focus:ring-2 focus:ring-emerald-500 outline-none"
                   >
                     <option value="">Select a route...</option>
                     {routes.map(route => (
@@ -506,7 +506,7 @@ export default function TransportDashboard({ profile, isAdmin }: { profile: User
                     type="date"
                     value={selectedDate}
                     onChange={(e) => setSelectedDate(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl bg-gray-50 border-none focus:ring-2 focus:ring-emerald-500 outline-none"
+                    className="w-full px-4 py-3 rounded-xl bg-white/60 backdrop-blur-md border-none focus:ring-2 focus:ring-emerald-500 outline-none"
                   />
                 </div>
               </div>
@@ -518,7 +518,7 @@ export default function TransportDashboard({ profile, isAdmin }: { profile: User
                     students.filter(s => s.routeId === selectedRouteId).map(student => {
                       const record = attendance.find(a => a.date === selectedDate && a.studentId === student.id && a.routeId === selectedRouteId);
                       return (
-                        <div key={student.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
+                        <div key={student.id} className="flex items-center justify-between p-4 bg-white/60 backdrop-blur-md rounded-[1rem]">
                           <div className="flex items-center gap-4">
                             <div className="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center font-bold">
                               {student.name.charAt(0)}
@@ -533,8 +533,8 @@ export default function TransportDashboard({ profile, isAdmin }: { profile: User
                               onClick={() => handleMarkAttendance(student.id, 'present')}
                               className={`px-4 py-2 rounded-xl font-bold text-sm transition-all ${
                                 record?.status === 'present' 
-                                  ? 'bg-emerald-600 text-white' 
-                                  : 'bg-white text-gray-600 border border-gray-200 hover:bg-emerald-50'
+                                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white' 
+                                  : 'bg-white text-gray-600 border border-white/60 hover:bg-emerald-50'
                               }`}
                             >
                               Present
@@ -544,7 +544,7 @@ export default function TransportDashboard({ profile, isAdmin }: { profile: User
                               className={`px-4 py-2 rounded-xl font-bold text-sm transition-all ${
                                 record?.status === 'absent' 
                                   ? 'bg-red-600 text-white' 
-                                  : 'bg-white text-gray-600 border border-gray-200 hover:bg-red-50'
+                                  : 'bg-white text-gray-600 border border-white/60 hover:bg-red-50'
                               }`}
                             >
                               Absent
@@ -558,7 +558,7 @@ export default function TransportDashboard({ profile, isAdmin }: { profile: User
                   )}
                 </div>
               ) : (
-                <div className="text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-300">
+                <div className="text-center py-12 bg-white/60 backdrop-blur-md rounded-[1rem] border border-dashed border-gray-300">
                   <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-500">Select a route to view and mark attendance.</p>
                 </div>
@@ -567,7 +567,7 @@ export default function TransportDashboard({ profile, isAdmin }: { profile: User
           )}
 
           {activeTab === 'tracking' && (
-            <div className="bg-white rounded-3xl border border-black/5 shadow-sm h-[500px] relative overflow-hidden">
+            <div className="bg-white/70 backdrop-blur-xl rounded-[2rem] border border-white/60 shadow-2xl shadow-gray-200/50 h-[500px] relative overflow-hidden">
               <div className="absolute inset-0 bg-gray-100">
                 <MapContainer center={[40.7128, -74.0060]} zoom={12} style={{ height: '100%', width: '100%' }}>
                   <TileLayer
@@ -620,7 +620,7 @@ export default function TransportDashboard({ profile, isAdmin }: { profile: User
               
               {/* Overlay UI */}
               <div className="absolute top-4 left-4 right-4 flex justify-between pointer-events-none z-[1000]">
-                <div className="bg-white/90 backdrop-blur p-3 rounded-2xl shadow-lg pointer-events-auto border border-black/5 flex flex-col gap-2">
+                <div className="bg-white/70 backdrop-blur-xl/90 backdrop-blur p-3 rounded-[1rem] shadow-lg pointer-events-auto border border-white/60 flex flex-col gap-2">
                   <div className="flex items-center gap-3">
                     <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
                     <span className="text-xs font-bold text-gray-900">{vehicles.filter(v => v.currentLat && v.currentLng).length} Buses Online</span>
@@ -628,7 +628,7 @@ export default function TransportDashboard({ profile, isAdmin }: { profile: User
                   <select
                     value={selectedTrackingVehicleId}
                     onChange={(e) => setSelectedTrackingVehicleId(e.target.value)}
-                    className="text-sm border border-gray-200 rounded-lg px-2 py-1 outline-none bg-white"
+                    className="text-sm border border-white/60 rounded-lg px-2 py-1 outline-none bg-white"
                   >
                     <option value="all">All Buses</option>
                     {vehicles.filter(v => v.currentLat && v.currentLng).map(v => (
@@ -666,7 +666,7 @@ export default function TransportDashboard({ profile, isAdmin }: { profile: User
                           }
                         }
                       }}
-                      className="p-3 bg-white/90 backdrop-blur rounded-xl shadow-lg border border-black/5 text-gray-600 hover:bg-gray-50 flex items-center gap-2"
+                      className="p-3 bg-white/90 backdrop-blur rounded-xl shadow-lg border border-white/60 text-gray-600 hover:bg-white/60 backdrop-blur-md flex items-center gap-2"
                       title="Simulate GPS Movement"
                     >
                       <Play className="w-5 h-5" />
@@ -674,7 +674,7 @@ export default function TransportDashboard({ profile, isAdmin }: { profile: User
                   )}
                   <button 
                     onClick={() => setCenterTrigger(prev => prev + 1)}
-                    className="p-3 bg-white/90 backdrop-blur rounded-xl shadow-lg border border-black/5 text-gray-600 hover:bg-gray-50 flex items-center gap-2"
+                    className="p-3 bg-white/90 backdrop-blur rounded-xl shadow-lg border border-white/60 text-gray-600 hover:bg-white/60 backdrop-blur-md flex items-center gap-2"
                     title="Current Location"
                   >
                     <Navigation className="w-5 h-5" />
@@ -686,7 +686,7 @@ export default function TransportDashboard({ profile, isAdmin }: { profile: User
         </div>
 
         <div className="space-y-6">
-          <div className="bg-white rounded-3xl p-6 border border-black/5 shadow-sm">
+          <div className="bg-white/70 backdrop-blur-xl rounded-[2rem] p-6 border border-white/60 shadow-2xl shadow-gray-200/50">
             <h3 className="font-bold text-gray-900 mb-4">Fleet Health</h3>
             <div className="space-y-4">
               <div className="flex justify-between items-center">
@@ -708,9 +708,9 @@ export default function TransportDashboard({ profile, isAdmin }: { profile: User
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-3xl p-6 w-full max-w-md shadow-xl"
+            className="bg-white/70 backdrop-blur-xl rounded-[2rem] p-6 w-full max-w-md shadow-2xl shadow-gray-200/40"
           >
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Register Vehicle</h3>
+            <h3 className="text-[1.35rem] font-extrabold tracking-tight text-gray-900 mb-4">Register Vehicle</h3>
             <form onSubmit={handleAddVehicle} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Bus Number</label>
@@ -719,7 +719,7 @@ export default function TransportDashboard({ profile, isAdmin }: { profile: User
                   required
                   value={newVehicle.busNumber}
                   onChange={e => setNewVehicle({...newVehicle, busNumber: e.target.value})}
-                  className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                  className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
                 />
               </div>
               <div>
@@ -729,7 +729,7 @@ export default function TransportDashboard({ profile, isAdmin }: { profile: User
                   required
                   value={newVehicle.plateNumber}
                   onChange={e => setNewVehicle({...newVehicle, plateNumber: e.target.value})}
-                  className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                  className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
                 />
               </div>
               <div>
@@ -740,7 +740,7 @@ export default function TransportDashboard({ profile, isAdmin }: { profile: User
                   min="1"
                   value={newVehicle.capacity}
                   onChange={e => setNewVehicle({...newVehicle, capacity: parseInt(e.target.value)})}
-                  className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                  className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
                 />
               </div>
               <div>
@@ -748,7 +748,7 @@ export default function TransportDashboard({ profile, isAdmin }: { profile: User
                 <select 
                   value={newVehicle.status}
                   onChange={e => setNewVehicle({...newVehicle, status: e.target.value as any})}
-                  className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                  className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
                 >
                   <option value="active">Active</option>
                   <option value="maintenance">Maintenance</option>
@@ -760,7 +760,7 @@ export default function TransportDashboard({ profile, isAdmin }: { profile: User
                   type="text" 
                   value={newVehicle.gpsTrackerId}
                   onChange={e => setNewVehicle({...newVehicle, gpsTrackerId: e.target.value})}
-                  className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                  className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
                   placeholder="e.g., TRK-9921"
                 />
               </div>
@@ -774,7 +774,7 @@ export default function TransportDashboard({ profile, isAdmin }: { profile: User
                 </button>
                 <button 
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all"
+                  className="flex-1 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white rounded-xl font-bold hover:from-emerald-600 hover:to-teal-600 hover:shadow-xl hover:-translate-y-0.5 transition-all"
                 >
                   Register
                 </button>
@@ -789,9 +789,9 @@ export default function TransportDashboard({ profile, isAdmin }: { profile: User
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-3xl p-6 w-full max-w-md shadow-xl"
+            className="bg-white/70 backdrop-blur-xl rounded-[2rem] p-6 w-full max-w-md shadow-2xl shadow-gray-200/40"
           >
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Add Route</h3>
+            <h3 className="text-[1.35rem] font-extrabold tracking-tight text-gray-900 mb-4">Add Route</h3>
             <form onSubmit={handleAddRoute} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Route Name</label>
@@ -800,7 +800,7 @@ export default function TransportDashboard({ profile, isAdmin }: { profile: User
                   required
                   value={newRoute.name}
                   onChange={e => setNewRoute({...newRoute, name: e.target.value})}
-                  className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                  className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
                   placeholder="e.g., North City Loop"
                 />
               </div>
@@ -809,7 +809,7 @@ export default function TransportDashboard({ profile, isAdmin }: { profile: User
                 <select 
                   value={newRoute.vehicleId}
                   onChange={e => setNewRoute({...newRoute, vehicleId: e.target.value})}
-                  className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                  className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
                 >
                   <option value="">No Bus Assigned</option>
                   {vehicles.map(v => (
@@ -827,7 +827,7 @@ export default function TransportDashboard({ profile, isAdmin }: { profile: User
                 </button>
                 <button 
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all"
+                  className="flex-1 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white rounded-xl font-bold hover:from-emerald-600 hover:to-teal-600 hover:shadow-xl hover:-translate-y-0.5 transition-all"
                 >
                   Save Route
                 </button>
@@ -841,12 +841,12 @@ export default function TransportDashboard({ profile, isAdmin }: { profile: User
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-3xl p-6 w-full max-w-md shadow-xl text-center"
+            className="bg-white/70 backdrop-blur-xl rounded-[2rem] p-6 w-full max-w-md shadow-2xl shadow-gray-200/40 text-center"
           >
             <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertTriangle className="w-8 h-8" />
             </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Remove Bus</h3>
+            <h3 className="text-[1.35rem] font-extrabold tracking-tight text-gray-900 mb-2">Remove Bus</h3>
             <p className="text-gray-500 mb-6">Are you sure you want to remove this bus? This action cannot be undone.</p>
             <div className="flex gap-3">
               <button 
@@ -870,12 +870,12 @@ export default function TransportDashboard({ profile, isAdmin }: { profile: User
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-3xl p-6 w-full max-w-md shadow-xl text-center"
+            className="bg-white/70 backdrop-blur-xl rounded-[2rem] p-6 w-full max-w-md shadow-2xl shadow-gray-200/40 text-center"
           >
             <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertTriangle className="w-8 h-8" />
             </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Delete Route</h3>
+            <h3 className="text-[1.35rem] font-extrabold tracking-tight text-gray-900 mb-2">Delete Route</h3>
             <p className="text-gray-500 mb-6">Are you sure you want to delete this route? This action cannot be undone.</p>
             <div className="flex gap-3">
               <button 

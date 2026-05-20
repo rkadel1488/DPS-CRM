@@ -383,7 +383,7 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
       <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-gray-50/50 border-b border-black/5">
+            <tr className="bg-white/60 backdrop-blur-md/50 border-b border-white/80">
               <th className="px-6 py-4 text-sm font-semibold text-gray-900">Book</th>
               <th className="px-6 py-4 text-sm font-semibold text-gray-900">Issued To</th>
               <th className="px-6 py-4 text-sm font-semibold text-gray-900">Issue Date</th>
@@ -391,11 +391,11 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
               <th className="px-6 py-4 text-sm font-semibold text-gray-900 text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-black/5">
+          <tbody className="divide-y divide-gray-100/80">
             {items.length > 0 ? items.map((issue) => {
               const isOverdue = issue.status === 'issued' && new Date(issue.dueDate) < new Date();
               return (
-                <tr key={issue.id} className="hover:bg-gray-50/50 transition-colors">
+                <tr key={issue.id} className="hover:bg-white/60 backdrop-blur-md/50 transition-colors">
                   <td className="px-6 py-4">
                     <p className="font-medium text-gray-900">{issue.bookTitle}</p>
                     <p className="text-xs text-gray-500 font-mono">{issue.bookCode}</p>
@@ -465,7 +465,7 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
       </div>
 
       {/* Mobile Card View */}
-      <div className="md:hidden divide-y divide-black/5">
+      <div className="md:hidden divide-y divide-gray-100/80">
         {items.length > 0 ? items.map((issue) => {
           const isOverdue = issue.status === 'issued' && new Date(issue.dueDate) < new Date();
           return (
@@ -514,7 +514,7 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
                 </div>
               </div>
 
-              <div className="flex items-center justify-between bg-gray-50 p-3 rounded-xl">
+              <div className="flex items-center justify-between bg-white/60 backdrop-blur-md p-3 rounded-xl">
                 <div>
                   <p className="text-[10px] text-gray-400 uppercase font-bold">Issue Date</p>
                   <p className="text-sm font-medium">{new Date(issue.issueDate).toLocaleDateString()}</p>
@@ -530,7 +530,7 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
               {issue.status === 'issued' && (
                 <button
                   onClick={() => handleReturnBook(issue)}
-                  className="w-full py-2.5 bg-emerald-600 text-white text-sm font-bold rounded-xl hover:bg-emerald-700 transition-colors shadow-sm shadow-emerald-100"
+                  className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white text-sm font-bold rounded-xl hover:from-emerald-600 hover:to-teal-600 hover:shadow-xl hover:-translate-y-0.5 transition-colors shadow-2xl shadow-gray-200/50 shadow-emerald-100"
                 >
                   Mark as Returned
                 </button>
@@ -547,16 +547,16 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
   );
 
   return (
-    <div className="flex-1 overflow-auto bg-[#F5F5F4]">
+    <div className="flex-1 overflow-auto bg-[#F8FAFC]">
       <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Library Management</h2>
+            <h2 className="text-2xl font-extrabold tracking-tight text-gray-900">Library Management</h2>
             <p className="text-gray-500">Manage books, issues, and returns</p>
           </div>
           
-          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 bg-white p-1 rounded-2xl border border-black/5 shadow-sm">
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 bg-white p-1 rounded-[1rem] border border-white/60 shadow-2xl shadow-gray-200/50">
             {[
               { id: 'books', label: 'Books', icon: BookOpen },
               { id: 'issues', label: 'Issued Entries', icon: Clock },
@@ -567,8 +567,8 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
                 onClick={() => setActiveTab(tab.id as any)}
                 className={`flex items-center justify-center sm:justify-start gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                   activeTab === tab.id 
-                    ? 'bg-emerald-600 text-white shadow-md' 
-                    : 'text-gray-500 hover:bg-gray-50'
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white shadow-md' 
+                    : 'text-gray-500 hover:bg-white/60 backdrop-blur-md'
                 }`}
               >
                 <tab.icon className="w-4 h-4" />
@@ -584,7 +584,7 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
         </div>
 
         {/* Actions Bar */}
-        <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-white p-4 rounded-2xl border border-black/5 shadow-sm">
+        <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-white p-4 rounded-[1rem] border border-white/60 shadow-2xl shadow-gray-200/50">
           <div className="relative w-full md:w-96">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
@@ -592,7 +592,7 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
               placeholder={activeTab === 'books' ? "Search by book name or code..." : "Search by book or person..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500/20 transition-all"
+              className="w-full pl-10 pr-4 py-2 bg-white/60 backdrop-blur-md border-none rounded-xl focus:ring-2 focus:ring-emerald-500/20 transition-all"
             />
           </div>
           
@@ -608,21 +608,21 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
                 />
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white border border-black/5 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-medium"
+                  className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white border border-white/60 text-gray-700 rounded-xl hover:bg-white/60 backdrop-blur-md transition-all font-medium"
                 >
                   <Upload className="w-4 h-4" />
                   Import Excel
                 </button>
                 <button
                   onClick={exportBooks}
-                  className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white border border-black/5 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-medium"
+                  className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white border border-white/60 text-gray-700 rounded-xl hover:bg-white/60 backdrop-blur-md transition-all font-medium"
                 >
                   <Download className="w-4 h-4" />
                   Export Books
                 </button>
                 <button
                   onClick={() => setShowAddModal(true)}
-                  className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all font-medium shadow-sm shadow-emerald-200"
+                  className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white rounded-xl hover:from-emerald-600 hover:to-teal-600 hover:shadow-xl hover:-translate-y-0.5 transition-all font-medium shadow-2xl shadow-gray-200/50 shadow-emerald-200"
                 >
                   <Plus className="w-4 h-4" />
                   Add Book
@@ -631,7 +631,7 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
             ) : (
               <button
                 onClick={exportEntries}
-                className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white border border-black/5 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-medium"
+                className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white border border-white/60 text-gray-700 rounded-xl hover:bg-white/60 backdrop-blur-md transition-all font-medium"
               >
                 <Download className="w-4 h-4" />
                 Export Entries
@@ -641,14 +641,14 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
         </div>
 
         {/* Content Area */}
-        <div className="bg-white rounded-3xl border border-black/5 shadow-sm overflow-hidden">
+        <div className="bg-white/70 backdrop-blur-xl rounded-[2rem] border border-white/60 shadow-2xl shadow-gray-200/50 overflow-hidden">
           {activeTab === 'books' ? (
             <>
               {/* Desktop Table View */}
               <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="bg-gray-50/50 border-b border-black/5">
+                    <tr className="bg-white/60 backdrop-blur-md/50 border-b border-white/60">
                       <th className="px-6 py-4 text-sm font-semibold text-gray-900">Book Code</th>
                       <th className="px-6 py-4 text-sm font-semibold text-gray-900">Title & Author</th>
                       <th className="px-6 py-4 text-sm font-semibold text-gray-900">Category</th>
@@ -657,9 +657,9 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
                       <th className="px-6 py-4 text-sm font-semibold text-gray-900 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-black/5">
+                  <tbody className="divide-y divide-gray-100/80">
                     {paginatedBooks.length > 0 ? paginatedBooks.map((book) => (
-                      <tr key={book.id} className="hover:bg-gray-50/50 transition-colors">
+                      <tr key={book.id} className="hover:bg-white/60 backdrop-blur-md/50 transition-colors">
                         <td className="px-6 py-4">
                           <span className="font-mono text-sm bg-gray-100 px-2 py-1 rounded-md text-gray-700">
                             {book.bookCode}
@@ -695,7 +695,7 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
                                 setShowIssueModal(true);
                               }}
                               disabled={book.availableCopies === 0}
-                              className="px-3 py-1.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                              className="px-3 py-1.5 bg-gradient-to-r from-slate-700 to-slate-900 shadow-lg shadow-slate-900/20 text-white border-none text-white text-sm font-medium rounded-lg hover:from-slate-800 hover:to-slate-950 hover:shadow-xl hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                             >
                               Issue Book
                             </button>
@@ -723,7 +723,7 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
               </div>
 
               {/* Mobile Card View */}
-              <div className="md:hidden divide-y divide-black/5">
+              <div className="md:hidden divide-y divide-gray-100/80">
                 {paginatedBooks.length > 0 ? paginatedBooks.map((book) => (
                   <div key={book.id} className="p-4 space-y-3">
                     <div className="flex justify-between items-start">
@@ -751,7 +751,7 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-50 text-purple-700">
                         {book.bookClass || 'N/A'}
                       </span>
-                      <div className="flex items-center gap-2 bg-gray-50 px-2 py-0.5 rounded-full">
+                      <div className="flex items-center gap-2 bg-white/60 backdrop-blur-md px-2 py-0.5 rounded-full">
                         <div className={`w-1.5 h-1.5 rounded-full ${book.availableCopies > 0 ? 'bg-emerald-500' : 'bg-red-500'}`} />
                         <span className="text-xs font-medium text-gray-700">
                           {book.availableCopies} / {book.totalCopies} Available
@@ -765,7 +765,7 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
                         setShowIssueModal(true);
                       }}
                       disabled={book.availableCopies === 0}
-                      className="w-full py-2.5 bg-gray-900 text-white text-sm font-bold rounded-xl hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="w-full py-2.5 bg-gradient-to-r from-slate-700 to-slate-900 shadow-lg shadow-slate-900/20 text-white border-none text-white text-sm font-bold rounded-xl hover:from-slate-800 hover:to-slate-950 hover:shadow-xl hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       Issue Book
                     </button>
@@ -785,7 +785,7 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
 
           {/* Pagination Controls */}
           {totalPages > 1 && (
-            <div className="px-6 py-4 bg-gray-50 border-t border-black/5 flex items-center justify-between">
+            <div className="px-6 py-4 bg-white/60 backdrop-blur-md border-t border-white/60 flex items-center justify-between">
               <p className="text-sm text-gray-500">
                 Showing <span className="font-medium text-gray-900">{startIndex + 1}</span> to{' '}
                 <span className="font-medium text-gray-900">
@@ -805,14 +805,14 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
                 <button
                   onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                   disabled={currentPage === 1}
-                  className="px-4 py-2 bg-white border border-black/5 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="px-4 py-2 bg-white border border-white/60 rounded-xl text-sm font-medium text-gray-700 hover:bg-white/60 backdrop-blur-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   Previous
                 </button>
                 <button
                   onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                   disabled={currentPage === totalPages}
-                  className="px-4 py-2 bg-white border border-black/5 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="px-4 py-2 bg-white border border-white/60 rounded-xl text-sm font-medium text-gray-700 hover:bg-white/60 backdrop-blur-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   Next
                 </button>
@@ -830,10 +830,10 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden"
+              className="bg-white/70 backdrop-blur-xl rounded-[2rem] shadow-2xl shadow-gray-200/40 w-full max-w-md overflow-hidden"
             >
-              <div className="p-6 border-b border-black/5 flex justify-between items-center">
-                <h2 className="text-xl font-bold text-gray-900">Add New Book</h2>
+              <div className="p-6 border-b border-white/60 flex justify-between items-center">
+                <h2 className="text-[1.35rem] font-extrabold tracking-tight text-gray-900">Add New Book</h2>
                 <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
                   <X className="w-5 h-5 text-gray-500" />
                 </button>
@@ -845,7 +845,7 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
                     type="text"
                     value={newBook.bookCode}
                     onChange={e => setNewBook({...newBook, bookCode: e.target.value})}
-                    className="w-full px-4 py-2 bg-gray-50 border border-black/5 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                    className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border border-white/60 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none"
                     placeholder="e.g. BK-001 (Leave empty to auto-generate)"
                   />
                 </div>
@@ -856,7 +856,7 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
                     required
                     value={newBook.title}
                     onChange={e => setNewBook({...newBook, title: e.target.value})}
-                    className="w-full px-4 py-2 bg-gray-50 border border-black/5 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                    className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border border-white/60 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none"
                     placeholder="Book Title"
                   />
                 </div>
@@ -866,7 +866,7 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
                     type="text"
                     value={newBook.author}
                     onChange={e => setNewBook({...newBook, author: e.target.value})}
-                    className="w-full px-4 py-2 bg-gray-50 border border-black/5 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                    className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border border-white/60 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none"
                     placeholder="Author Name"
                   />
                 </div>
@@ -877,7 +877,7 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
                       type="text"
                       value={newBook.bookClass}
                       onChange={e => setNewBook({...newBook, bookClass: e.target.value})}
-                      className="w-full px-4 py-2 bg-gray-50 border border-black/5 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                      className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border border-white/60 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none"
                       placeholder="e.g. Grade 10"
                     />
                   </div>
@@ -889,7 +889,7 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
                       step="0.01"
                       value={newBook.price}
                       onChange={e => setNewBook({...newBook, price: e.target.value})}
-                      className="w-full px-4 py-2 bg-gray-50 border border-black/5 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                      className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border border-white/60 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none"
                       placeholder="0.00"
                     />
                   </div>
@@ -901,7 +901,7 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
                       type="text"
                       value={newBook.category}
                       onChange={e => setNewBook({...newBook, category: e.target.value})}
-                      className="w-full px-4 py-2 bg-gray-50 border border-black/5 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                      className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border border-white/60 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none"
                       placeholder="e.g. Science"
                     />
                   </div>
@@ -913,7 +913,7 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
                       min="1"
                       value={newBook.totalCopies}
                       onChange={e => setNewBook({...newBook, totalCopies: parseInt(e.target.value)})}
-                      className="w-full px-4 py-2 bg-gray-50 border border-black/5 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                      className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border border-white/60 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none"
                     />
                   </div>
                 </div>
@@ -927,7 +927,7 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-colors"
+                    className="flex-1 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white rounded-xl font-medium hover:from-emerald-600 hover:to-teal-600 hover:shadow-xl hover:-translate-y-0.5 transition-colors"
                   >
                     Add Book
                   </button>
@@ -946,16 +946,16 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden"
+              className="bg-white/70 backdrop-blur-xl rounded-[2rem] shadow-2xl shadow-gray-200/40 w-full max-w-md overflow-hidden"
             >
-              <div className="p-6 border-b border-black/5 flex justify-between items-center">
-                <h2 className="text-xl font-bold text-gray-900">Issue Book</h2>
+              <div className="p-6 border-b border-white/60 flex justify-between items-center">
+                <h2 className="text-[1.35rem] font-extrabold tracking-tight text-gray-900">Issue Book</h2>
                 <button onClick={() => setShowIssueModal(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
                   <X className="w-5 h-5 text-gray-500" />
                 </button>
               </div>
               <form onSubmit={handleIssueBook} className="p-6 space-y-4">
-                <div className="bg-gray-50 p-4 rounded-xl border border-black/5">
+                <div className="bg-white/60 backdrop-blur-md p-4 rounded-xl border border-white/60">
                   <p className="text-sm text-gray-500 font-mono mb-1">{selectedBook.bookCode}</p>
                   <p className="font-semibold text-gray-900">{selectedBook.title}</p>
                   <p className="text-sm text-gray-600 mt-1">Available: {selectedBook.availableCopies}</p>
@@ -996,7 +996,7 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
                     required
                     value={newIssue.issuedToName}
                     onChange={e => setNewIssue({...newIssue, issuedToName: e.target.value})}
-                    className="w-full px-4 py-2 bg-gray-50 border border-black/5 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                    className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border border-white/60 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none"
                     placeholder={`e.g. ${newIssue.issuedToType === 'student' ? 'John Doe' : 'Mr. Smith'}`}
                   />
                 </div>
@@ -1011,7 +1011,7 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-colors"
+                    className="flex-1 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white rounded-xl font-medium hover:from-emerald-600 hover:to-teal-600 hover:shadow-xl hover:-translate-y-0.5 transition-colors"
                   >
                     Confirm Issue
                   </button>
@@ -1030,15 +1030,15 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-3xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]"
+              className="bg-white/70 backdrop-blur-xl rounded-[2rem] shadow-2xl shadow-gray-200/40 w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]"
             >
-              <div className="p-6 border-b border-black/5 flex justify-between items-center bg-gray-50/50">
+              <div className="p-6 border-b border-white/60 flex justify-between items-center bg-white/60 backdrop-blur-md/50">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
                     <User className="w-5 h-5 text-emerald-600" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold text-gray-900">{selectedUserHistory.name}</h2>
+                    <h2 className="text-[1.35rem] font-extrabold tracking-tight text-gray-900">{selectedUserHistory.name}</h2>
                     <p className="text-sm text-gray-500 capitalize">{selectedUserHistory.type} History</p>
                   </div>
                 </div>
@@ -1053,7 +1053,7 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
                     issues.filter(i => i.issuedToName === selectedUserHistory.name).map(issue => {
                       const isOverdue = issue.status === 'issued' && new Date(issue.dueDate) < new Date();
                       return (
-                        <div key={issue.id} className="p-4 rounded-2xl border border-black/5 hover:bg-gray-50 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div key={issue.id} className="p-4 rounded-[1rem] border border-white/60 hover:bg-white/60 backdrop-blur-md transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                           <div>
                             <p className="font-semibold text-gray-900">{issue.bookTitle}</p>
                             <p className="text-sm text-gray-500 font-mono mt-0.5">{issue.bookCode}</p>
@@ -1097,13 +1097,13 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-3xl shadow-xl w-full max-w-sm overflow-hidden"
+              className="bg-white/70 backdrop-blur-xl rounded-[2rem] shadow-2xl shadow-gray-200/40 w-full max-w-sm overflow-hidden"
             >
               <div className="p-6 text-center">
                 <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <AlertCircle className="w-8 h-8 text-red-600" />
                 </div>
-                <h2 className="text-xl font-bold text-gray-900 mb-2">Confirm Deletion</h2>
+                <h2 className="text-[1.35rem] font-extrabold tracking-tight text-gray-900 mb-2">Confirm Deletion</h2>
                 <p className="text-gray-500 mb-6">
                   Are you sure you want to delete this {deleteConfirm.type}? This action cannot be undone.
                 </p>

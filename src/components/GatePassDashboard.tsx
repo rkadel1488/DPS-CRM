@@ -335,26 +335,26 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
     <div className="space-y-6">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Gate Pass Management</h2>
+          <h2 className="text-2xl font-extrabold tracking-tight text-gray-900">Gate Pass Management</h2>
           <p className="text-gray-500">Monitor and issue student gate passes for early departures.</p>
         </div>
         <div className="flex gap-3 w-full lg:w-auto">
           <button 
             onClick={() => setIsScanning(true)}
-            className="flex-1 lg:flex-none px-6 py-2.5 bg-blue-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all font-mono"
+            className="flex-1 lg:flex-none px-6 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 shadow-lg shadow-blue-500/20 border-none text-white rounded-[1rem] font-bold flex items-center justify-center gap-2 shadow-lg shadow-blue-100 hover:from-blue-600 hover:to-indigo-600 hover:shadow-xl hover:-translate-y-0.5 transition-all font-mono"
           >
             <QrCode className="w-5 h-5" /> Scan QR
           </button>
           <button 
             onClick={() => setIsAddingGatePass(true)}
-            className="flex-1 lg:flex-none px-6 py-2.5 bg-emerald-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all"
+            className="flex-1 lg:flex-none px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white rounded-[1rem] font-bold flex items-center justify-center gap-2 shadow-lg shadow-emerald-100 hover:from-emerald-600 hover:to-teal-600 hover:shadow-xl hover:-translate-y-0.5 transition-all"
           >
             <Plus className="w-5 h-5" /> Issue New Pass
           </button>
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-white p-4 rounded-3xl border border-black/5 shadow-sm">
+      <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-white p-4 rounded-[1.5rem] border border-white/80 shadow-2xl shadow-gray-200/50">
         <div className="relative w-full md:w-96">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
           <input
@@ -362,15 +362,15 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
             placeholder="Search student or reason..."
             value={gatePassSearch}
             onChange={(e) => setGatePassSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500/20 transition-all font-medium text-gray-900"
+            className="w-full pl-10 pr-4 py-2 bg-white/60 backdrop-blur-md border-none rounded-xl focus:ring-2 focus:ring-emerald-500/20 transition-all font-medium text-gray-900"
           />
         </div>
         <div className="flex items-center gap-4 text-sm font-medium text-gray-500">
-          <span className="flex items-center gap-1.5 ring-1 ring-black/5 px-3 py-1 rounded-full bg-gray-50">
+          <span className="flex items-center gap-1.5 ring-1 ring-black/5 px-3 py-1 rounded-full bg-white/60 backdrop-blur-md">
             <div className="w-2 h-2 rounded-full bg-orange-500"></div>
             {gatePasses.filter(p => p.status === 'active').length} Active
           </span>
-          <span className="flex items-center gap-1.5 ring-1 ring-black/5 px-3 py-1 rounded-full bg-gray-50">
+          <span className="flex items-center gap-1.5 ring-1 ring-black/5 px-3 py-1 rounded-full bg-white/60 backdrop-blur-md">
             <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
             {gatePasses.filter(p => p.status === 'returned').length} Returned
           </span>
@@ -392,10 +392,10 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
             <motion.div 
               key={pass.id}
               layout
-              className="bg-white p-6 rounded-3xl border border-black/5 shadow-sm hover:shadow-md transition-all space-y-4"
+              className="bg-white/70 backdrop-blur-xl p-8 rounded-[2rem] border border-white/60 shadow-2xl shadow-gray-200/50 hover:shadow-md transition-all space-y-4"
             >
               <div className="flex justify-between items-start">
-                <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600">
+                <div className="w-12 h-12 bg-blue-50 rounded-[1rem] flex items-center justify-center text-blue-600">
                   <Ticket className="w-6 h-6" />
                 </div>
                 <div className="flex flex-col items-end gap-2">
@@ -425,9 +425,9 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
                 <p className="text-sm text-gray-500">Authorized by {pass.authorizedBy}</p>
               </div>
 
-              <div className="space-y-3 border-t border-black/5 pt-4">
+              <div className="space-y-3 border-t border-white/60 pt-4">
                 <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center flex-shrink-0">
+                  <div className="w-8 h-8 rounded-lg bg-white/60 backdrop-blur-md flex items-center justify-center flex-shrink-0">
                     <Clock className="w-4 h-4 text-gray-400" />
                   </div>
                   <div>
@@ -450,17 +450,17 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
                     </div>
                   </div>
                 )}
-                <div className="bg-gray-50 p-3 rounded-2xl">
+                <div className="bg-white/60 backdrop-blur-md p-3 rounded-[1rem]">
                   <p className="text-xs text-gray-500 font-medium uppercase tracking-tight mb-1">Reason</p>
                   <p className="text-sm text-gray-700 italic font-medium leading-relaxed">"{pass.reason}"</p>
                 </div>
               </div>
 
               {pass.status === 'active' && (
-                <div className="flex gap-2 pt-4 border-t border-black/5">
+                <div className="flex gap-2 pt-4 border-t border-white/60">
                   <button
                     onClick={() => handleUpdateGatePassStatus(pass.id, 'returned')}
-                    className="flex-1 py-2.5 bg-emerald-600 text-white rounded-xl font-bold text-sm hover:bg-emerald-700 transition-all shadow-md shadow-emerald-100"
+                    className="flex-1 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white rounded-xl font-bold text-sm hover:from-emerald-600 hover:to-teal-600 hover:shadow-xl hover:-translate-y-0.5 transition-all shadow-md shadow-emerald-100"
                   >
                     Mark Returned
                   </button>
@@ -476,7 +476,7 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
           ))
         }
         {gatePasses.length === 0 && (
-          <div className="col-span-full py-20 text-center bg-white rounded-3xl border border-dashed border-gray-200">
+          <div className="col-span-full py-20 text-center bg-white rounded-[2rem] border border-dashed border-white/60">
             <Ticket className="w-12 h-12 text-gray-300 mx-auto mb-4" />
             <p className="text-gray-500 font-medium">No gate passes issued yet.</p>
           </div>
@@ -491,7 +491,7 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="bg-white rounded-3xl p-6 w-full max-w-lg relative"
+              className="bg-white/70 backdrop-blur-xl rounded-[2rem] p-6 w-full max-w-lg relative"
             >
               <button 
                 onClick={() => setIsScanning(false)}
@@ -500,15 +500,15 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
                 <X className="w-8 h-8" />
               </button>
               <div className="text-center mb-6">
-                <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-[1rem] flex items-center justify-center mx-auto mb-4">
                   <QrCode className="w-8 h-8" />
                 </div>
-                <h3 className="text-2xl font-bold text-gray-900">Scan Student QR Code</h3>
+                <h3 className="text-2xl font-extrabold tracking-tight text-gray-900">Scan Student QR Code</h3>
                 <p className="text-gray-500">Point your camera at the student's ID card QR</p>
               </div>
               
               {cameraError ? (
-                <div className="bg-red-50 p-6 rounded-2xl text-center space-y-4">
+                <div className="bg-red-50 p-6 rounded-[1rem] text-center space-y-4">
                   <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto">
                     <AlertTriangle className="w-6 h-6" />
                   </div>
@@ -524,7 +524,7 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
                   </button>
                 </div>
               ) : (
-                <div id="qr-reader" className="overflow-hidden rounded-2xl border-4 border-blue-50" />
+                <div id="qr-reader" className="overflow-hidden rounded-[1rem] border-4 border-blue-50" />
               )}
             </motion.div>
           </div>
@@ -539,7 +539,7 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
-              className="bg-white rounded-3xl p-6 md:p-8 w-full max-w-2xl shadow-2xl relative max-h-[90vh] flex flex-col"
+              className="bg-white/70 backdrop-blur-xl rounded-[2rem] p-6 md:p-8 w-full max-w-2xl shadow-2xl relative max-h-[90vh] flex flex-col"
             >
               <button 
                 onClick={() => setScannedStudents(null)}
@@ -549,7 +549,7 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
               </button>
 
               <div className="text-center mb-6 shrink-0">
-                <h2 className="text-2xl font-bold text-gray-900">Gate Pass Verification</h2>
+                <h2 className="text-2xl font-extrabold tracking-tight text-gray-900">Gate Pass Verification</h2>
                 <p className="text-sm text-gray-500">Review students and authorized pickup personnel</p>
               </div>
 
@@ -560,8 +560,8 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-wider text-left">Students Checked Out ({scannedStudents.length})</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {scannedStudents.map((student) => (
-                      <div key={student.id} className="flex gap-4 p-4 rounded-2xl bg-blue-50/50 border border-blue-100">
-                        <div className="w-16 h-16 bg-white rounded-xl flex items-center justify-center shrink-0 border border-black/5 overflow-hidden">
+                      <div key={student.id} className="flex gap-4 p-4 rounded-[1rem] bg-blue-50/50 border border-blue-100">
+                        <div className="w-16 h-16 bg-white rounded-xl flex items-center justify-center shrink-0 border border-white/60 overflow-hidden">
                           {student.photoUrl ? (
                             <img src={student.photoUrl} alt={student.name} className="w-full h-full object-cover" />
                           ) : (
@@ -572,7 +572,7 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
                           <h3 className="font-bold text-gray-900 leading-tight">{student.name}</h3>
                           <p className="text-xs text-blue-600 font-mono mt-0.5">{student.studentId || 'ID Pending'}</p>
                           <div className="flex items-center gap-2 mt-2">
-                            <span className="text-[10px] font-bold text-gray-500 bg-white px-2 py-0.5 rounded shadow-sm border border-black/5">{student.grade} - {student.section}</span>
+                            <span className="text-[10px] font-bold text-gray-500 bg-white px-2 py-0.5 rounded shadow-2xl shadow-gray-200/50 border border-white/60">{student.grade} - {student.section}</span>
                           </div>
                         </div>
                       </div>
@@ -581,7 +581,7 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
                 </div>
 
                 {/* Primary Contact */}
-                <div className="bg-gray-50 p-4 rounded-2xl flex items-center gap-4 border border-black/5">
+                <div className="bg-white/60 backdrop-blur-md p-4 rounded-[1rem] flex items-center gap-4 border border-white/60">
                   <Phone className="w-5 h-5 text-gray-400" />
                   <div className="text-left">
                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Primary WhatsApp Alert Contact</p>
@@ -602,11 +602,11 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
                       className={`space-y-2 cursor-pointer transition-all ${selectedPickup === 'father' ? 'scale-105' : 'hover:scale-105 opacity-70'}`}
                       onClick={() => setSelectedPickup('father')}
                     >
-                      <div className={`aspect-square rounded-2xl overflow-hidden shadow-sm ring-2 ${selectedPickup === 'father' ? 'ring-blue-500 ring-offset-2' : 'ring-black/5 bg-gray-50'}`}>
+                      <div className={`aspect-square rounded-[1rem] overflow-hidden shadow-2xl shadow-gray-200/50 ring-2 ${selectedPickup === 'father' ? 'ring-blue-500 ring-offset-2' : 'ring-black/5 bg-white/60 backdrop-blur-md'}`}>
                         {scannedStudents[0].fatherPhotoUrl ? (
                           <img src={scannedStudents[0].fatherPhotoUrl} alt="Father" className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50/50">
+                          <div className="w-full h-full flex flex-col items-center justify-center bg-white/60 backdrop-blur-md/50">
                             <Users className="w-8 h-8 text-gray-200" />
                             <span className="text-[8px] text-gray-400 mt-2">No Photo</span>
                           </div>
@@ -623,11 +623,11 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
                       className={`space-y-2 cursor-pointer transition-all ${selectedPickup === 'mother' ? 'scale-105' : 'hover:scale-105 opacity-70'}`}
                       onClick={() => setSelectedPickup('mother')}
                     >
-                      <div className={`aspect-square rounded-2xl overflow-hidden shadow-sm ring-2 ${selectedPickup === 'mother' ? 'ring-blue-500 ring-offset-2' : 'ring-black/5 bg-gray-50'}`}>
+                      <div className={`aspect-square rounded-[1rem] overflow-hidden shadow-2xl shadow-gray-200/50 ring-2 ${selectedPickup === 'mother' ? 'ring-blue-500 ring-offset-2' : 'ring-black/5 bg-white/60 backdrop-blur-md'}`}>
                         {scannedStudents[0].motherPhotoUrl ? (
                           <img src={scannedStudents[0].motherPhotoUrl} alt="Mother" className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50/50">
+                          <div className="w-full h-full flex flex-col items-center justify-center bg-white/60 backdrop-blur-md/50">
                             <Users className="w-8 h-8 text-gray-200" />
                             <span className="text-[8px] text-gray-400 mt-2">No Photo</span>
                           </div>
@@ -644,11 +644,11 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
                       className={`space-y-2 cursor-pointer transition-all ${selectedPickup === 'driver' ? 'scale-105' : 'hover:scale-105 opacity-70'}`}
                       onClick={() => setSelectedPickup('driver')}
                     >
-                      <div className={`aspect-square rounded-2xl overflow-hidden shadow-sm ring-2 ${selectedPickup === 'driver' ? 'ring-blue-500 ring-offset-2' : 'ring-black/5 bg-gray-50'}`}>
+                      <div className={`aspect-square rounded-[1rem] overflow-hidden shadow-2xl shadow-gray-200/50 ring-2 ${selectedPickup === 'driver' ? 'ring-blue-500 ring-offset-2' : 'ring-black/5 bg-white/60 backdrop-blur-md'}`}>
                         {scannedStudents[0].driverPhotoUrl ? (
                           <img src={scannedStudents[0].driverPhotoUrl} alt="Driver" className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50/50">
+                          <div className="w-full h-full flex flex-col items-center justify-center bg-white/60 backdrop-blur-md/50">
                             <Users className="w-8 h-8 text-gray-200" />
                             <span className="text-[8px] text-gray-400 mt-2">No Photo</span>
                           </div>
@@ -665,11 +665,11 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
                       className={`space-y-2 cursor-pointer transition-all ${selectedPickup === 'other' ? 'scale-105' : 'hover:scale-105 opacity-70'}`}
                       onClick={() => setSelectedPickup('other')}
                     >
-                      <div className={`aspect-square rounded-2xl overflow-hidden shadow-sm ring-2 ${selectedPickup === 'other' ? 'ring-blue-500 ring-offset-2' : 'ring-black/5 bg-gray-50'}`}>
+                      <div className={`aspect-square rounded-[1rem] overflow-hidden shadow-2xl shadow-gray-200/50 ring-2 ${selectedPickup === 'other' ? 'ring-blue-500 ring-offset-2' : 'ring-black/5 bg-white/60 backdrop-blur-md'}`}>
                         {scannedStudents[0].otherPhotoUrl ? (
                           <img src={scannedStudents[0].otherPhotoUrl} alt="Other" className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50/50">
+                          <div className="w-full h-full flex flex-col items-center justify-center bg-white/60 backdrop-blur-md/50">
                             <Users className="w-8 h-8 text-gray-200" />
                             <span className="text-[8px] text-gray-400 mt-2">No Photo</span>
                           </div>
@@ -683,7 +683,7 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
                   </div>
                   
                   {selectedPickup === 'other' && (
-                    <div className="mt-4 p-4 bg-gray-50 rounded-2xl border border-black/5 animate-in fade-in slide-in-from-top-2">
+                    <div className="mt-4 p-4 bg-white/60 backdrop-blur-md rounded-[1rem] border border-white/60 animate-in fade-in slide-in-from-top-2">
                       <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
                         Name of the person picking up
                       </label>
@@ -692,7 +692,7 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
                         value={otherPersonName}
                         onChange={(e) => setOtherPersonName(e.target.value)}
                         placeholder="E.g., Uncle John"
-                        className="w-full px-4 py-3 bg-white border border-black/5 rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none transition-all placeholder:text-gray-300"
+                        className="w-full px-4 py-3 bg-white border border-white/60 rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none transition-all placeholder:text-gray-300"
                         autoFocus
                       />
                     </div>
@@ -701,11 +701,11 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
 
               </div>
 
-              <div className="space-y-3 pt-6 mt-4 border-t border-black/5 shrink-0">
+              <div className="space-y-3 pt-6 mt-4 border-t border-white/60 shrink-0">
                 <button
                   disabled={isVerifying || !selectedPickup || (selectedPickup === 'other' && !otherPersonName.trim() && !scannedStudents[0]?.otherName)}
                   onClick={handleVerifyAndIssue}
-                  className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-bold flex items-center justify-center gap-3 shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all disabled:opacity-50"
+                  className="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white rounded-[1rem] font-bold flex items-center justify-center gap-3 shadow-lg shadow-emerald-100 hover:from-emerald-600 hover:to-teal-600 hover:shadow-xl hover:-translate-y-0.5 transition-all disabled:opacity-50"
                 >
                   {isVerifying ? (
                     <Clock className="w-5 h-5 animate-spin" />
@@ -721,7 +721,7 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
                       setScannedStudents(null);
                       setIsScanning(true);
                     }}
-                    className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-gray-200 transition-all disabled:opacity-50"
+                    className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-[1rem] font-bold flex items-center justify-center gap-2 hover:bg-gray-200 transition-all disabled:opacity-50"
                   >
                     Scan Another
                   </button>
@@ -740,7 +740,7 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl relative"
+            className="bg-white/70 backdrop-blur-xl rounded-[2rem] p-8 w-full max-w-md shadow-2xl relative"
           >
             <button 
               onClick={() => setIsAddingGatePass(false)}
@@ -749,7 +749,7 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
               <X className="w-5 h-5 text-gray-400" />
             </button>
             <div className="mb-6">
-              <h3 className="text-2xl font-bold text-gray-900">Issue Gate Pass</h3>
+              <h3 className="text-2xl font-extrabold tracking-tight text-gray-900">Issue Gate Pass</h3>
               <p className="text-gray-500 text-sm">Fill in the details for early student departure.</p>
             </div>
             <form onSubmit={handleAddGatePass} className="space-y-5">
@@ -759,7 +759,7 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
                   required
                   value={newGatePass.studentId}
                   onChange={e => setNewGatePass({...newGatePass, studentId: e.target.value})}
-                  className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none font-medium"
+                  className="w-full px-4 py-3 bg-white/60 backdrop-blur-md border-none rounded-[1rem] focus:ring-2 focus:ring-emerald-500 outline-none font-medium"
                 >
                   <option value="">Choose student...</option>
                   {students.sort((a,b) => a.name.localeCompare(b.name)).map(s => (
@@ -774,7 +774,7 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
                   value={newGatePass.reason}
                   onChange={e => setNewGatePass({...newGatePass, reason: e.target.value})}
                   rows={3}
-                  className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none resize-none font-medium"
+                  className="w-full px-4 py-3 bg-white/60 backdrop-blur-md border-none rounded-[1rem] focus:ring-2 focus:ring-emerald-500 outline-none resize-none font-medium"
                   placeholder="e.g., Medical appointment, Early dismissal..."
                 />
               </div>
@@ -785,20 +785,20 @@ export default function GatePassDashboard({ profile, isAdmin, initialScan = fals
                   required
                   value={newGatePass.departureTime}
                   onChange={e => setNewGatePass({...newGatePass, departureTime: e.target.value})}
-                  className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none font-medium"
+                  className="w-full px-4 py-3 bg-white/60 backdrop-blur-md border-none rounded-[1rem] focus:ring-2 focus:ring-emerald-500 outline-none font-medium"
                 />
               </div>
               <div className="flex gap-3 pt-6">
                 <button 
                   type="button"
                   onClick={() => setIsAddingGatePass(false)}
-                  className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-2xl font-bold hover:bg-gray-200 transition-all"
+                  className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-[1rem] font-bold hover:bg-gray-200 transition-all"
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit"
-                  className="flex-1 px-4 py-3 bg-emerald-600 text-white rounded-2xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100"
+                  className="flex-1 px-4 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white rounded-[1rem] font-bold hover:from-emerald-600 hover:to-teal-600 hover:shadow-xl hover:-translate-y-0.5 transition-all shadow-lg shadow-emerald-100"
                 >
                   Issue Pass
                 </button>

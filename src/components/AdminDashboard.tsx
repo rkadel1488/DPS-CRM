@@ -776,7 +776,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
     <div className="space-y-6">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Campus Management</h2>
+          <h2 className="text-2xl font-extrabold tracking-tight text-gray-900">Campus Management</h2>
           <p className="text-gray-500">Manage student records, staff roles, and parent access.</p>
         </div>
         <div className="flex flex-wrap gap-3">
@@ -800,14 +800,14 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
             <>
               <button 
                 onClick={() => setIsAddingFamily(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition-all"
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 shadow-lg shadow-blue-500/20 border-none text-white rounded-xl text-sm font-bold hover:from-blue-600 hover:to-indigo-600 hover:shadow-xl hover:-translate-y-0.5 transition-all"
               >
                 <QrCode className="w-4 h-4" />
                 Add Group Gate Pass
               </button>
               <button 
                 onClick={() => setIsAddingStudent(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-xl text-sm font-bold hover:bg-gray-800 transition-all"
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-slate-700 to-slate-900 shadow-lg shadow-slate-900/20 text-white border-none text-white rounded-xl text-sm font-bold hover:from-slate-800 hover:to-slate-950 hover:shadow-xl hover:-translate-y-0.5 transition-all"
               >
                 <UserPlus className="w-4 h-4" />
                 Add Student
@@ -820,7 +820,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                 setNewStaff({ name: '', phoneNumber: '', role: 'teacher', allowedTabs: ['dashboard'] });
                 setIsAddingStaff(true);
               }}
-              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all"
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500 to-violet-500 shadow-lg shadow-indigo-500/20 border-none text-white rounded-xl text-sm font-bold hover:from-indigo-600 hover:to-violet-600 hover:shadow-xl hover:-translate-y-0.5 transition-all"
             >
               <UserPlus className="w-4 h-4" />
               Add Teacher
@@ -832,7 +832,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                 setNewStaff({ name: '', phoneNumber: '', role: 'staff', allowedTabs: ['dashboard'] });
                 setIsAddingStaff(true);
               }}
-              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-all"
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white rounded-xl text-sm font-bold hover:from-emerald-600 hover:to-teal-600 hover:shadow-xl hover:-translate-y-0.5 transition-all"
             >
               <UserPlus className="w-4 h-4" />
               Add Staff
@@ -844,7 +844,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                 setNewStaff({ name: '', phoneNumber: '', role: 'parent', allowedTabs: ['dashboard'] });
                 setIsAddingStaff(true);
               }}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition-all"
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 shadow-lg shadow-blue-500/20 border-none text-white rounded-xl text-sm font-bold hover:from-blue-600 hover:to-indigo-600 hover:shadow-xl hover:-translate-y-0.5 transition-all"
             >
               <UserPlus className="w-4 h-4" />
               Add Parent
@@ -853,8 +853,8 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
         </div>
       </div>
 
-      <div className="bg-white rounded-3xl border border-black/5 shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-black/5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white/70 backdrop-blur-xl rounded-[2rem] border border-white/80 shadow-2xl shadow-gray-200/50 overflow-hidden">
+        <div className="p-6 border-b border-white/60 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="grid grid-cols-2 md:flex md:flex-wrap gap-2 bg-gray-100 p-1 rounded-xl">
             {[
               { id: 'students', label: 'Students', icon: GraduationCap },
@@ -867,7 +867,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                 onClick={() => setActiveTab(tab.id as any)}
                 className={`flex items-center justify-center md:justify-start gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
                   activeTab === tab.id 
-                    ? 'bg-white text-gray-900 shadow-sm' 
+                    ? 'bg-white text-gray-900 shadow-2xl shadow-gray-200/50' 
                     : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
@@ -880,17 +880,17 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
           <div className="flex gap-2">
             <div className="relative">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input type="text" placeholder="Search..." className="pl-9 pr-4 py-2 bg-gray-50 border-none rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500 w-full md:w-64" />
+              <input type="text" placeholder="Search..." className="pl-9 pr-4 py-2 bg-white/60 backdrop-blur-md border-none rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500 w-full md:w-64" />
             </div>
-            <button className="p-2 bg-gray-50 rounded-xl text-gray-500 hover:bg-gray-100">
+            <button className="p-2 bg-white/60 backdrop-blur-md rounded-xl text-gray-500 hover:bg-gray-100">
               <Filter className="w-5 h-5" />
             </button>
           </div>
         </div>
 
         {/* Visual Analytics */}
-        <div className="p-6 border-b border-black/5 bg-gray-50 flex flex-col lg:flex-row gap-6">
-          <div className="flex-1 bg-white p-4 rounded-2xl shadow-sm border border-black/5">
+        <div className="p-6 border-b border-white/60 bg-white/60 backdrop-blur-md flex flex-col lg:flex-row gap-6">
+          <div className="flex-1 bg-white p-4 rounded-[1rem] shadow-2xl shadow-gray-200/50 border border-white/60">
              <h3 className="text-sm font-bold text-gray-900 mb-4">User Roles Breakdown</h3>
              <div className="h-[200px]">
                <ResponsiveContainer width="100%" height="100%">
@@ -923,7 +923,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
         <div className="overflow-x-auto">
           {activeTab === 'students' && (
             <table className="w-full text-left min-w-[600px]">
-              <thead className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-widest font-bold">
+              <thead className="bg-white/60 backdrop-blur-md text-gray-400 text-[10px] uppercase tracking-widest font-bold">
                 <tr>
                   <th className="px-6 py-4">Student</th>
                   <th className="px-6 py-4">Contact</th>
@@ -932,14 +932,14 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                   <th className="px-6 py-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-black/5">
+              <tbody className="divide-y divide-gray-100/80">
                 {students.length > 0 ? students.map((student) => (
-                  <tr key={student.id} className="hover:bg-gray-50 transition-all cursor-pointer group">
+                  <tr key={student.id} className="hover:bg-white/60 backdrop-blur-md transition-all cursor-pointer group">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <img 
                           src={student.photoUrl || `https://ui-avatars.com/api/?name=${student.name}`} 
-                          className="w-10 h-10 rounded-xl border border-black/5"
+                          className="w-10 h-10 rounded-xl border border-white/60"
                           alt=""
                         />
                         <div>
@@ -1022,7 +1022,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
 
           {activeTab === 'teachers' && (
             <table className="w-full text-left min-w-[600px]">
-              <thead className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-widest font-bold">
+              <thead className="bg-white/60 backdrop-blur-md text-gray-400 text-[10px] uppercase tracking-widest font-bold">
                 <tr>
                   <th className="px-6 py-4">Teacher Name</th>
                   <th className="px-6 py-4">Contact</th>
@@ -1030,14 +1030,14 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                   <th className="px-6 py-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-black/5">
+              <tbody className="divide-y divide-gray-100/80">
                 {teacherMembers.map((member) => (
-                  <tr key={member.uid} className="hover:bg-gray-50 transition-all">
+                  <tr key={member.uid} className="hover:bg-white/60 backdrop-blur-md transition-all">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <img 
                           src={`https://ui-avatars.com/api/?name=${member.displayName}`} 
-                          className="w-10 h-10 rounded-xl border border-black/5"
+                          className="w-10 h-10 rounded-xl border border-white/60"
                           alt=""
                         />
                         <div>
@@ -1055,7 +1055,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                       <select
                         value={member.role}
                         onChange={(e) => updateRole(member, e.target.value as UserRole)}
-                        className="text-[10px] font-bold px-2 py-1 rounded-lg border-none bg-gray-50 text-gray-900 focus:ring-2 focus:ring-emerald-500 outline-none"
+                        className="text-[10px] font-bold px-2 py-1 rounded-lg border-none bg-white/60 backdrop-blur-md text-gray-900 focus:ring-2 focus:ring-emerald-500 outline-none"
                         disabled={!isAdmin}
                       >
                         <option value="staff">Staff</option>
@@ -1086,12 +1086,12 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                   </tr>
                 ))}
                 {pendingTeacherInvites.map((invite) => (
-                  <tr key={invite.id} className="hover:bg-gray-50 transition-all opacity-60">
+                  <tr key={invite.id} className="hover:bg-white/60 backdrop-blur-md transition-all opacity-60">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <img 
                           src={`https://ui-avatars.com/api/?name=${invite.name}`} 
-                          className="w-10 h-10 rounded-xl border border-black/5"
+                          className="w-10 h-10 rounded-xl border border-white/60"
                           alt=""
                         />
                         <div>
@@ -1147,7 +1147,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
 
           {activeTab === 'staff' && (
             <table className="w-full text-left min-w-[600px]">
-              <thead className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-widest font-bold">
+              <thead className="bg-white/60 backdrop-blur-md text-gray-400 text-[10px] uppercase tracking-widest font-bold">
                 <tr>
                   <th className="px-6 py-4">Staff Member</th>
                   <th className="px-6 py-4">Role</th>
@@ -1155,14 +1155,14 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                   <th className="px-6 py-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-black/5">
+              <tbody className="divide-y divide-gray-100/80">
                 {staffMembers.map((member) => (
-                  <tr key={member.uid} className="hover:bg-gray-50 transition-all">
+                  <tr key={member.uid} className="hover:bg-white/60 backdrop-blur-md transition-all">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <img 
                           src={`https://ui-avatars.com/api/?name=${member.displayName}`} 
-                          className="w-10 h-10 rounded-xl border border-black/5"
+                          className="w-10 h-10 rounded-xl border border-white/60"
                           alt=""
                         />
                         <div>
@@ -1180,7 +1180,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                         <select
                           value={member.role}
                           onChange={(e) => updateRole(member, e.target.value as UserRole)}
-                          className="text-[10px] font-bold px-2 py-1 rounded-lg border-none bg-gray-50 text-gray-900 focus:ring-2 focus:ring-emerald-500 outline-none"
+                          className="text-[10px] font-bold px-2 py-1 rounded-lg border-none bg-white/60 backdrop-blur-md text-gray-900 focus:ring-2 focus:ring-emerald-500 outline-none"
                           disabled={!isAdmin}
                         >
                           <option value="staff">Staff</option>
@@ -1204,7 +1204,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                               className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${
                                 hasAccess 
                                   ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' 
-                                  : 'bg-gray-50 text-gray-400 border border-gray-100 grayscale'
+                                  : 'bg-white/60 backdrop-blur-md text-gray-400 border border-white/80 grayscale'
                               } ${(isMainAdmin || member.role === 'admin') ? 'cursor-default' : 'hover:scale-105'}`}
                             >
                               {hasAccess ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
@@ -1235,12 +1235,12 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                   </tr>
                 ))}
                 {pendingStaffInvites.map((invite) => (
-                  <tr key={invite.id} className="hover:bg-gray-50 transition-all opacity-60">
+                  <tr key={invite.id} className="hover:bg-white/60 backdrop-blur-md transition-all opacity-60">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <img 
                           src={`https://ui-avatars.com/api/?name=${invite.name}`} 
-                          className="w-10 h-10 rounded-xl border border-black/5"
+                          className="w-10 h-10 rounded-xl border border-white/60"
                           alt=""
                         />
                         <div>
@@ -1264,7 +1264,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                               className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${
                                 hasAccess 
                                   ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' 
-                                  : 'bg-gray-50 text-gray-400 border border-gray-100 grayscale'
+                                  : 'bg-white/60 backdrop-blur-md text-gray-400 border border-white/80 grayscale'
                               }`}
                             >
                               {hasAccess ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
@@ -1299,7 +1299,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
           )}
           {activeTab === 'parents' && (
             <table className="w-full text-left min-w-[600px]">
-              <thead className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-widest font-bold">
+              <thead className="bg-white/60 backdrop-blur-md text-gray-400 text-[10px] uppercase tracking-widest font-bold">
                 <tr>
                   <th className="px-6 py-4">Parent Name</th>
                   <th className="px-6 py-4">Contact</th>
@@ -1307,14 +1307,14 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                   <th className="px-6 py-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-black/5">
+              <tbody className="divide-y divide-gray-100/80">
                 {parentMembers.map((member) => (
-                  <tr key={member.uid} className="hover:bg-gray-50 transition-all">
+                  <tr key={member.uid} className="hover:bg-white/60 backdrop-blur-md transition-all">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <img 
                           src={`https://ui-avatars.com/api/?name=${member.displayName}`} 
-                          className="w-10 h-10 rounded-xl border border-black/5"
+                          className="w-10 h-10 rounded-xl border border-white/60"
                           alt=""
                         />
                         <div>
@@ -1332,7 +1332,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                       <select
                         value={member.role}
                         onChange={(e) => updateRole(member, e.target.value as UserRole)}
-                        className="text-[10px] font-bold px-2 py-1 rounded-lg border-none bg-gray-50 text-gray-900 focus:ring-2 focus:ring-emerald-500 outline-none"
+                        className="text-[10px] font-bold px-2 py-1 rounded-lg border-none bg-white/60 backdrop-blur-md text-gray-900 focus:ring-2 focus:ring-emerald-500 outline-none"
                         disabled={!isAdmin}
                       >
                         <option value="staff">Staff</option>
@@ -1363,12 +1363,12 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                   </tr>
                 ))}
                 {pendingParentInvites.map((invite) => (
-                  <tr key={invite.id} className="hover:bg-gray-50 transition-all opacity-60">
+                  <tr key={invite.id} className="hover:bg-white/60 backdrop-blur-md transition-all opacity-60">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <img 
                           src={`https://ui-avatars.com/api/?name=${invite.name}`} 
-                          className="w-10 h-10 rounded-xl border border-black/5"
+                          className="w-10 h-10 rounded-xl border border-white/60"
                           alt=""
                         />
                         <div>
@@ -1430,12 +1430,12 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-xl text-center"
+            className="bg-white/70 backdrop-blur-xl rounded-[2rem] p-6 w-full max-w-sm shadow-2xl shadow-gray-200/40 text-center"
           >
             <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Trash2 className="w-6 h-6 text-red-600" />
             </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Delete Student</h3>
+            <h3 className="text-[1.35rem] font-extrabold tracking-tight text-gray-900 mb-2">Delete Student</h3>
             <p className="text-gray-500 mb-6">Are you sure you want to delete this student? This action cannot be undone.</p>
             <div className="flex gap-3">
               <button 
@@ -1460,12 +1460,12 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-xl text-center"
+            className="bg-white/70 backdrop-blur-xl rounded-[2rem] p-6 w-full max-w-sm shadow-2xl shadow-gray-200/40 text-center"
           >
             <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Trash2 className="w-6 h-6 text-red-600" />
             </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Delete Staff Member</h3>
+            <h3 className="text-[1.35rem] font-extrabold tracking-tight text-gray-900 mb-2">Delete Staff Member</h3>
             <p className="text-gray-500 mb-6">Are you sure you want to delete this staff member? This action cannot be undone.</p>
             <div className="flex gap-3">
               <button 
@@ -1490,12 +1490,12 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-xl text-center"
+            className="bg-white/70 backdrop-blur-xl rounded-[2rem] p-6 w-full max-w-sm shadow-2xl shadow-gray-200/40 text-center"
           >
             <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Trash2 className="w-6 h-6 text-red-600" />
             </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Delete Staff Invite</h3>
+            <h3 className="text-[1.35rem] font-extrabold tracking-tight text-gray-900 mb-2">Delete Staff Invite</h3>
             <p className="text-gray-500 mb-6">Are you sure you want to delete this pending invite? This action cannot be undone.</p>
             <div className="flex gap-3">
               <button 
@@ -1520,9 +1520,9 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-3xl p-6 w-full max-w-md shadow-xl"
+            className="bg-white/70 backdrop-blur-xl rounded-[2rem] p-6 w-full max-w-md shadow-2xl shadow-gray-200/40"
           >
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Add New User</h3>
+            <h3 className="text-[1.35rem] font-extrabold tracking-tight text-gray-900 mb-4">Add New User</h3>
             <form onSubmit={handleAddStaff} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
@@ -1531,7 +1531,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                   required
                   value={newStaff.name}
                   onChange={e => setNewStaff({...newStaff, name: e.target.value})}
-                  className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                  className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
                 />
               </div>
               <div>
@@ -1541,7 +1541,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                   required
                   value={newStaff.phoneNumber}
                   onChange={e => setNewStaff({...newStaff, phoneNumber: e.target.value})}
-                  className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                  className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
                 />
               </div>
               <div>
@@ -1549,7 +1549,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                 <select 
                   value={newStaff.role}
                   onChange={e => setNewStaff({...newStaff, role: e.target.value as UserRole})}
-                  className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                  className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
                 >
                   <option value="staff">Staff</option>
                   <option value="teacher">Teacher</option>
@@ -1588,7 +1588,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                 </button>
                 <button 
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all"
+                  className="flex-1 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white rounded-xl font-bold hover:from-emerald-600 hover:to-teal-600 hover:shadow-xl hover:-translate-y-0.5 transition-all"
                 >
                   Add Staff
                 </button>
@@ -1603,20 +1603,20 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-3xl p-6 w-full max-w-md shadow-xl"
+            className="bg-white/70 backdrop-blur-xl rounded-[2rem] p-6 w-full max-w-md shadow-2xl shadow-gray-200/40"
           >
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Edit Student</h3>
+            <h3 className="text-[1.35rem] font-extrabold tracking-tight text-gray-900 mb-4">Edit Student</h3>
             <form onSubmit={handleEditStudent} className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
               <div className="flex flex-col items-center gap-4 py-4">
                 <div className="relative group">
-                  <div className="w-24 h-24 rounded-2xl bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden">
+                  <div className="w-24 h-24 rounded-[1rem] bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden">
                     {editingStudent.photoUrl ? (
                       <img src={editingStudent.photoUrl} alt="Preview" className="w-full h-full object-cover" />
                     ) : (
                       <Camera className="w-8 h-8 text-gray-400" />
                     )}
                   </div>
-                  <label className="absolute -bottom-2 -right-2 p-2 bg-emerald-600 text-white rounded-xl shadow-lg cursor-pointer hover:bg-emerald-700 transition-all">
+                  <label className="absolute -bottom-2 -right-2 p-2 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white rounded-xl shadow-lg cursor-pointer hover:from-emerald-600 hover:to-teal-600 hover:shadow-xl hover:-translate-y-0.5 transition-all">
                     <Upload className="w-4 h-4" />
                     <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, true, 'student')} />
                   </label>
@@ -1631,7 +1631,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                   required
                   value={editingStudent.name}
                   onChange={e => setEditingStudent({...editingStudent, name: e.target.value})}
-                  className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                  className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -1642,7 +1642,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                     required
                     value={editingStudent.grade}
                     onChange={e => setEditingStudent({...editingStudent, grade: e.target.value})}
-                    className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                    className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
                   />
                 </div>
                 <div>
@@ -1652,7 +1652,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                     required
                     value={editingStudent.section}
                     onChange={e => setEditingStudent({...editingStudent, section: e.target.value})}
-                    className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                    className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
                   />
                 </div>
               </div>
@@ -1660,16 +1660,16 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
               <div className="space-y-4 pt-2">
                 <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Family & Driver Information</p>
                 
-                <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl">
+                <div className="flex items-center gap-4 p-4 bg-white/60 backdrop-blur-md rounded-[1rem]">
                   <div className="relative">
-                    <div className="w-16 h-16 rounded-xl bg-white border border-black/5 flex items-center justify-center overflow-hidden">
+                    <div className="w-16 h-16 rounded-xl bg-white border border-white/60 flex items-center justify-center overflow-hidden">
                       {editingStudent.fatherPhotoUrl ? (
                         <img src={editingStudent.fatherPhotoUrl} alt="Father" className="w-full h-full object-cover" />
                       ) : (
                         <Camera className="w-6 h-6 text-gray-300" />
                       )}
                     </div>
-                    <label className="absolute -bottom-1 -right-1 p-1.5 bg-gray-900 text-white rounded-lg shadow-sm cursor-pointer hover:bg-black transition-all">
+                    <label className="absolute -bottom-1 -right-1 p-1.5 bg-gradient-to-r from-slate-700 to-slate-900 shadow-lg shadow-slate-900/20 text-white border-none text-white rounded-lg shadow-2xl shadow-gray-200/50 cursor-pointer hover:bg-black transition-all">
                       <Upload className="w-3 h-3" />
                       <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, true, 'father')} />
                     </label>
@@ -1686,16 +1686,16 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl">
+                <div className="flex items-center gap-4 p-4 bg-white/60 backdrop-blur-md rounded-[1rem]">
                   <div className="relative">
-                    <div className="w-16 h-16 rounded-xl bg-white border border-black/5 flex items-center justify-center overflow-hidden">
+                    <div className="w-16 h-16 rounded-xl bg-white border border-white/60 flex items-center justify-center overflow-hidden">
                       {editingStudent.motherPhotoUrl ? (
                         <img src={editingStudent.motherPhotoUrl} alt="Mother" className="w-full h-full object-cover" />
                       ) : (
                         <Camera className="w-6 h-6 text-gray-300" />
                       )}
                     </div>
-                    <label className="absolute -bottom-1 -right-1 p-1.5 bg-gray-900 text-white rounded-lg shadow-sm cursor-pointer hover:bg-black transition-all">
+                    <label className="absolute -bottom-1 -right-1 p-1.5 bg-gradient-to-r from-slate-700 to-slate-900 shadow-lg shadow-slate-900/20 text-white border-none text-white rounded-lg shadow-2xl shadow-gray-200/50 cursor-pointer hover:bg-black transition-all">
                       <Upload className="w-3 h-3" />
                       <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, true, 'mother')} />
                     </label>
@@ -1712,16 +1712,16 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl">
+                <div className="flex items-center gap-4 p-4 bg-white/60 backdrop-blur-md rounded-[1rem]">
                   <div className="relative">
-                    <div className="w-16 h-16 rounded-xl bg-white border border-black/5 flex items-center justify-center overflow-hidden">
+                    <div className="w-16 h-16 rounded-xl bg-white border border-white/60 flex items-center justify-center overflow-hidden">
                       {editingStudent.driverPhotoUrl ? (
                         <img src={editingStudent.driverPhotoUrl} alt="Driver" className="w-full h-full object-cover" />
                       ) : (
                         <Camera className="w-6 h-6 text-gray-300" />
                       )}
                     </div>
-                    <label className="absolute -bottom-1 -right-1 p-1.5 bg-gray-900 text-white rounded-lg shadow-sm cursor-pointer hover:bg-black transition-all">
+                    <label className="absolute -bottom-1 -right-1 p-1.5 bg-gradient-to-r from-slate-700 to-slate-900 shadow-lg shadow-slate-900/20 text-white border-none text-white rounded-lg shadow-2xl shadow-gray-200/50 cursor-pointer hover:bg-black transition-all">
                       <Upload className="w-3 h-3" />
                       <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, true, 'driver')} />
                     </label>
@@ -1738,16 +1738,16 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl">
+                <div className="flex items-center gap-4 p-4 bg-white/60 backdrop-blur-md rounded-[1rem]">
                   <div className="relative">
-                    <div className="w-16 h-16 rounded-xl bg-white border border-black/5 flex items-center justify-center overflow-hidden">
+                    <div className="w-16 h-16 rounded-xl bg-white border border-white/60 flex items-center justify-center overflow-hidden">
                       {editingStudent.otherPhotoUrl ? (
                         <img src={editingStudent.otherPhotoUrl} alt="Other" className="w-full h-full object-cover" />
                       ) : (
                         <Camera className="w-6 h-6 text-gray-300" />
                       )}
                     </div>
-                    <label className="absolute -bottom-1 -right-1 p-1.5 bg-gray-900 text-white rounded-lg shadow-sm cursor-pointer hover:bg-black transition-all">
+                    <label className="absolute -bottom-1 -right-1 p-1.5 bg-gradient-to-r from-slate-700 to-slate-900 shadow-lg shadow-slate-900/20 text-white border-none text-white rounded-lg shadow-2xl shadow-gray-200/50 cursor-pointer hover:bg-black transition-all">
                       <Upload className="w-3 h-3" />
                       <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, true, 'other')} />
                     </label>
@@ -1770,7 +1770,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                 <select
                   value={editingStudent.routeId || ''}
                   onChange={e => setEditingStudent({...editingStudent, routeId: e.target.value})}
-                  className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                  className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
                 >
                   <option value="">No Route Assigned</option>
                   {routes.map(route => (
@@ -1786,7 +1786,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                   placeholder="+1234567890"
                   value={editingStudent.phoneNumber || ''}
                   onChange={e => setEditingStudent({...editingStudent, phoneNumber: e.target.value})}
-                  className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                  className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
                 />
               </div>
               <div className="flex gap-3 pt-4">
@@ -1799,7 +1799,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                 </button>
                 <button 
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-emerald-500 text-white rounded-xl font-bold hover:bg-emerald-600 transition-all"
+                  className="flex-1 px-4 py-2 bg-emerald-500 text-white rounded-xl font-bold hover:bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none transition-all"
                 >
                   Save Changes
                 </button>
@@ -1814,11 +1814,11 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-3xl w-full max-w-4xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]"
+            className="bg-white/70 backdrop-blur-xl rounded-[2rem] w-full max-w-4xl shadow-2xl shadow-gray-200/40 overflow-hidden flex flex-col max-h-[90vh]"
           >
-            <div className="p-6 border-b border-black/5 shrink-0 flex items-center justify-between">
+            <div className="p-6 border-b border-white/60 shrink-0 flex items-center justify-between">
               <div>
-                <h3 className="text-xl font-bold text-gray-900">Add Group Gate Pass</h3>
+                <h3 className="text-[1.35rem] font-extrabold tracking-tight text-gray-900">Add Group Gate Pass</h3>
                 <p className="text-xs text-gray-500">Create a shared gate pass for multiple students</p>
               </div>
               <button onClick={() => setIsAddingFamily(false)} className="p-2 hover:bg-gray-100 rounded-full">
@@ -1833,11 +1833,11 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                   {/* Father */}
                   <div className="space-y-2">
-                    <div className="flex flex-col items-center gap-3 p-4 bg-gray-50 rounded-2xl border border-black/5">
-                      <div className="w-20 h-20 rounded-xl bg-white border border-black/5 flex items-center justify-center overflow-hidden">
+                    <div className="flex flex-col items-center gap-3 p-4 bg-white/60 backdrop-blur-md rounded-[1rem] border border-white/60">
+                      <div className="w-20 h-20 rounded-xl bg-white border border-white/60 flex items-center justify-center overflow-hidden">
                         {newFamily.fatherPhotoUrl ? <img src={newFamily.fatherPhotoUrl} className="w-full h-full object-cover" /> : <Camera className="w-8 h-8 text-gray-300" />}
                       </div>
-                      <label className="flex items-center gap-2 px-3 py-1.5 bg-gray-900 text-white rounded-lg text-[10px] uppercase font-bold cursor-pointer hover:bg-black transition-all">
+                      <label className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-slate-700 to-slate-900 shadow-lg shadow-slate-900/20 text-white border-none text-white rounded-lg text-[10px] uppercase font-bold cursor-pointer hover:bg-black transition-all">
                         <Upload className="w-3 h-3" /> Upload Photo
                         <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUploadFamily(e, 'father')} />
                       </label>
@@ -1850,11 +1850,11 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
 
                   {/* Mother */}
                   <div className="space-y-2">
-                    <div className="flex flex-col items-center gap-3 p-4 bg-gray-50 rounded-2xl border border-black/5">
-                      <div className="w-20 h-20 rounded-xl bg-white border border-black/5 flex items-center justify-center overflow-hidden">
+                    <div className="flex flex-col items-center gap-3 p-4 bg-white/60 backdrop-blur-md rounded-[1rem] border border-white/60">
+                      <div className="w-20 h-20 rounded-xl bg-white border border-white/60 flex items-center justify-center overflow-hidden">
                         {newFamily.motherPhotoUrl ? <img src={newFamily.motherPhotoUrl} className="w-full h-full object-cover" /> : <Camera className="w-8 h-8 text-gray-300" />}
                       </div>
-                      <label className="flex items-center gap-2 px-3 py-1.5 bg-gray-900 text-white rounded-lg text-[10px] uppercase font-bold cursor-pointer hover:bg-black transition-all">
+                      <label className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-slate-700 to-slate-900 shadow-lg shadow-slate-900/20 text-white border-none text-white rounded-lg text-[10px] uppercase font-bold cursor-pointer hover:bg-black transition-all">
                         <Upload className="w-3 h-3" /> Upload Photo
                         <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUploadFamily(e, 'mother')} />
                       </label>
@@ -1867,11 +1867,11 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
 
                   {/* Driver */}
                   <div className="space-y-2">
-                    <div className="flex flex-col items-center gap-3 p-4 bg-gray-50 rounded-2xl border border-black/5">
-                      <div className="w-20 h-20 rounded-xl bg-white border border-black/5 flex items-center justify-center overflow-hidden">
+                    <div className="flex flex-col items-center gap-3 p-4 bg-white/60 backdrop-blur-md rounded-[1rem] border border-white/60">
+                      <div className="w-20 h-20 rounded-xl bg-white border border-white/60 flex items-center justify-center overflow-hidden">
                         {newFamily.driverPhotoUrl ? <img src={newFamily.driverPhotoUrl} className="w-full h-full object-cover" /> : <Camera className="w-8 h-8 text-gray-300" />}
                       </div>
-                      <label className="flex items-center gap-2 px-3 py-1.5 bg-gray-900 text-white rounded-lg text-[10px] uppercase font-bold cursor-pointer hover:bg-black transition-all">
+                      <label className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-slate-700 to-slate-900 shadow-lg shadow-slate-900/20 text-white border-none text-white rounded-lg text-[10px] uppercase font-bold cursor-pointer hover:bg-black transition-all">
                         <Upload className="w-3 h-3" /> Upload Photo
                         <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUploadFamily(e, 'driver')} />
                       </label>
@@ -1884,11 +1884,11 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
 
                   {/* Other */}
                   <div className="space-y-2">
-                    <div className="flex flex-col items-center gap-3 p-4 bg-gray-50 rounded-2xl border border-black/5">
-                      <div className="w-20 h-20 rounded-xl bg-white border border-black/5 flex items-center justify-center overflow-hidden">
+                    <div className="flex flex-col items-center gap-3 p-4 bg-white/60 backdrop-blur-md rounded-[1rem] border border-white/60">
+                      <div className="w-20 h-20 rounded-xl bg-white border border-white/60 flex items-center justify-center overflow-hidden">
                         {newFamily.otherPhotoUrl ? <img src={newFamily.otherPhotoUrl} className="w-full h-full object-cover" /> : <Camera className="w-8 h-8 text-gray-300" />}
                       </div>
-                      <label className="flex items-center gap-2 px-3 py-1.5 bg-gray-900 text-white rounded-lg text-[10px] uppercase font-bold cursor-pointer hover:bg-black transition-all">
+                      <label className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-slate-700 to-slate-900 shadow-lg shadow-slate-900/20 text-white border-none text-white rounded-lg text-[10px] uppercase font-bold cursor-pointer hover:bg-black transition-all">
                         <Upload className="w-3 h-3" /> Upload Photo
                         <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUploadFamily(e, 'other')} />
                       </label>
@@ -1902,7 +1902,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
 
                 <div className="w-full max-w-sm">
                   <label className="block text-xs font-medium text-gray-500 mb-1">Primary Contact Number (For WhatsApp Alerts)</label>
-                  <input type="text" value={newFamily.phoneNumber} onChange={e => setNewFamily({...newFamily, phoneNumber: e.target.value})} className="w-full px-4 py-2 bg-gray-50 border border-black/10 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="+1234567890" />
+                  <input type="text" value={newFamily.phoneNumber} onChange={e => setNewFamily({...newFamily, phoneNumber: e.target.value})} className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border border-black/10 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="+1234567890" />
                 </div>
               </div>
 
@@ -1916,12 +1916,12 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                 
                 <div className="space-y-4">
                   {newFamily.students.map((student, index) => (
-                    <div key={index} className="flex flex-col lg:flex-row items-center lg:items-start gap-4 p-4 rounded-2xl border border-black/5 bg-gray-50/50">
+                    <div key={index} className="flex flex-col lg:flex-row items-center lg:items-start gap-4 p-4 rounded-[1rem] border border-white/60 bg-white/60 backdrop-blur-md/50">
                       <div className="flex flex-col items-center gap-2 shrink-0">
-                        <div className="w-20 h-20 rounded-xl bg-white border border-black/5 flex items-center justify-center overflow-hidden">
+                        <div className="w-20 h-20 rounded-xl bg-white border border-white/60 flex items-center justify-center overflow-hidden">
                           {student.photoUrl ? <img src={student.photoUrl} className="w-full h-full object-cover" /> : <Camera className="w-8 h-8 text-gray-300" />}
                         </div>
-                        <label className="flex items-center gap-2 px-3 py-1.5 bg-gray-900 text-white rounded-lg text-[10px] uppercase font-bold cursor-pointer hover:bg-black transition-all">
+                        <label className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-slate-700 to-slate-900 shadow-lg shadow-slate-900/20 text-white border-none text-white rounded-lg text-[10px] uppercase font-bold cursor-pointer hover:bg-black transition-all">
                           <Upload className="w-3 h-3" /> Upload
                           <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUploadFamily(e, 'student', index)} />
                         </label>
@@ -1960,7 +1960,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                 <button type="button" onClick={() => setIsAddingFamily(false)} className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-all">
                   Cancel
                 </button>
-                <button type="submit" className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all">
+                <button type="submit" className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-500 to-indigo-500 shadow-lg shadow-blue-500/20 border-none text-white rounded-xl font-bold hover:from-blue-600 hover:to-indigo-600 hover:shadow-xl hover:-translate-y-0.5 transition-all">
                   Save Group & Generate QR
                 </button>
               </div>
@@ -1974,20 +1974,20 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-3xl p-6 w-full max-w-md shadow-xl"
+            className="bg-white/70 backdrop-blur-xl rounded-[2rem] p-6 w-full max-w-md shadow-2xl shadow-gray-200/40"
           >
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Add New Student</h3>
+            <h3 className="text-[1.35rem] font-extrabold tracking-tight text-gray-900 mb-4">Add New Student</h3>
             <form onSubmit={handleAddStudent} className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
               <div className="flex flex-col items-center gap-4 py-4">
                 <div className="relative group">
-                  <div className="w-24 h-24 rounded-2xl bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden">
+                  <div className="w-24 h-24 rounded-[1rem] bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden">
                     {newStudent.photoUrl ? (
                       <img src={newStudent.photoUrl} alt="Preview" className="w-full h-full object-cover" />
                     ) : (
                       <Camera className="w-8 h-8 text-gray-400" />
                     )}
                   </div>
-                  <label className="absolute -bottom-2 -right-2 p-2 bg-emerald-600 text-white rounded-xl shadow-lg cursor-pointer hover:bg-emerald-700 transition-all">
+                  <label className="absolute -bottom-2 -right-2 p-2 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white rounded-xl shadow-lg cursor-pointer hover:from-emerald-600 hover:to-teal-600 hover:shadow-xl hover:-translate-y-0.5 transition-all">
                     <Upload className="w-4 h-4" />
                     <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, false, 'student')} />
                   </label>
@@ -2002,7 +2002,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                   required
                   value={newStudent.name}
                   onChange={e => setNewStudent({...newStudent, name: e.target.value})}
-                  className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                  className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -2013,7 +2013,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                     required
                     value={newStudent.grade}
                     onChange={e => setNewStudent({...newStudent, grade: e.target.value})}
-                    className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                    className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
                   />
                 </div>
                 <div>
@@ -2023,7 +2023,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                     required
                     value={newStudent.section}
                     onChange={e => setNewStudent({...newStudent, section: e.target.value})}
-                    className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                    className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
                   />
                 </div>
               </div>
@@ -2031,16 +2031,16 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
               <div className="space-y-4 pt-2">
                 <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Family & Driver Information</p>
                 
-                <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl">
+                <div className="flex items-center gap-4 p-4 bg-white/60 backdrop-blur-md rounded-[1rem]">
                   <div className="relative">
-                    <div className="w-16 h-16 rounded-xl bg-white border border-black/5 flex items-center justify-center overflow-hidden">
+                    <div className="w-16 h-16 rounded-xl bg-white border border-white/60 flex items-center justify-center overflow-hidden">
                       {newStudent.fatherPhotoUrl ? (
                         <img src={newStudent.fatherPhotoUrl} alt="Father" className="w-full h-full object-cover" />
                       ) : (
                         <Camera className="w-6 h-6 text-gray-300" />
                       )}
                     </div>
-                    <label className="absolute -bottom-1 -right-1 p-1.5 bg-gray-900 text-white rounded-lg shadow-sm cursor-pointer hover:bg-black transition-all">
+                    <label className="absolute -bottom-1 -right-1 p-1.5 bg-gradient-to-r from-slate-700 to-slate-900 shadow-lg shadow-slate-900/20 text-white border-none text-white rounded-lg shadow-2xl shadow-gray-200/50 cursor-pointer hover:bg-black transition-all">
                       <Upload className="w-3 h-3" />
                       <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, false, 'father')} />
                     </label>
@@ -2057,16 +2057,16 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl">
+                <div className="flex items-center gap-4 p-4 bg-white/60 backdrop-blur-md rounded-[1rem]">
                   <div className="relative">
-                    <div className="w-16 h-16 rounded-xl bg-white border border-black/5 flex items-center justify-center overflow-hidden">
+                    <div className="w-16 h-16 rounded-xl bg-white border border-white/60 flex items-center justify-center overflow-hidden">
                       {newStudent.motherPhotoUrl ? (
                         <img src={newStudent.motherPhotoUrl} alt="Mother" className="w-full h-full object-cover" />
                       ) : (
                         <Camera className="w-6 h-6 text-gray-300" />
                       )}
                     </div>
-                    <label className="absolute -bottom-1 -right-1 p-1.5 bg-gray-900 text-white rounded-lg shadow-sm cursor-pointer hover:bg-black transition-all">
+                    <label className="absolute -bottom-1 -right-1 p-1.5 bg-gradient-to-r from-slate-700 to-slate-900 shadow-lg shadow-slate-900/20 text-white border-none text-white rounded-lg shadow-2xl shadow-gray-200/50 cursor-pointer hover:bg-black transition-all">
                       <Upload className="w-3 h-3" />
                       <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, false, 'mother')} />
                     </label>
@@ -2083,16 +2083,16 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl">
+                <div className="flex items-center gap-4 p-4 bg-white/60 backdrop-blur-md rounded-[1rem]">
                   <div className="relative">
-                    <div className="w-16 h-16 rounded-xl bg-white border border-black/5 flex items-center justify-center overflow-hidden">
+                    <div className="w-16 h-16 rounded-xl bg-white border border-white/60 flex items-center justify-center overflow-hidden">
                       {newStudent.driverPhotoUrl ? (
                         <img src={newStudent.driverPhotoUrl} alt="Driver" className="w-full h-full object-cover" />
                       ) : (
                         <Camera className="w-6 h-6 text-gray-300" />
                       )}
                     </div>
-                    <label className="absolute -bottom-1 -right-1 p-1.5 bg-gray-900 text-white rounded-lg shadow-sm cursor-pointer hover:bg-black transition-all">
+                    <label className="absolute -bottom-1 -right-1 p-1.5 bg-gradient-to-r from-slate-700 to-slate-900 shadow-lg shadow-slate-900/20 text-white border-none text-white rounded-lg shadow-2xl shadow-gray-200/50 cursor-pointer hover:bg-black transition-all">
                       <Upload className="w-3 h-3" />
                       <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, false, 'driver')} />
                     </label>
@@ -2109,16 +2109,16 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl">
+                <div className="flex items-center gap-4 p-4 bg-white/60 backdrop-blur-md rounded-[1rem]">
                   <div className="relative">
-                    <div className="w-16 h-16 rounded-xl bg-white border border-black/5 flex items-center justify-center overflow-hidden">
+                    <div className="w-16 h-16 rounded-xl bg-white border border-white/60 flex items-center justify-center overflow-hidden">
                       {newStudent.otherPhotoUrl ? (
                         <img src={newStudent.otherPhotoUrl} alt="Other" className="w-full h-full object-cover" />
                       ) : (
                         <Camera className="w-6 h-6 text-gray-300" />
                       )}
                     </div>
-                    <label className="absolute -bottom-1 -right-1 p-1.5 bg-gray-900 text-white rounded-lg shadow-sm cursor-pointer hover:bg-black transition-all">
+                    <label className="absolute -bottom-1 -right-1 p-1.5 bg-gradient-to-r from-slate-700 to-slate-900 shadow-lg shadow-slate-900/20 text-white border-none text-white rounded-lg shadow-2xl shadow-gray-200/50 cursor-pointer hover:bg-black transition-all">
                       <Upload className="w-3 h-3" />
                       <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, false, 'other')} />
                     </label>
@@ -2141,7 +2141,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                 <select
                   value={newStudent.routeId}
                   onChange={e => setNewStudent({...newStudent, routeId: e.target.value})}
-                  className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                  className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
                 >
                   <option value="">No Route Assigned</option>
                   {routes.map(route => (
@@ -2157,7 +2157,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                   placeholder="+1234567890"
                   value={newStudent.phoneNumber}
                   onChange={e => setNewStudent({...newStudent, phoneNumber: e.target.value})}
-                  className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                  className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
                 />
               </div>
               <div className="flex gap-3 pt-4">
@@ -2170,7 +2170,7 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                 </button>
                 <button 
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all"
+                  className="flex-1 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white rounded-xl font-bold hover:from-emerald-600 hover:to-teal-600 hover:shadow-xl hover:-translate-y-0.5 transition-all"
                 >
                   Save Student
                 </button>

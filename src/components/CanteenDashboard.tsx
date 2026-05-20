@@ -201,10 +201,10 @@ export default function CanteenDashboard({ profile, isAdmin }: { profile: UserPr
     <div className="space-y-6">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Canteen Management</h2>
+          <h2 className="text-2xl font-extrabold tracking-tight text-gray-900">Canteen Management</h2>
           <p className="text-gray-500">Manage menus, billing, and meal planning.</p>
         </div>
-        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 bg-white p-1 rounded-2xl border border-black/5 shadow-sm">
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 bg-white p-1 rounded-[1rem] border border-white/80 shadow-2xl shadow-gray-200/50">
           {[
             { id: 'menu', label: 'Menu', icon: Utensils },
             { id: 'planner', label: 'Meal Planner', icon: Calendar },
@@ -218,8 +218,8 @@ export default function CanteenDashboard({ profile, isAdmin }: { profile: UserPr
               onClick={() => setActiveTab(tab.id as any)}
               className={`flex items-center justify-center sm:justify-start gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                 activeTab === tab.id 
-                  ? 'bg-emerald-600 text-white shadow-md' 
-                  : 'text-gray-500 hover:bg-gray-50'
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white shadow-md' 
+                  : 'text-gray-500 hover:bg-white/60 backdrop-blur-md'
               }`}
             >
               <tab.icon className="w-4 h-4" />
@@ -237,10 +237,10 @@ export default function CanteenDashboard({ profile, isAdmin }: { profile: UserPr
                 <motion.div 
                   key={meal.id}
                   layout
-                  className="bg-white p-5 rounded-3xl border border-black/5 shadow-sm hover:shadow-md transition-all group"
+                  className="bg-white/70 backdrop-blur-xl p-5 rounded-[1.5rem] border border-white/60 shadow-2xl shadow-gray-200/50 hover:shadow-md transition-all group"
                 >
                   <div className="flex justify-between items-start mb-4">
-                    <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-600">
+                    <div className="w-12 h-12 bg-orange-50 rounded-[1rem] flex items-center justify-center text-orange-600">
                       <Utensils className="w-6 h-6" />
                     </div>
                     <span className={`text-xs font-bold px-2 py-1 rounded-full ${
@@ -252,7 +252,7 @@ export default function CanteenDashboard({ profile, isAdmin }: { profile: UserPr
                   <h4 className="font-bold text-gray-900 text-lg">{meal.name}</h4>
                   <p className="text-gray-500 text-sm mb-2">{meal.category}</p>
                   <p className="text-gray-700 text-sm mb-4 line-clamp-2">{meal.items}</p>
-                  <div className="flex items-center justify-end pt-4 border-t border-black/5 gap-2">
+                  <div className="flex items-center justify-end pt-4 border-t border-white/60 gap-2">
                     {isAdmin && (
                       <>
                         <button 
@@ -268,7 +268,7 @@ export default function CanteenDashboard({ profile, isAdmin }: { profile: UserPr
                             setSelectedDay(days[0]);
                             setIsScheduling(true);
                           }}
-                          className="p-2 bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-all opacity-0 group-hover:opacity-100"
+                          className="p-2 bg-gradient-to-r from-slate-700 to-slate-900 shadow-lg shadow-slate-900/20 text-white border-none text-white rounded-xl hover:from-slate-800 hover:to-slate-950 hover:shadow-xl hover:-translate-y-0.5 transition-all opacity-0 group-hover:opacity-100"
                           title="Schedule Meal"
                         >
                           <Plus className="w-5 h-5" />
@@ -278,13 +278,13 @@ export default function CanteenDashboard({ profile, isAdmin }: { profile: UserPr
                   </div>
                 </motion.div>
               )) : (
-                <div className="col-span-full py-20 text-center bg-white rounded-3xl border border-dashed border-gray-300">
+                <div className="col-span-full py-20 text-center bg-white rounded-[2rem] border border-dashed border-gray-300">
                   <Utensils className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-500">No menu items found. Add your first meal!</p>
                   {isAdmin && (
                     <button 
                       onClick={() => setIsAddingMeal(true)}
-                      className="mt-4 px-6 py-2 bg-emerald-600 text-white rounded-xl font-bold"
+                      className="mt-4 px-6 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white rounded-xl font-bold"
                     >
                       Add Item
                     </button>
@@ -298,7 +298,7 @@ export default function CanteenDashboard({ profile, isAdmin }: { profile: UserPr
             <div className="mt-6 flex justify-end">
               <button 
                 onClick={() => setIsAddingMeal(true)}
-                className="px-6 py-2 bg-emerald-600 text-white rounded-xl font-bold flex items-center gap-2"
+                className="px-6 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white rounded-xl font-bold flex items-center gap-2"
               >
                 <Plus className="w-5 h-5" /> Add New Meal
               </button>
@@ -306,8 +306,8 @@ export default function CanteenDashboard({ profile, isAdmin }: { profile: UserPr
           )}
 
           {activeTab === 'planner' && (
-            <div className="bg-white rounded-3xl border border-black/5 shadow-sm overflow-hidden">
-              <div className="p-6 border-b border-black/5 flex items-center justify-between">
+            <div className="bg-white/70 backdrop-blur-xl rounded-[2rem] border border-white/60 shadow-2xl shadow-gray-200/50 overflow-hidden">
+              <div className="p-6 border-b border-white/60 flex items-center justify-between">
                 <h3 className="font-bold text-gray-900">Weekly Meal Schedule</h3>
                 {isAdmin && (
                   <button 
@@ -316,17 +316,17 @@ export default function CanteenDashboard({ profile, isAdmin }: { profile: UserPr
                       setSelectedMealId(meals[0]?.id || '');
                       setIsScheduling(true);
                     }}
-                    className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold"
+                    className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white rounded-xl text-sm font-bold"
                   >
                     Edit Schedule
                   </button>
                 )}
               </div>
-              <div className="divide-y divide-black/5">
+              <div className="divide-y divide-gray-100/80">
                 {days.map((day) => {
                   const plan = mealPlans.find(p => p.day === day);
                   return (
-                    <div key={day} className="p-6 flex items-center justify-between hover:bg-gray-50 transition-all">
+                    <div key={day} className="p-6 flex items-center justify-between hover:bg-white/60 backdrop-blur-md transition-all">
                       <div className="flex items-center gap-6">
                         <div className="w-16 text-sm font-bold text-gray-400 uppercase tracking-wider">{day.slice(0, 3)}</div>
                         <div>
@@ -361,8 +361,8 @@ export default function CanteenDashboard({ profile, isAdmin }: { profile: UserPr
           )}
 
           {activeTab === 'attendance' && (
-            <div className="bg-white rounded-3xl border border-black/5 shadow-sm overflow-hidden flex flex-col h-[600px]">
-              <div className="p-6 border-b border-black/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="bg-white/70 backdrop-blur-xl rounded-[2rem] border border-white/60 shadow-2xl shadow-gray-200/50 overflow-hidden flex flex-col h-[600px]">
+              <div className="p-6 border-b border-white/60 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <h3 className="font-bold text-gray-900">Daily Lunch Attendance</h3>
                   <p className="text-sm text-gray-500">Mark present for lunch. Data auto-deletes after 45 days.</p>
@@ -372,7 +372,7 @@ export default function CanteenDashboard({ profile, isAdmin }: { profile: UserPr
                     <button
                       onClick={() => setAttendanceType('students')}
                       className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${
-                        attendanceType === 'students' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                        attendanceType === 'students' ? 'bg-white text-gray-900 shadow-2xl shadow-gray-200/50' : 'text-gray-500 hover:text-gray-700'
                       }`}
                     >
                       Students
@@ -380,7 +380,7 @@ export default function CanteenDashboard({ profile, isAdmin }: { profile: UserPr
                     <button
                       onClick={() => setAttendanceType('teachers')}
                       className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${
-                        attendanceType === 'teachers' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                        attendanceType === 'teachers' ? 'bg-white text-gray-900 shadow-2xl shadow-gray-200/50' : 'text-gray-500 hover:text-gray-700'
                       }`}
                     >
                       Teachers
@@ -390,12 +390,12 @@ export default function CanteenDashboard({ profile, isAdmin }: { profile: UserPr
                     type="date" 
                     value={attendanceDate}
                     onChange={(e) => setAttendanceDate(e.target.value)}
-                    className="px-4 py-2 bg-gray-50 border border-black/5 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="px-4 py-2 bg-white/60 backdrop-blur-md border border-white/60 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                   <button 
                     onClick={handleSaveAttendance}
                     disabled={isSavingAttendance}
-                    className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-all disabled:opacity-50"
+                    className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white rounded-xl text-sm font-bold hover:from-emerald-600 hover:to-teal-600 hover:shadow-xl hover:-translate-y-0.5 transition-all disabled:opacity-50"
                   >
                     {isSavingAttendance ? 'Saving...' : 'Save Attendance'}
                   </button>
@@ -409,16 +409,16 @@ export default function CanteenDashboard({ profile, isAdmin }: { profile: UserPr
                       <div 
                         key={student.id}
                         onClick={() => toggleStudentAttendance(student.id)}
-                        className={`flex items-center justify-between p-4 rounded-2xl border cursor-pointer transition-all ${
+                        className={`flex items-center justify-between p-4 rounded-[1rem] border cursor-pointer transition-all ${
                           isPresent 
-                            ? 'bg-emerald-50 border-emerald-200 shadow-sm' 
-                            : 'bg-white border-black/5 hover:border-gray-300'
+                            ? 'bg-emerald-50 border-emerald-200 shadow-2xl shadow-gray-200/50' 
+                            : 'bg-white border-white/60 hover:border-gray-300'
                         }`}
                       >
                         <div className="flex items-center gap-3">
                           <img 
                             src={student.photoUrl || `https://ui-avatars.com/api/?name=${student.name}`} 
-                            className="w-10 h-10 rounded-xl border border-black/5"
+                            className="w-10 h-10 rounded-xl border border-white/60"
                             alt=""
                           />
                           <div>
@@ -441,16 +441,16 @@ export default function CanteenDashboard({ profile, isAdmin }: { profile: UserPr
                       <div 
                         key={teacher.uid}
                         onClick={() => toggleStudentAttendance(teacher.uid)}
-                        className={`flex items-center justify-between p-4 rounded-2xl border cursor-pointer transition-all ${
+                        className={`flex items-center justify-between p-4 rounded-[1rem] border cursor-pointer transition-all ${
                           isPresent 
-                            ? 'bg-emerald-50 border-emerald-200 shadow-sm' 
-                            : 'bg-white border-black/5 hover:border-gray-300'
+                            ? 'bg-emerald-50 border-emerald-200 shadow-2xl shadow-gray-200/50' 
+                            : 'bg-white border-white/60 hover:border-gray-300'
                         }`}
                       >
                         <div className="flex items-center gap-3">
                           <img 
                             src={`https://ui-avatars.com/api/?name=${teacher.displayName}`} 
-                            className="w-10 h-10 rounded-xl border border-black/5"
+                            className="w-10 h-10 rounded-xl border border-white/60"
                             alt=""
                           />
                           <div>
@@ -484,22 +484,22 @@ export default function CanteenDashboard({ profile, isAdmin }: { profile: UserPr
           )}
 
           {activeTab === 'billing' && isAdmin && (
-            <div className="bg-white rounded-3xl border border-black/5 shadow-sm overflow-hidden">
-              <div className="p-6 border-b border-black/5 flex items-center justify-between">
+            <div className="bg-white/70 backdrop-blur-xl rounded-[2rem] border border-white/60 shadow-2xl shadow-gray-200/50 overflow-hidden">
+              <div className="p-6 border-b border-white/60 flex items-center justify-between">
                 <h3 className="font-bold text-gray-900">Recent Transactions</h3>
                 <div className="flex gap-2">
                   <div className="relative">
                     <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input type="text" placeholder="Search ID..." className="pl-9 pr-4 py-1.5 bg-gray-50 border-none rounded-lg text-sm outline-none" />
+                    <input type="text" placeholder="Search ID..." className="pl-9 pr-4 py-1.5 bg-white/60 backdrop-blur-md border-none rounded-lg text-sm outline-none" />
                   </div>
-                  <button className="p-1.5 bg-gray-50 rounded-lg text-gray-500 hover:bg-gray-100">
+                  <button className="p-1.5 bg-white/60 backdrop-blur-md rounded-lg text-gray-500 hover:bg-gray-100">
                     <Filter className="w-4 h-4" />
                   </button>
                 </div>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left min-w-[600px]">
-                  <thead className="bg-gray-50 text-gray-400 text-xs uppercase tracking-wider">
+                  <thead className="bg-white/60 backdrop-blur-md text-gray-400 text-xs uppercase tracking-wider">
                     <tr>
                       <th className="px-6 py-4 font-bold">Student Name</th>
                       <th className="px-6 py-4 font-bold">Type</th>
@@ -508,11 +508,11 @@ export default function CanteenDashboard({ profile, isAdmin }: { profile: UserPr
                       <th className="px-6 py-4 font-bold">Status</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-black/5">
+                  <tbody className="divide-y divide-gray-100/80">
                     {transactions.map((t) => {
                       const student = students.find(s => s.id === t.studentId);
                       return (
-                      <tr key={t.id} className="hover:bg-gray-50 transition-all cursor-pointer">
+                      <tr key={t.id} className="hover:bg-white/60 backdrop-blur-md transition-all cursor-pointer">
                         <td className="px-6 py-4 font-medium text-gray-900">{student ? student.name : 'Unknown Student'}</td>
                         <td className="px-6 py-4 capitalize text-sm text-gray-500">{t.type}</td>
                         <td className={`px-6 py-4 font-bold ${t.type === 'credit' ? 'text-emerald-600' : 'text-red-600'}`}>
@@ -534,7 +534,7 @@ export default function CanteenDashboard({ profile, isAdmin }: { profile: UserPr
         </div>
 
         <div className="space-y-6">
-          <div className="bg-white rounded-3xl p-6 border border-black/5 shadow-sm">
+          <div className="bg-white/70 backdrop-blur-xl rounded-[2rem] p-6 border border-white/60 shadow-2xl shadow-gray-200/50">
             <h3 className="font-bold text-gray-900 mb-4">Lunch Attendance</h3>
             <div className="space-y-4">
               <div>
@@ -543,10 +543,10 @@ export default function CanteenDashboard({ profile, isAdmin }: { profile: UserPr
                   type="date" 
                   value={calendarDate}
                   onChange={(e) => setCalendarDate(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-gray-50 border-none focus:ring-2 focus:ring-emerald-500 outline-none"
+                  className="w-full px-4 py-3 rounded-xl bg-white/60 backdrop-blur-md border-none focus:ring-2 focus:ring-emerald-500 outline-none"
                 />
               </div>
-              <div className="flex justify-between items-center p-4 bg-emerald-50 rounded-2xl">
+              <div className="flex justify-between items-center p-4 bg-emerald-50 rounded-[1rem]">
                 <span className="text-emerald-800 font-medium">Total Had Lunch</span>
                 <span className="font-bold text-2xl text-emerald-600">
                   {lunchCount !== null ? lunchCount : '...'}
@@ -563,9 +563,9 @@ export default function CanteenDashboard({ profile, isAdmin }: { profile: UserPr
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-3xl p-6 w-full max-w-md shadow-xl"
+            className="bg-white/70 backdrop-blur-xl rounded-[2rem] p-6 w-full max-w-md shadow-2xl shadow-gray-200/40"
           >
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Add New Meal</h3>
+            <h3 className="text-[1.35rem] font-extrabold tracking-tight text-gray-900 mb-4">Add New Meal</h3>
             <form onSubmit={handleAddMeal} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Meal Name</label>
@@ -574,7 +574,7 @@ export default function CanteenDashboard({ profile, isAdmin }: { profile: UserPr
                   required
                   value={newMeal.name}
                   onChange={e => setNewMeal({...newMeal, name: e.target.value})}
-                  className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                  className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
                 />
               </div>
               <div>
@@ -582,7 +582,7 @@ export default function CanteenDashboard({ profile, isAdmin }: { profile: UserPr
                 <select 
                   value={newMeal.category}
                   onChange={e => setNewMeal({...newMeal, category: e.target.value})}
-                  className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                  className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
                 >
                   <option value="Main Course">Main Course</option>
                   <option value="Snack">Snack</option>
@@ -598,7 +598,7 @@ export default function CanteenDashboard({ profile, isAdmin }: { profile: UserPr
                   value={newMeal.items}
                   onChange={e => setNewMeal({...newMeal, items: e.target.value})}
                   placeholder="e.g., Rice, Dal, Mixed Veg, Salad"
-                  className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none resize-none"
+                  className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none resize-none"
                 />
               </div>
               <div className="flex items-center gap-2">
@@ -621,7 +621,7 @@ export default function CanteenDashboard({ profile, isAdmin }: { profile: UserPr
                 </button>
                 <button 
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all"
+                  className="flex-1 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white rounded-xl font-bold hover:from-emerald-600 hover:to-teal-600 hover:shadow-xl hover:-translate-y-0.5 transition-all"
                 >
                   Save Meal
                 </button>
@@ -636,16 +636,16 @@ export default function CanteenDashboard({ profile, isAdmin }: { profile: UserPr
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-3xl p-6 w-full max-w-md shadow-xl"
+            className="bg-white/70 backdrop-blur-xl rounded-[2rem] p-6 w-full max-w-md shadow-2xl shadow-gray-200/40"
           >
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Schedule Meal</h3>
+            <h3 className="text-[1.35rem] font-extrabold tracking-tight text-gray-900 mb-4">Schedule Meal</h3>
             <form onSubmit={handleScheduleMeal} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Day</label>
                 <select 
                   value={selectedDay}
                   onChange={e => setSelectedDay(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                  className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
                 >
                   {days.map(day => (
                     <option key={day} value={day}>{day}</option>
@@ -657,7 +657,7 @@ export default function CanteenDashboard({ profile, isAdmin }: { profile: UserPr
                 <select 
                   value={selectedMealId}
                   onChange={e => setSelectedMealId(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                  className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
                   required
                 >
                   <option value="" disabled>Select a meal</option>
@@ -676,7 +676,7 @@ export default function CanteenDashboard({ profile, isAdmin }: { profile: UserPr
                 </button>
                 <button 
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all"
+                  className="flex-1 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white rounded-xl font-bold hover:from-emerald-600 hover:to-teal-600 hover:shadow-xl hover:-translate-y-0.5 transition-all"
                 >
                   Save Schedule
                 </button>
@@ -692,12 +692,12 @@ export default function CanteenDashboard({ profile, isAdmin }: { profile: UserPr
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-xl text-center"
+            className="bg-white/70 backdrop-blur-xl rounded-[2rem] p-6 w-full max-w-sm shadow-2xl shadow-gray-200/40 text-center"
           >
             <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
               <Trash2 className="w-8 h-8" />
             </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Delete Meal?</h3>
+            <h3 className="text-[1.35rem] font-extrabold tracking-tight text-gray-900 mb-2">Delete Meal?</h3>
             <p className="text-gray-500 mb-6">Are you sure you want to delete this meal? This action cannot be undone.</p>
             <div className="flex gap-3">
               <button 
