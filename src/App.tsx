@@ -62,6 +62,7 @@ import TransportDashboard from "./components/TransportDashboard";
 import AdminDashboard from "./components/AdminDashboard";
 import LibraryDashboard from "./components/LibraryDashboard";
 import GatePassDashboard from "./components/GatePassDashboard";
+import { COUNTRY_CODES } from "./countryCodes";
 
 // Firestore Error Handling
 export enum OperationType {
@@ -251,6 +252,9 @@ function AppContent() {
   const [loading, setLoading] = useState(true);
 
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [selectedCountryCode, setSelectedCountryCode] = useState(
+    COUNTRY_CODES[0],
+  );
   const [isPhoneLogin, setIsPhoneLogin] = useState(false);
   const [loginError, setLoginError] = useState("");
   const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -425,8 +429,17 @@ function AppContent() {
       // 1. Sign in anonymously to get read access
       const userCred = await signInAnonymously(auth);
 
+      const cleanPhone = phoneNumber.replace(/^[+0]+/, "");
+      const fullPhone = `${selectedCountryCode.code}${cleanPhone}`;
+
       // 2. Check if phone number exists in staff_invites
-      const inviteDoc = await getDoc(doc(db, "staff_invites", phoneNumber));
+      let inviteDoc = await getDoc(doc(db, "staff_invites", fullPhone));
+      let matchedPhone = fullPhone;
+
+      if (!inviteDoc.exists()) {
+        inviteDoc = await getDoc(doc(db, "staff_invites", phoneNumber));
+        matchedPhone = phoneNumber;
+      }
 
       if (!inviteDoc.exists()) {
         // Not found, sign out and show error
@@ -441,7 +454,7 @@ function AppContent() {
 
       const newProfile: UserProfile = {
         uid: userCred.user.uid,
-        phoneNumber: phoneNumber,
+        phoneNumber: matchedPhone,
         displayName: invite.name,
         role: invite.role,
         allowedTabs: invite.allowedTabs,
@@ -530,54 +543,29 @@ function AppContent() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 relative z-10 w-full max-w-[420px] pb-8">
-            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-5 shadow-lg">
-              <div className="text-[2rem] font-bold mb-1 tracking-tight">
-                1,284
-              </div>
-              <div className="text-emerald-50 text-sm font-medium">
-                Students enrolled
-              </div>
-            </div>
-            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-5 shadow-lg">
-              <div className="text-[2rem] font-bold mb-1 tracking-tight">
-                14
-              </div>
-              <div className="text-emerald-50 text-sm font-medium">
-                Active bus routes
-              </div>
-            </div>
-            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-5 shadow-lg">
-              <div className="text-[2rem] font-bold mb-1 tracking-tight">
-                962
-              </div>
-              <div className="text-emerald-50 text-sm font-medium">
-                Lunch registrations
-              </div>
-            </div>
-            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-5 shadow-lg">
-              <div className="text-[2rem] font-bold mb-1 tracking-tight">
-                38
-              </div>
-              <div className="text-emerald-50 text-sm font-medium">
-                Gate passes today
-              </div>
+          <div className="flex flex-col gap-4 relative z-10 w-full max-w-[420px] pb-8">
+            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 shadow-lg">
+              <h3 className="text-xl font-bold mb-2">Welcome Back</h3>
+              <p className="text-emerald-50 text-sm font-medium opacity-90 leading-relaxed">
+                Log in to securely manage daily operations, track student
+                activity, and oversee campus facilities in real-time.
+              </p>
             </div>
           </div>
         </div>
 
         {/* Right Panel */}
-        <div className="flex-1 flex flex-col justify-center p-6 lg:p-12 relative h-screen overflow-y-auto">
-          <div className="max-w-[440px] w-full mx-auto">
-            <div className="bg-white/70 backdrop-blur-xl rounded-3xl md:rounded-[2rem] shadow-xl shadow-gray-200/50 p-10 border border-white/80">
+        <div className="flex-1 flex flex-col justify-center p-4 sm:p-6 lg:p-12 relative min-h-screen overflow-y-auto">
+          <div className="max-w-[440px] w-full mx-auto py-8">
+            <div className="bg-white/90 md:bg-white/70 backdrop-blur-xl rounded-3xl md:rounded-[2rem] shadow-2xl shadow-gray-200/50 p-6 sm:p-10 border border-white/80">
               <div className="text-center mb-8">
                 <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-6 md:hidden">
                   <School className="w-8 h-8 text-emerald-600" />
                 </div>
-                <h2 className="text-[2rem] font-bold text-gray-900 mb-3 font-sans tracking-tight">
+                <h2 className="text-[2rem] font-bold text-gray-900 mb-3 font-sans tracking-tight leading-tight">
                   Welcome back
                 </h2>
-                <p className="text-base text-gray-500 font-medium">
+                <p className="text-sm sm:text-base text-gray-500 font-medium">
                   Sign in to access your portal
                 </p>
               </div>
@@ -621,20 +609,43 @@ function AppContent() {
 
                   <form onSubmit={handlePhoneLogin} className="space-y-4">
                     <div className="flex gap-0 overflow-hidden rounded-xl border border-white/60 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 transition-all bg-white shadow-xl shadow-gray-200/50">
-                      <div className="flex items-center gap-2 px-4 bg-white/50 border-r border-white/60 text-gray-700 font-bold text-base shrink-0">
-                        <img
-                          src="https://flagcdn.com/w20/in.png"
-                          alt="India flag"
-                          className="w-5"
-                        />
-                        <span>+91</span>
+                      <div className="relative flex items-center bg-white/50 border-r border-gray-100 shrink-0 group">
+                        <select
+                          className="appearance-none bg-transparent outline-none cursor-pointer pl-[2.25rem] pr-5 py-3 sm:py-3.5 text-gray-700 font-bold text-sm sm:text-base w-[95px] sm:w-[105px] z-10 relative"
+                          value={selectedCountryCode.code}
+                          onChange={(e) => {
+                            const selected = COUNTRY_CODES.find(
+                              (c) => c.code === e.target.value,
+                            );
+                            if (selected) setSelectedCountryCode(selected);
+                          }}
+                        >
+                          {COUNTRY_CODES.map((c) => (
+                            <option
+                              key={`${c.code}-${c.country}`}
+                              value={c.code}
+                            >
+                              {c.name} {c.code}
+                            </option>
+                          ))}
+                        </select>
+                        <div className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 z-0">
+                          <img
+                            src={`https://flagcdn.com/w20/${selectedCountryCode.country.toLowerCase()}.png`}
+                            alt={selectedCountryCode.name}
+                            className="w-4 sm:w-5 rounded-[2px]"
+                          />
+                        </div>
+                        <div className="absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-50 z-0 text-gray-500">
+                          <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 rotate-90" />
+                        </div>
                       </div>
                       <input
                         type="tel"
                         placeholder="Mobile number"
                         value={phoneNumber}
                         onChange={(e) => setPhoneNumber(e.target.value)}
-                        className="flex-1 px-4 py-3.5 outline-none text-gray-900 font-medium placeholder-gray-400 bg-transparent text-base"
+                        className="flex-1 min-w-0 px-3 sm:px-4 py-3 sm:py-3.5 outline-none text-gray-900 font-medium placeholder-gray-400 bg-transparent text-sm sm:text-base"
                       />
                     </div>
                     <button
