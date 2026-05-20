@@ -652,7 +652,7 @@ function AppContent() {
                       type="submit"
                       className="w-full h-[3.5rem] bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white rounded-xl font-bold hover:from-emerald-600 hover:to-teal-600 hover:shadow-xl hover:-translate-y-0.5 hover:shadow-lg hover:shadow-emerald-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-base outline-none focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2"
                     >
-                      Send OTP <span className="font-serif">→</span>
+                      Login <span className="font-serif">→</span>
                     </button>
                   </form>
                 </div>
