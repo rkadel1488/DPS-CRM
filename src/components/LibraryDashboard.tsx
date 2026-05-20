@@ -1,43 +1,91 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { collection, query, onSnapshot, addDoc, updateDoc, doc, deleteDoc, getDocs, where, Timestamp } from 'firebase/firestore';
-import { db } from '../firebase';
-import { Book, BookIssue, UserProfile, Student } from '../types';
-import { BookOpen, Search, Plus, Upload, Download, Bell, Clock, CheckCircle, X, AlertCircle, Trash2, User } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
-import * as XLSX from 'xlsx';
-import { handleFirestoreError, OperationType } from '../App';
+import React, { useState, useEffect, useRef } from "react";
+import {
+  collection,
+  query,
+  onSnapshot,
+  addDoc,
+  updateDoc,
+  doc,
+  deleteDoc,
+  getDocs,
+  where,
+  Timestamp,
+} from "firebase/firestore";
+import { db } from "../firebase";
+import { Book, BookIssue, UserProfile, Student } from "../types";
+import {
+  BookOpen,
+  Search,
+  Plus,
+  Upload,
+  Download,
+  Bell,
+  Clock,
+  CheckCircle,
+  X,
+  AlertCircle,
+  Trash2,
+  User,
+} from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
+import * as XLSX from "xlsx";
+import { handleFirestoreError, OperationType } from "../App";
 
 interface LibraryDashboardProps {
   profile: UserProfile | null;
   isAdmin: boolean;
 }
 
-export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardProps) {
+export default function LibraryDashboard({
+  profile,
+  isAdmin,
+}: LibraryDashboardProps) {
   const [books, setBooks] = useState<Book[]>([]);
   const [issues, setIssues] = useState<BookIssue[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [teachers, setTeachers] = useState<UserProfile[]>([]);
-  
-  const [activeTab, setActiveTab] = useState<'books' | 'issues' | 'overdue'>('books');
-  const [searchQuery, setSearchQuery] = useState('');
-  
+
+  const [activeTab, setActiveTab] = useState<"books" | "issues" | "overdue">(
+    "books",
+  );
+  const [searchQuery, setSearchQuery] = useState("");
+
   const [showAddModal, setShowAddModal] = useState(false);
   const [showIssueModal, setShowIssueModal] = useState(false);
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
-  
-  const [newBook, setNewBook] = useState({ bookCode: '', title: '', author: '', category: '', totalCopies: 1, bookClass: '', price: '' });
-  const [newIssue, setNewIssue] = useState({ bookId: '', issuedToName: '', issuedToId: '', issuedToType: 'student' as 'student' | 'teacher' });
-  
+
+  const [newBook, setNewBook] = useState({
+    bookCode: "",
+    title: "",
+    author: "",
+    category: "",
+    totalCopies: 1,
+    bookClass: "",
+    price: "",
+  });
+  const [newIssue, setNewIssue] = useState({
+    bookId: "",
+    issuedToName: "",
+    issuedToId: "",
+    issuedToType: "student" as "student" | "teacher",
+  });
+
   const [notifications, setNotifications] = useState<BookIssue[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
-  
-  const [selectedUserHistory, setSelectedUserHistory] = useState<{name: string, type: 'student'|'teacher'} | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'book' | 'issue', item: any } | null>(null);
-  
+
+  const [selectedUserHistory, setSelectedUserHistory] = useState<{
+    name: string;
+    type: "student" | "teacher";
+  } | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    type: "book" | "issue";
+    item: any;
+  } | null>(null);
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 25;
-  
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -47,38 +95,72 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
   useEffect(() => {
     if (!profile) return;
 
-    const booksUnsubscribe = onSnapshot(collection(db, 'books'), (snapshot) => {
-      const booksData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Book));
-      // Sort books by newest first
-      booksData.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      setBooks(booksData);
-    }, (error) => handleFirestoreError(error, OperationType.GET, 'books'));
+    const booksUnsubscribe = onSnapshot(
+      collection(db, "books"),
+      (snapshot) => {
+        const booksData = snapshot.docs.map(
+          (doc) => ({ id: doc.id, ...doc.data() }) as Book,
+        );
+        // Sort books by newest first
+        booksData.sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        );
+        setBooks(booksData);
+      },
+      (error) => handleFirestoreError(error, OperationType.GET, "books"),
+    );
 
-    const issuesUnsubscribe = onSnapshot(collection(db, 'book_issues'), (snapshot) => {
-      const issuesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as BookIssue));
-      setIssues(issuesData);
-      
-      // Check for overdue books (> 7 days past due date)
-      const now = new Date();
-      const overdue = issuesData.filter(issue => {
-        if (issue.status === 'returned') return false;
-        const dueDate = new Date(issue.dueDate);
-        if (now <= dueDate) return false;
-        const diffTime = now.getTime() - dueDate.getTime();
-        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-        return diffDays > 7;
-      });
-      setNotifications(overdue);
-    }, (error) => handleFirestoreError(error, OperationType.GET, 'book_issues'));
+    const issuesUnsubscribe = onSnapshot(
+      collection(db, "book_issues"),
+      (snapshot) => {
+        const issuesData = snapshot.docs.map(
+          (doc) => ({ id: doc.id, ...doc.data() }) as BookIssue,
+        );
+        setIssues(issuesData);
 
-    const studentsUnsubscribe = onSnapshot(collection(db, 'students'), (snapshot) => {
-      setStudents(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student)));
-    }, (error) => handleFirestoreError(error, OperationType.GET, 'students'));
+        // Check for overdue books (> 7 days past due date)
+        const now = new Date();
+        const overdue = issuesData.filter((issue) => {
+          if (issue.status === "returned") return false;
+          const dueDate = new Date(issue.dueDate);
+          if (now <= dueDate) return false;
+          const diffTime = now.getTime() - dueDate.getTime();
+          const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+          return diffDays > 7;
+        });
+        setNotifications(overdue);
+      },
+      (error) => handleFirestoreError(error, OperationType.GET, "book_issues"),
+    );
 
-    const teachersQuery = query(collection(db, 'users'), where('role', '==', 'teacher'));
-    const teachersUnsubscribe = onSnapshot(teachersQuery, (snapshot) => {
-      setTeachers(snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as UserProfile)));
-    }, (error) => handleFirestoreError(error, OperationType.GET, 'users'));
+    const studentsUnsubscribe = onSnapshot(
+      collection(db, "students"),
+      (snapshot) => {
+        setStudents(
+          snapshot.docs.map(
+            (doc) => ({ id: doc.id, ...doc.data() }) as Student,
+          ),
+        );
+      },
+      (error) => handleFirestoreError(error, OperationType.GET, "students"),
+    );
+
+    const teachersQuery = query(
+      collection(db, "users"),
+      where("role", "==", "teacher"),
+    );
+    const teachersUnsubscribe = onSnapshot(
+      teachersQuery,
+      (snapshot) => {
+        setTeachers(
+          snapshot.docs.map(
+            (doc) => ({ uid: doc.id, ...doc.data() }) as UserProfile,
+          ),
+        );
+      },
+      (error) => handleFirestoreError(error, OperationType.GET, "users"),
+    );
 
     return () => {
       booksUnsubscribe();
@@ -91,14 +173,14 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
   const handleAddBook = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile) return;
-    
+
     try {
       let finalBookCode = newBook.bookCode.trim();
       if (!finalBookCode) {
         // Auto-generate book code
-        const dpsBooks = books.filter(b => b.bookCode.startsWith('DPS-'));
+        const dpsBooks = books.filter((b) => b.bookCode.startsWith("DPS-"));
         let maxNum = 0;
-        dpsBooks.forEach(b => {
+        dpsBooks.forEach((b) => {
           const numPart = b.bookCode.substring(4);
           const num = parseInt(numPart, 10);
           if (!isNaN(num) && num > maxNum) {
@@ -106,21 +188,29 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
           }
         });
         const nextNum = maxNum + 1;
-        finalBookCode = `DPS-${nextNum.toString().padStart(4, '0')}`;
+        finalBookCode = `DPS-${nextNum.toString().padStart(4, "0")}`;
       }
 
-      await addDoc(collection(db, 'books'), {
+      await addDoc(collection(db, "books"), {
         ...newBook,
         bookCode: finalBookCode,
         price: newBook.price ? Number(newBook.price) : null,
         availableCopies: newBook.totalCopies,
         addedBy: profile.uid,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
       });
       setShowAddModal(false);
-      setNewBook({ bookCode: '', title: '', author: '', category: '', totalCopies: 1, bookClass: '', price: '' });
+      setNewBook({
+        bookCode: "",
+        title: "",
+        author: "",
+        category: "",
+        totalCopies: 1,
+        bookClass: "",
+        price: "",
+      });
     } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'books');
+      handleFirestoreError(error, OperationType.CREATE, "books");
     }
   };
 
@@ -132,14 +222,14 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
     reader.onload = async (evt) => {
       try {
         const bstr = evt.target?.result;
-        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wb = XLSX.read(bstr, { type: "binary" });
         const wsname = wb.SheetNames[0];
         const ws = wb.Sheets[wsname];
         const data = XLSX.utils.sheet_to_json(ws);
 
         let currentMaxNum = 0;
-        const dpsBooks = books.filter(b => b.bookCode.startsWith('DPS-'));
-        dpsBooks.forEach(b => {
+        const dpsBooks = books.filter((b) => b.bookCode.startsWith("DPS-"));
+        dpsBooks.forEach((b) => {
           const numPart = b.bookCode.substring(4);
           const num = parseInt(numPart, 10);
           if (!isNaN(num) && num > currentMaxNum) {
@@ -150,42 +240,63 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
         let importedCount = 0;
         for (const row of data as any[]) {
           // Try to find the title column dynamically
-          const titleKey = Object.keys(row).find(k => 
-            k.toLowerCase().includes('title') || 
-            k.toLowerCase().includes('name') || 
-            k.toLowerCase() === 'book'
+          const titleKey = Object.keys(row).find(
+            (k) =>
+              k.toLowerCase().includes("title") ||
+              k.toLowerCase().includes("name") ||
+              k.toLowerCase() === "book",
           );
-          
+
           const title = titleKey ? row[titleKey] : null;
-          
+
           if (title) {
             // Try to find the book code column dynamically
-            const codeKey = Object.keys(row).find(k => 
-              k.toLowerCase().includes('code') || 
-              k.toLowerCase().includes('id') || 
-              k.toLowerCase().includes('isbn')
+            const codeKey = Object.keys(row).find(
+              (k) =>
+                k.toLowerCase().includes("code") ||
+                k.toLowerCase().includes("id") ||
+                k.toLowerCase().includes("isbn"),
             );
             let bookCode = codeKey ? row[codeKey] : null;
-            
+
             if (!bookCode) {
               currentMaxNum++;
-              bookCode = `DPS-${currentMaxNum.toString().padStart(4, '0')}`;
+              bookCode = `DPS-${currentMaxNum.toString().padStart(4, "0")}`;
             }
 
             // Try to find other columns dynamically
-            const authorKey = Object.keys(row).find(k => k.toLowerCase().includes('author'));
-            const categoryKey = Object.keys(row).find(k => k.toLowerCase().includes('category') || k.toLowerCase().includes('genre'));
-            const classKey = Object.keys(row).find(k => k.toLowerCase().includes('class') || k.toLowerCase().includes('grade'));
-            const priceKey = Object.keys(row).find(k => k.toLowerCase().includes('price') || k.toLowerCase().includes('cost'));
-            const copiesKey = Object.keys(row).find(k => k.toLowerCase().includes('copies') || k.toLowerCase().includes('qty') || k.toLowerCase().includes('quantity'));
+            const authorKey = Object.keys(row).find((k) =>
+              k.toLowerCase().includes("author"),
+            );
+            const categoryKey = Object.keys(row).find(
+              (k) =>
+                k.toLowerCase().includes("category") ||
+                k.toLowerCase().includes("genre"),
+            );
+            const classKey = Object.keys(row).find(
+              (k) =>
+                k.toLowerCase().includes("class") ||
+                k.toLowerCase().includes("grade"),
+            );
+            const priceKey = Object.keys(row).find(
+              (k) =>
+                k.toLowerCase().includes("price") ||
+                k.toLowerCase().includes("cost"),
+            );
+            const copiesKey = Object.keys(row).find(
+              (k) =>
+                k.toLowerCase().includes("copies") ||
+                k.toLowerCase().includes("qty") ||
+                k.toLowerCase().includes("quantity"),
+            );
 
-            const author = authorKey ? row[authorKey] : '';
-            const category = categoryKey ? row[categoryKey] : '';
-            const bookClass = classKey ? row[classKey] : '';
+            const author = authorKey ? row[authorKey] : "";
+            const category = categoryKey ? row[categoryKey] : "";
+            const bookClass = classKey ? row[classKey] : "";
             const price = priceKey ? row[priceKey] : null;
             const totalCopies = copiesKey ? row[copiesKey] : 1;
 
-            await addDoc(collection(db, 'books'), {
+            await addDoc(collection(db, "books"), {
               bookCode: String(bookCode),
               title: String(title),
               author: String(author),
@@ -195,21 +306,23 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
               totalCopies: Number(totalCopies),
               availableCopies: Number(totalCopies),
               addedBy: profile.uid,
-              createdAt: new Date().toISOString()
+              createdAt: new Date().toISOString(),
             });
             importedCount++;
           }
         }
-        
+
         if (importedCount === 0) {
-          alert('No valid books found in the Excel file. Please ensure there is a "Title" or "Name" column.');
+          alert(
+            'No valid books found in the Excel file. Please ensure there is a "Title" or "Name" column.',
+          );
         } else {
           alert(`${importedCount} books imported successfully!`);
         }
-        
+
         // Reset file input
         if (fileInputRef.current) {
-          fileInputRef.current.value = '';
+          fileInputRef.current.value = "";
         }
       } catch (error) {
         console.error("Error importing books:", error);
@@ -217,7 +330,7 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
       }
     };
     reader.readAsBinaryString(file);
-    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleIssueBook = async (e: React.FormEvent) => {
@@ -227,7 +340,7 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
     const issuedToName = newIssue.issuedToName.trim();
 
     if (!issuedToName) {
-      alert('Please enter a valid student or teacher name.');
+      alert("Please enter a valid student or teacher name.");
       return;
     }
 
@@ -236,96 +349,111 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
       const dueDate = new Date();
       dueDate.setDate(dueDate.getDate() + 7);
 
-      await addDoc(collection(db, 'book_issues'), {
+      await addDoc(collection(db, "book_issues"), {
         bookId: selectedBook.id,
         bookCode: selectedBook.bookCode,
         bookTitle: selectedBook.title,
-        issuedToId: 'manual',
+        issuedToId: "manual",
         issuedToName,
         issuedToType: newIssue.issuedToType,
         issueDate: issueDate.toISOString(),
         dueDate: dueDate.toISOString(),
-        status: 'issued',
-        issuedBy: profile.uid
+        status: "issued",
+        issuedBy: profile.uid,
       });
 
-      await updateDoc(doc(db, 'books', selectedBook.id), {
-        availableCopies: selectedBook.availableCopies - 1
+      await updateDoc(doc(db, "books", selectedBook.id), {
+        availableCopies: selectedBook.availableCopies - 1,
       });
 
       setShowIssueModal(false);
-      setNewIssue({ bookId: '', issuedToName: '', issuedToId: '', issuedToType: 'student' });
+      setNewIssue({
+        bookId: "",
+        issuedToName: "",
+        issuedToId: "",
+        issuedToType: "student",
+      });
       setSelectedBook(null);
     } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'book_issues');
+      handleFirestoreError(error, OperationType.CREATE, "book_issues");
     }
   };
 
   const handleReturnBook = async (issue: BookIssue) => {
     try {
-      await updateDoc(doc(db, 'book_issues', issue.id), {
-        status: 'returned',
-        returnDate: new Date().toISOString()
+      await updateDoc(doc(db, "book_issues", issue.id), {
+        status: "returned",
+        returnDate: new Date().toISOString(),
       });
 
-      const book = books.find(b => b.id === issue.bookId);
+      const book = books.find((b) => b.id === issue.bookId);
       if (book) {
-        await updateDoc(doc(db, 'books', book.id), {
-          availableCopies: book.availableCopies + 1
+        await updateDoc(doc(db, "books", book.id), {
+          availableCopies: book.availableCopies + 1,
         });
       }
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `book_issues/${issue.id}`);
+      handleFirestoreError(
+        error,
+        OperationType.UPDATE,
+        `book_issues/${issue.id}`,
+      );
     }
   };
 
   const handleDeleteBook = (book: Book) => {
-    setDeleteConfirm({ type: 'book', item: book });
+    setDeleteConfirm({ type: "book", item: book });
   };
 
   const handleDeleteIssue = (issue: BookIssue) => {
-    setDeleteConfirm({ type: 'issue', item: issue });
+    setDeleteConfirm({ type: "issue", item: issue });
   };
 
   const confirmDelete = async () => {
     if (!deleteConfirm) return;
 
-    if (deleteConfirm.type === 'book') {
+    if (deleteConfirm.type === "book") {
       const book = deleteConfirm.item as Book;
       try {
-        await deleteDoc(doc(db, 'books', book.id));
+        await deleteDoc(doc(db, "books", book.id));
       } catch (error) {
         handleFirestoreError(error, OperationType.DELETE, `books/${book.id}`);
       }
-    } else if (deleteConfirm.type === 'issue') {
+    } else if (deleteConfirm.type === "issue") {
       const issue = deleteConfirm.item as BookIssue;
       try {
-        if (issue.status === 'issued') {
-          const book = books.find(b => b.id === issue.bookId);
+        if (issue.status === "issued") {
+          const book = books.find((b) => b.id === issue.bookId);
           if (book) {
-            await updateDoc(doc(db, 'books', book.id), {
-              availableCopies: book.availableCopies + 1
+            await updateDoc(doc(db, "books", book.id), {
+              availableCopies: book.availableCopies + 1,
             });
           }
         }
-        await deleteDoc(doc(db, 'book_issues', issue.id));
+        await deleteDoc(doc(db, "book_issues", issue.id));
       } catch (error) {
-        handleFirestoreError(error, OperationType.DELETE, `book_issues/${issue.id}`);
+        handleFirestoreError(
+          error,
+          OperationType.DELETE,
+          `book_issues/${issue.id}`,
+        );
       }
     }
     setDeleteConfirm(null);
   };
 
   const exportEntries = () => {
-    const dataToExport = issues.map(issue => ({
-      'Book Code': issue.bookCode,
-      'Book Title': issue.bookTitle,
-      'Issued To': issue.issuedToName,
-      'Type': issue.issuedToType,
-      'Issue Date': new Date(issue.issueDate).toLocaleDateString(),
-      'Due Date': new Date(issue.dueDate).toLocaleDateString(),
-      'Return Date': issue.returnDate ? new Date(issue.returnDate).toLocaleDateString() : 'Not Returned',
-      'Status': issue.status
+    const dataToExport = issues.map((issue) => ({
+      "Book Code": issue.bookCode,
+      "Book Title": issue.bookTitle,
+      "Issued To": issue.issuedToName,
+      Type: issue.issuedToType,
+      "Issue Date": new Date(issue.issueDate).toLocaleDateString(),
+      "Due Date": new Date(issue.dueDate).toLocaleDateString(),
+      "Return Date": issue.returnDate
+        ? new Date(issue.returnDate).toLocaleDateString()
+        : "Not Returned",
+      Status: issue.status,
     }));
 
     const ws = XLSX.utils.json_to_sheet(dataToExport);
@@ -335,15 +463,15 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
   };
 
   const exportBooks = () => {
-    const dataToExport = books.map(book => ({
-      'Book Code': book.bookCode,
-      'Title': book.title,
-      'Author': book.author || 'N/A',
-      'Category': book.category || 'General',
-      'Class': book.bookClass || 'N/A',
-      'Price': book.price || 'N/A',
-      'Total Copies': book.totalCopies,
-      'Available Copies': book.availableCopies
+    const dataToExport = books.map((book) => ({
+      "Book Code": book.bookCode,
+      Title: book.title,
+      Author: book.author || "N/A",
+      Category: book.category || "General",
+      Class: book.bookClass || "N/A",
+      Price: book.price || "N/A",
+      "Total Copies": book.totalCopies,
+      "Available Copies": book.availableCopies,
     }));
 
     const ws = XLSX.utils.json_to_sheet(dataToExport);
@@ -352,30 +480,44 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
     XLSX.writeFile(wb, "Library_Books.xlsx");
   };
 
-  const filteredBooks = books.filter(book => 
-    book.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    book.bookCode.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredBooks = books.filter(
+    (book) =>
+      book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      book.bookCode.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
-  const filteredIssues = issues.filter(issue => 
-    issue.bookTitle.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    issue.issuedToName.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredIssues = issues.filter(
+    (issue) =>
+      issue.bookTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      issue.issuedToName.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
-  const filteredOverdue = notifications.filter(issue =>
-    issue.bookTitle.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    issue.issuedToName.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredOverdue = notifications.filter(
+    (issue) =>
+      issue.bookTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      issue.issuedToName.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const totalPages = Math.ceil(
-    (activeTab === 'books' ? filteredBooks.length : 
-     activeTab === 'issues' ? filteredIssues.length : 
-     filteredOverdue.length) / itemsPerPage
+    (activeTab === "books"
+      ? filteredBooks.length
+      : activeTab === "issues"
+        ? filteredIssues.length
+        : filteredOverdue.length) / itemsPerPage,
   );
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedBooks = filteredBooks.slice(startIndex, startIndex + itemsPerPage);
-  const paginatedIssues = filteredIssues.slice(startIndex, startIndex + itemsPerPage);
-  const paginatedOverdue = filteredOverdue.slice(startIndex, startIndex + itemsPerPage);
+  const paginatedBooks = filteredBooks.slice(
+    startIndex,
+    startIndex + itemsPerPage,
+  );
+  const paginatedIssues = filteredIssues.slice(
+    startIndex,
+    startIndex + itemsPerPage,
+  );
+  const paginatedOverdue = filteredOverdue.slice(
+    startIndex,
+    startIndex + itemsPerPage,
+  );
 
   const renderIssuesTable = (items: BookIssue[], emptyMessage: string) => (
     <>
@@ -384,78 +526,113 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-white/60 backdrop-blur-md/50 border-b border-white/80">
-              <th className="px-6 py-4 text-sm font-semibold text-gray-900">Book</th>
-              <th className="px-6 py-4 text-sm font-semibold text-gray-900">Issued To</th>
-              <th className="px-6 py-4 text-sm font-semibold text-gray-900">Issue Date</th>
-              <th className="px-6 py-4 text-sm font-semibold text-gray-900">Status</th>
-              <th className="px-6 py-4 text-sm font-semibold text-gray-900 text-right">Actions</th>
+              <th className="px-4 py-3 md:px-6 md:py-4 text-sm font-semibold text-gray-900">
+                Book
+              </th>
+              <th className="px-4 py-3 md:px-6 md:py-4 text-sm font-semibold text-gray-900">
+                Issued To
+              </th>
+              <th className="px-4 py-3 md:px-6 md:py-4 text-sm font-semibold text-gray-900">
+                Issue Date
+              </th>
+              <th className="px-4 py-3 md:px-6 md:py-4 text-sm font-semibold text-gray-900">
+                Status
+              </th>
+              <th className="px-4 py-3 md:px-6 md:py-4 text-sm font-semibold text-gray-900 text-right">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100/80">
-            {items.length > 0 ? items.map((issue) => {
-              const isOverdue = issue.status === 'issued' && new Date(issue.dueDate) < new Date();
-              return (
-                <tr key={issue.id} className="hover:bg-white/60 backdrop-blur-md/50 transition-colors">
-                  <td className="px-6 py-4">
-                    <p className="font-medium text-gray-900">{issue.bookTitle}</p>
-                    <p className="text-xs text-gray-500 font-mono">{issue.bookCode}</p>
-                  </td>
-                  <td className="px-6 py-4">
-                    <button 
-                      onClick={() => setSelectedUserHistory({name: issue.issuedToName, type: issue.issuedToType})}
-                      className="font-medium text-emerald-600 hover:text-emerald-700 hover:underline text-left transition-colors"
-                    >
-                      {issue.issuedToName}
-                    </button>
-                    <p className="text-xs text-gray-500 capitalize">{issue.issuedToType}</p>
-                  </td>
-                  <td className="px-6 py-4">
-                    <p className="text-sm text-gray-900">{new Date(issue.issueDate).toLocaleDateString()}</p>
-                    <p className={`text-xs mt-0.5 ${isOverdue ? 'text-red-500 font-medium' : 'text-gray-500'}`}>
-                      Due: {new Date(issue.dueDate).toLocaleDateString()}
-                    </p>
-                  </td>
-                  <td className="px-6 py-4">
-                    {issue.status === 'returned' ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
-                        <CheckCircle className="w-3 h-3" /> Returned
-                      </span>
-                    ) : isOverdue ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700">
-                        <AlertCircle className="w-3 h-3" /> Overdue
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700">
-                        <Clock className="w-3 h-3" /> Issued
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      {issue.status === 'issued' && (
-                        <button
-                          onClick={() => handleReturnBook(issue)}
-                          className="px-3 py-1.5 bg-emerald-50 text-emerald-700 text-sm font-medium rounded-lg hover:bg-emerald-100 transition-colors"
-                        >
-                          Mark Returned
-                        </button>
+            {items.length > 0 ? (
+              items.map((issue) => {
+                const isOverdue =
+                  issue.status === "issued" &&
+                  new Date(issue.dueDate) < new Date();
+                return (
+                  <tr
+                    key={issue.id}
+                    className="hover:bg-white/60 backdrop-blur-md/50 transition-colors"
+                  >
+                    <td className="px-4 py-3 md:px-6 md:py-4">
+                      <p className="font-medium text-gray-900">
+                        {issue.bookTitle}
+                      </p>
+                      <p className="text-xs text-gray-500 font-mono">
+                        {issue.bookCode}
+                      </p>
+                    </td>
+                    <td className="px-4 py-3 md:px-6 md:py-4">
+                      <button
+                        onClick={() =>
+                          setSelectedUserHistory({
+                            name: issue.issuedToName,
+                            type: issue.issuedToType,
+                          })
+                        }
+                        className="font-medium text-emerald-600 hover:text-emerald-700 hover:underline text-left transition-colors"
+                      >
+                        {issue.issuedToName}
+                      </button>
+                      <p className="text-xs text-gray-500 capitalize">
+                        {issue.issuedToType}
+                      </p>
+                    </td>
+                    <td className="px-4 py-3 md:px-6 md:py-4">
+                      <p className="text-sm text-gray-900">
+                        {new Date(issue.issueDate).toLocaleDateString()}
+                      </p>
+                      <p
+                        className={`text-xs mt-0.5 ${isOverdue ? "text-red-500 font-medium" : "text-gray-500"}`}
+                      >
+                        Due: {new Date(issue.dueDate).toLocaleDateString()}
+                      </p>
+                    </td>
+                    <td className="px-4 py-3 md:px-6 md:py-4">
+                      {issue.status === "returned" ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
+                          <CheckCircle className="w-3 h-3" /> Returned
+                        </span>
+                      ) : isOverdue ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700">
+                          <AlertCircle className="w-3 h-3" /> Overdue
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700">
+                          <Clock className="w-3 h-3" /> Issued
+                        </span>
                       )}
-                      {isAdmin && (
-                        <button
-                          onClick={() => handleDeleteIssue(issue)}
-                          className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Delete Record"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              );
-            }) : (
+                    </td>
+                    <td className="px-4 py-3 md:px-6 md:py-4 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        {issue.status === "issued" && (
+                          <button
+                            onClick={() => handleReturnBook(issue)}
+                            className="px-3 py-1.5 bg-emerald-50 text-emerald-700 text-sm font-medium rounded-lg hover:bg-emerald-100 transition-colors"
+                          >
+                            Mark Returned
+                          </button>
+                        )}
+                        {isAdmin && (
+                          <button
+                            onClick={() => handleDeleteIssue(issue)}
+                            className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Delete Record"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
+            ) : (
               <tr>
-                <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+                <td
+                  colSpan={5}
+                  className="px-6 py-12 text-center text-gray-500"
+                >
                   {emptyMessage}
                 </td>
               </tr>
@@ -466,78 +643,104 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
 
       {/* Mobile Card View */}
       <div className="md:hidden divide-y divide-gray-100/80">
-        {items.length > 0 ? items.map((issue) => {
-          const isOverdue = issue.status === 'issued' && new Date(issue.dueDate) < new Date();
-          return (
-            <div key={issue.id} className="p-4 space-y-3">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="font-bold text-gray-900">{issue.bookTitle}</h3>
-                  <p className="text-xs text-gray-500 font-mono">{issue.bookCode}</p>
+        {items.length > 0 ? (
+          items.map((issue) => {
+            const isOverdue =
+              issue.status === "issued" && new Date(issue.dueDate) < new Date();
+            return (
+              <div key={issue.id} className="p-4 space-y-3">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-bold text-gray-900">
+                      {issue.bookTitle}
+                    </h3>
+                    <p className="text-xs text-gray-500 font-mono">
+                      {issue.bookCode}
+                    </p>
+                  </div>
+                  {isAdmin && (
+                    <button
+                      onClick={() => handleDeleteIssue(issue)}
+                      className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  )}
                 </div>
-                {isAdmin && (
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-gray-400 uppercase font-bold tracking-wider">
+                      Issued To
+                    </p>
+                    <button
+                      onClick={() =>
+                        setSelectedUserHistory({
+                          name: issue.issuedToName,
+                          type: issue.issuedToType,
+                        })
+                      }
+                      className="font-bold text-emerald-600 hover:underline"
+                    >
+                      {issue.issuedToName}
+                    </button>
+                    <p className="text-xs text-gray-500 capitalize">
+                      {issue.issuedToType}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-gray-400 uppercase font-bold tracking-wider">
+                      Status
+                    </p>
+                    {issue.status === "returned" ? (
+                      <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600">
+                        <CheckCircle className="w-3 h-3" /> Returned
+                      </span>
+                    ) : isOverdue ? (
+                      <span className="inline-flex items-center gap-1 text-xs font-bold text-red-600">
+                        <AlertCircle className="w-3 h-3" /> Overdue
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-600">
+                        <Clock className="w-3 h-3" /> Issued
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between bg-white/60 backdrop-blur-md p-3 rounded-xl">
+                  <div>
+                    <p className="text-[10px] text-gray-400 uppercase font-bold">
+                      Issue Date
+                    </p>
+                    <p className="text-sm font-medium">
+                      {new Date(issue.issueDate).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] text-gray-400 uppercase font-bold">
+                      Due Date
+                    </p>
+                    <p
+                      className={`text-sm font-bold ${isOverdue ? "text-red-600" : "text-gray-900"}`}
+                    >
+                      {new Date(issue.dueDate).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+
+                {issue.status === "issued" && (
                   <button
-                    onClick={() => handleDeleteIssue(issue)}
-                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                    onClick={() => handleReturnBook(issue)}
+                    className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white text-sm font-bold rounded-xl hover:from-emerald-600 hover:to-teal-600 hover:shadow-xl hover:-translate-y-0.5 transition-colors shadow-2xl shadow-gray-200/50 shadow-emerald-100"
                   >
-                    <Trash2 className="w-5 h-5" />
+                    Mark as Returned
                   </button>
                 )}
               </div>
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-gray-400 uppercase font-bold tracking-wider">Issued To</p>
-                  <button 
-                    onClick={() => setSelectedUserHistory({name: issue.issuedToName, type: issue.issuedToType})}
-                    className="font-bold text-emerald-600 hover:underline"
-                  >
-                    {issue.issuedToName}
-                  </button>
-                  <p className="text-xs text-gray-500 capitalize">{issue.issuedToType}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs text-gray-400 uppercase font-bold tracking-wider">Status</p>
-                  {issue.status === 'returned' ? (
-                    <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600">
-                      <CheckCircle className="w-3 h-3" /> Returned
-                    </span>
-                  ) : isOverdue ? (
-                    <span className="inline-flex items-center gap-1 text-xs font-bold text-red-600">
-                      <AlertCircle className="w-3 h-3" /> Overdue
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-600">
-                      <Clock className="w-3 h-3" /> Issued
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between bg-white/60 backdrop-blur-md p-3 rounded-xl">
-                <div>
-                  <p className="text-[10px] text-gray-400 uppercase font-bold">Issue Date</p>
-                  <p className="text-sm font-medium">{new Date(issue.issueDate).toLocaleDateString()}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[10px] text-gray-400 uppercase font-bold">Due Date</p>
-                  <p className={`text-sm font-bold ${isOverdue ? 'text-red-600' : 'text-gray-900'}`}>
-                    {new Date(issue.dueDate).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
-
-              {issue.status === 'issued' && (
-                <button
-                  onClick={() => handleReturnBook(issue)}
-                  className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white text-sm font-bold rounded-xl hover:from-emerald-600 hover:to-teal-600 hover:shadow-xl hover:-translate-y-0.5 transition-colors shadow-2xl shadow-gray-200/50 shadow-emerald-100"
-                >
-                  Mark as Returned
-                </button>
-              )}
-            </div>
-          );
-        }) : (
+            );
+          })
+        ) : (
           <div className="px-6 py-12 text-center text-gray-500">
             {emptyMessage}
           </div>
@@ -548,32 +751,34 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
 
   return (
     <div className="flex-1 overflow-auto bg-[#F8FAFC]">
-      <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
+      <div className="p-4 md:p-5 md:p-8 max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-extrabold tracking-tight text-gray-900">Library Management</h2>
+            <h2 className="text-2xl font-extrabold tracking-tight text-gray-900">
+              Library Management
+            </h2>
             <p className="text-gray-500">Manage books, issues, and returns</p>
           </div>
-          
+
           <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 bg-white p-1 rounded-[1rem] border border-white/60 shadow-2xl shadow-gray-200/50">
             {[
-              { id: 'books', label: 'Books', icon: BookOpen },
-              { id: 'issues', label: 'Issued Entries', icon: Clock },
-              { id: 'overdue', label: 'Overdue', icon: AlertCircle },
+              { id: "books", label: "Books", icon: BookOpen },
+              { id: "issues", label: "Issued Entries", icon: Clock },
+              { id: "overdue", label: "Overdue", icon: AlertCircle },
             ].map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
                 className={`flex items-center justify-center sm:justify-start gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                  activeTab === tab.id 
-                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white shadow-md' 
-                    : 'text-gray-500 hover:bg-white/60 backdrop-blur-md'
+                  activeTab === tab.id
+                    ? "bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white shadow-md"
+                    : "text-gray-500 hover:bg-white/60 backdrop-blur-md"
                 }`}
               >
                 <tab.icon className="w-4 h-4" />
                 {tab.label}
-                {tab.id === 'overdue' && notifications.length > 0 && (
+                {tab.id === "overdue" && notifications.length > 0 && (
                   <span className="flex items-center justify-center w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full">
                     {notifications.length}
                   </span>
@@ -589,15 +794,19 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               type="text"
-              placeholder={activeTab === 'books' ? "Search by book name or code..." : "Search by book or person..."}
+              placeholder={
+                activeTab === "books"
+                  ? "Search by book name or code..."
+                  : "Search by book or person..."
+              }
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 bg-white/60 backdrop-blur-md border-none rounded-xl focus:ring-2 focus:ring-emerald-500/20 transition-all"
             />
           </div>
-          
+
           <div className="flex gap-3 w-full md:w-auto">
-            {activeTab === 'books' ? (
+            {activeTab === "books" ? (
               <>
                 <input
                   type="file"
@@ -641,79 +850,107 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
         </div>
 
         {/* Content Area */}
-        <div className="bg-white/70 backdrop-blur-xl rounded-[2rem] border border-white/60 shadow-2xl shadow-gray-200/50 overflow-hidden">
-          {activeTab === 'books' ? (
+        <div className="bg-white/70 backdrop-blur-xl rounded-3xl md:rounded-[2rem] border border-white/60 shadow-2xl shadow-gray-200/50 overflow-hidden">
+          {activeTab === "books" ? (
             <>
               {/* Desktop Table View */}
               <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-white/60 backdrop-blur-md/50 border-b border-white/60">
-                      <th className="px-6 py-4 text-sm font-semibold text-gray-900">Book Code</th>
-                      <th className="px-6 py-4 text-sm font-semibold text-gray-900">Title & Author</th>
-                      <th className="px-6 py-4 text-sm font-semibold text-gray-900">Category</th>
-                      <th className="px-6 py-4 text-sm font-semibold text-gray-900">Class</th>
-                      <th className="px-6 py-4 text-sm font-semibold text-gray-900">Availability</th>
-                      <th className="px-6 py-4 text-sm font-semibold text-gray-900 text-right">Actions</th>
+                      <th className="px-4 py-3 md:px-6 md:py-4 text-sm font-semibold text-gray-900">
+                        Book Code
+                      </th>
+                      <th className="px-4 py-3 md:px-6 md:py-4 text-sm font-semibold text-gray-900">
+                        Title & Author
+                      </th>
+                      <th className="px-4 py-3 md:px-6 md:py-4 text-sm font-semibold text-gray-900">
+                        Category
+                      </th>
+                      <th className="px-4 py-3 md:px-6 md:py-4 text-sm font-semibold text-gray-900">
+                        Class
+                      </th>
+                      <th className="px-4 py-3 md:px-6 md:py-4 text-sm font-semibold text-gray-900">
+                        Availability
+                      </th>
+                      <th className="px-4 py-3 md:px-6 md:py-4 text-sm font-semibold text-gray-900 text-right">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100/80">
-                    {paginatedBooks.length > 0 ? paginatedBooks.map((book) => (
-                      <tr key={book.id} className="hover:bg-white/60 backdrop-blur-md/50 transition-colors">
-                        <td className="px-6 py-4">
-                          <span className="font-mono text-sm bg-gray-100 px-2 py-1 rounded-md text-gray-700">
-                            {book.bookCode}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <p className="font-medium text-gray-900">{book.title}</p>
-                          {book.author && <p className="text-sm text-gray-500">{book.author}</p>}
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
-                            {book.category || 'General'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-50 text-purple-700">
-                            {book.bookClass || 'N/A'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-2">
-                            <div className={`w-2 h-2 rounded-full ${book.availableCopies > 0 ? 'bg-emerald-500' : 'bg-red-500'}`} />
-                            <span className="text-sm font-medium text-gray-700">
-                              {book.availableCopies} / {book.totalCopies}
+                    {paginatedBooks.length > 0 ? (
+                      paginatedBooks.map((book) => (
+                        <tr
+                          key={book.id}
+                          className="hover:bg-white/60 backdrop-blur-md/50 transition-colors"
+                        >
+                          <td className="px-4 py-3 md:px-6 md:py-4">
+                            <span className="font-mono text-sm bg-gray-100 px-2 py-1 rounded-md text-gray-700">
+                              {book.bookCode}
                             </span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <button
-                              onClick={() => {
-                                setSelectedBook(book);
-                                setShowIssueModal(true);
-                              }}
-                              disabled={book.availableCopies === 0}
-                              className="px-3 py-1.5 bg-gradient-to-r from-slate-700 to-slate-900 shadow-lg shadow-slate-900/20 text-white border-none text-white text-sm font-medium rounded-lg hover:from-slate-800 hover:to-slate-950 hover:shadow-xl hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            >
-                              Issue Book
-                            </button>
-                            {isAdmin && (
-                              <button
-                                onClick={() => handleDeleteBook(book)}
-                                className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                title="Delete Book"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                          </td>
+                          <td className="px-4 py-3 md:px-6 md:py-4">
+                            <p className="font-medium text-gray-900">
+                              {book.title}
+                            </p>
+                            {book.author && (
+                              <p className="text-sm text-gray-500">
+                                {book.author}
+                              </p>
                             )}
-                          </div>
-                        </td>
-                      </tr>
-                    )) : (
+                          </td>
+                          <td className="px-4 py-3 md:px-6 md:py-4">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
+                              {book.category || "General"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 md:px-6 md:py-4">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-50 text-purple-700">
+                              {book.bookClass || "N/A"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 md:px-6 md:py-4">
+                            <div className="flex items-center gap-2">
+                              <div
+                                className={`w-2 h-2 rounded-full ${book.availableCopies > 0 ? "bg-emerald-500" : "bg-red-500"}`}
+                              />
+                              <span className="text-sm font-medium text-gray-700">
+                                {book.availableCopies} / {book.totalCopies}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 md:px-6 md:py-4 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => {
+                                  setSelectedBook(book);
+                                  setShowIssueModal(true);
+                                }}
+                                disabled={book.availableCopies === 0}
+                                className="px-3 py-1.5 bg-gradient-to-r from-slate-700 to-slate-900 shadow-lg shadow-slate-900/20 text-white border-none text-white text-sm font-medium rounded-lg hover:from-slate-800 hover:to-slate-950 hover:shadow-xl hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                              >
+                                Issue Book
+                              </button>
+                              {isAdmin && (
+                                <button
+                                  onClick={() => handleDeleteBook(book)}
+                                  className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                  title="Delete Book"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
                       <tr>
-                        <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                        <td
+                          colSpan={6}
+                          className="px-6 py-12 text-center text-gray-500"
+                        >
                           No books found. Add a book or import from Excel.
                         </td>
                       </tr>
@@ -724,60 +961,71 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
 
               {/* Mobile Card View */}
               <div className="md:hidden divide-y divide-gray-100/80">
-                {paginatedBooks.length > 0 ? paginatedBooks.map((book) => (
-                  <div key={book.id} className="p-4 space-y-3">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <span className="font-mono text-xs bg-gray-100 px-2 py-0.5 rounded text-gray-600">
-                          {book.bookCode}
-                        </span>
-                        <h3 className="font-bold text-gray-900 mt-1">{book.title}</h3>
-                        {book.author && <p className="text-sm text-gray-500">{book.author}</p>}
+                {paginatedBooks.length > 0 ? (
+                  paginatedBooks.map((book) => (
+                    <div key={book.id} className="p-4 space-y-3">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <span className="font-mono text-xs bg-gray-100 px-2 py-0.5 rounded text-gray-600">
+                            {book.bookCode}
+                          </span>
+                          <h3 className="font-bold text-gray-900 mt-1">
+                            {book.title}
+                          </h3>
+                          {book.author && (
+                            <p className="text-sm text-gray-500">
+                              {book.author}
+                            </p>
+                          )}
+                        </div>
+                        {isAdmin && (
+                          <button
+                            onClick={() => handleDeleteBook(book)}
+                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        )}
                       </div>
-                      {isAdmin && (
-                        <button
-                          onClick={() => handleDeleteBook(book)}
-                          className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
-                      )}
-                    </div>
-                    
-                    <div className="flex flex-wrap gap-2">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
-                        {book.category || 'General'}
-                      </span>
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-50 text-purple-700">
-                        {book.bookClass || 'N/A'}
-                      </span>
-                      <div className="flex items-center gap-2 bg-white/60 backdrop-blur-md px-2 py-0.5 rounded-full">
-                        <div className={`w-1.5 h-1.5 rounded-full ${book.availableCopies > 0 ? 'bg-emerald-500' : 'bg-red-500'}`} />
-                        <span className="text-xs font-medium text-gray-700">
-                          {book.availableCopies} / {book.totalCopies} Available
-                        </span>
-                      </div>
-                    </div>
 
-                    <button
-                      onClick={() => {
-                        setSelectedBook(book);
-                        setShowIssueModal(true);
-                      }}
-                      disabled={book.availableCopies === 0}
-                      className="w-full py-2.5 bg-gradient-to-r from-slate-700 to-slate-900 shadow-lg shadow-slate-900/20 text-white border-none text-white text-sm font-bold rounded-xl hover:from-slate-800 hover:to-slate-950 hover:shadow-xl hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      Issue Book
-                    </button>
-                  </div>
-                )) : (
+                      <div className="flex flex-wrap gap-2">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
+                          {book.category || "General"}
+                        </span>
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-50 text-purple-700">
+                          {book.bookClass || "N/A"}
+                        </span>
+                        <div className="flex items-center gap-2 bg-white/60 backdrop-blur-md px-2 py-0.5 rounded-full">
+                          <div
+                            className={`w-1.5 h-1.5 rounded-full ${book.availableCopies > 0 ? "bg-emerald-500" : "bg-red-500"}`}
+                          />
+                          <span className="text-xs font-medium text-gray-700">
+                            {book.availableCopies} / {book.totalCopies}{" "}
+                            Available
+                          </span>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          setSelectedBook(book);
+                          setShowIssueModal(true);
+                        }}
+                        disabled={book.availableCopies === 0}
+                        className="w-full py-2.5 bg-gradient-to-r from-slate-700 to-slate-900 shadow-lg shadow-slate-900/20 text-white border-none text-white text-sm font-bold rounded-xl hover:from-slate-800 hover:to-slate-950 hover:shadow-xl hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        Issue Book
+                      </button>
+                    </div>
+                  ))
+                ) : (
                   <div className="px-6 py-12 text-center text-gray-500">
                     No books found.
                   </div>
                 )}
               </div>
             </>
-          ) : activeTab === 'issues' ? (
+          ) : activeTab === "issues" ? (
             renderIssuesTable(paginatedIssues, "No issued books found.")
           ) : (
             renderIssuesTable(paginatedOverdue, "No overdue books found.")
@@ -785,32 +1033,47 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
 
           {/* Pagination Controls */}
           {totalPages > 1 && (
-            <div className="px-6 py-4 bg-white/60 backdrop-blur-md border-t border-white/60 flex items-center justify-between">
+            <div className="px-4 py-3 md:px-6 md:py-4 bg-white/60 backdrop-blur-md border-t border-white/60 flex items-center justify-between">
               <p className="text-sm text-gray-500">
-                Showing <span className="font-medium text-gray-900">{startIndex + 1}</span> to{' '}
+                Showing{" "}
                 <span className="font-medium text-gray-900">
-                  {Math.min(startIndex + itemsPerPage, 
-                    activeTab === 'books' ? filteredBooks.length : 
-                    activeTab === 'issues' ? filteredIssues.length : 
-                    filteredOverdue.length
+                  {startIndex + 1}
+                </span>{" "}
+                to{" "}
+                <span className="font-medium text-gray-900">
+                  {Math.min(
+                    startIndex + itemsPerPage,
+                    activeTab === "books"
+                      ? filteredBooks.length
+                      : activeTab === "issues"
+                        ? filteredIssues.length
+                        : filteredOverdue.length,
                   )}
-                </span> of{' '}
+                </span>{" "}
+                of{" "}
                 <span className="font-medium text-gray-900">
-                  {activeTab === 'books' ? filteredBooks.length : 
-                   activeTab === 'issues' ? filteredIssues.length : 
-                   filteredOverdue.length}
-                </span> entries
+                  {activeTab === "books"
+                    ? filteredBooks.length
+                    : activeTab === "issues"
+                      ? filteredIssues.length
+                      : filteredOverdue.length}
+                </span>{" "}
+                entries
               </p>
               <div className="flex gap-2">
                 <button
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.max(1, prev - 1))
+                  }
                   disabled={currentPage === 1}
                   className="px-4 py-2 bg-white border border-white/60 rounded-xl text-sm font-medium text-gray-700 hover:bg-white/60 backdrop-blur-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   Previous
                 </button>
                 <button
-                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                  }
                   disabled={currentPage === totalPages}
                   className="px-4 py-2 bg-white border border-white/60 rounded-xl text-sm font-medium text-gray-700 hover:bg-white/60 backdrop-blur-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
@@ -830,65 +1093,90 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white/70 backdrop-blur-xl rounded-[2rem] shadow-2xl shadow-gray-200/40 w-full max-w-md overflow-hidden"
+              className="bg-white/70 backdrop-blur-xl rounded-3xl md:rounded-[2rem] shadow-2xl shadow-gray-200/40 w-full max-w-md overflow-hidden"
             >
               <div className="p-6 border-b border-white/60 flex justify-between items-center">
-                <h2 className="text-[1.35rem] font-extrabold tracking-tight text-gray-900">Add New Book</h2>
-                <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                <h2 className="text-[1.35rem] font-extrabold tracking-tight text-gray-900">
+                  Add New Book
+                </h2>
+                <button
+                  onClick={() => setShowAddModal(false)}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                >
                   <X className="w-5 h-5 text-gray-500" />
                 </button>
               </div>
               <form onSubmit={handleAddBook} className="p-6 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Book Code (Optional)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Book Code (Optional)
+                  </label>
                   <input
                     type="text"
                     value={newBook.bookCode}
-                    onChange={e => setNewBook({...newBook, bookCode: e.target.value})}
+                    onChange={(e) =>
+                      setNewBook({ ...newBook, bookCode: e.target.value })
+                    }
                     className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border border-white/60 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none"
                     placeholder="e.g. BK-001 (Leave empty to auto-generate)"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Title *
+                  </label>
                   <input
                     type="text"
                     required
                     value={newBook.title}
-                    onChange={e => setNewBook({...newBook, title: e.target.value})}
+                    onChange={(e) =>
+                      setNewBook({ ...newBook, title: e.target.value })
+                    }
                     className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border border-white/60 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none"
                     placeholder="Book Title"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Author</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Author
+                  </label>
                   <input
                     type="text"
                     value={newBook.author}
-                    onChange={e => setNewBook({...newBook, author: e.target.value})}
+                    onChange={(e) =>
+                      setNewBook({ ...newBook, author: e.target.value })
+                    }
                     className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border border-white/60 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none"
                     placeholder="Author Name"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Class</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Class
+                    </label>
                     <input
                       type="text"
                       value={newBook.bookClass}
-                      onChange={e => setNewBook({...newBook, bookClass: e.target.value})}
+                      onChange={(e) =>
+                        setNewBook({ ...newBook, bookClass: e.target.value })
+                      }
                       className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border border-white/60 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none"
                       placeholder="e.g. Grade 10"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Price (Optional)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Price (Optional)
+                    </label>
                     <input
                       type="number"
                       min="0"
                       step="0.01"
                       value={newBook.price}
-                      onChange={e => setNewBook({...newBook, price: e.target.value})}
+                      onChange={(e) =>
+                        setNewBook({ ...newBook, price: e.target.value })
+                      }
                       className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border border-white/60 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none"
                       placeholder="0.00"
                     />
@@ -896,23 +1184,34 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Category
+                    </label>
                     <input
                       type="text"
                       value={newBook.category}
-                      onChange={e => setNewBook({...newBook, category: e.target.value})}
+                      onChange={(e) =>
+                        setNewBook({ ...newBook, category: e.target.value })
+                      }
                       className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border border-white/60 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none"
                       placeholder="e.g. Science"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Total Copies *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Total Copies *
+                    </label>
                     <input
                       type="number"
                       required
                       min="1"
                       value={newBook.totalCopies}
-                      onChange={e => setNewBook({...newBook, totalCopies: parseInt(e.target.value)})}
+                      onChange={(e) =>
+                        setNewBook({
+                          ...newBook,
+                          totalCopies: parseInt(e.target.value),
+                        })
+                      }
                       className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border border-white/60 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none"
                     />
                   </div>
@@ -946,40 +1245,65 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white/70 backdrop-blur-xl rounded-[2rem] shadow-2xl shadow-gray-200/40 w-full max-w-md overflow-hidden"
+              className="bg-white/70 backdrop-blur-xl rounded-3xl md:rounded-[2rem] shadow-2xl shadow-gray-200/40 w-full max-w-md overflow-hidden"
             >
               <div className="p-6 border-b border-white/60 flex justify-between items-center">
-                <h2 className="text-[1.35rem] font-extrabold tracking-tight text-gray-900">Issue Book</h2>
-                <button onClick={() => setShowIssueModal(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                <h2 className="text-[1.35rem] font-extrabold tracking-tight text-gray-900">
+                  Issue Book
+                </h2>
+                <button
+                  onClick={() => setShowIssueModal(false)}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                >
                   <X className="w-5 h-5 text-gray-500" />
                 </button>
               </div>
               <form onSubmit={handleIssueBook} className="p-6 space-y-4">
                 <div className="bg-white/60 backdrop-blur-md p-4 rounded-xl border border-white/60">
-                  <p className="text-sm text-gray-500 font-mono mb-1">{selectedBook.bookCode}</p>
-                  <p className="font-semibold text-gray-900">{selectedBook.title}</p>
-                  <p className="text-sm text-gray-600 mt-1">Available: {selectedBook.availableCopies}</p>
+                  <p className="text-sm text-gray-500 font-mono mb-1">
+                    {selectedBook.bookCode}
+                  </p>
+                  <p className="font-semibold text-gray-900">
+                    {selectedBook.title}
+                  </p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Available: {selectedBook.availableCopies}
+                  </p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Issue To Type</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Issue To Type
+                  </label>
                   <div className="flex gap-4">
                     <label className="flex items-center gap-2">
-                      <input 
-                        type="radio" 
-                        name="issueType" 
-                        checked={newIssue.issuedToType === 'student'}
-                        onChange={() => setNewIssue({...newIssue, issuedToType: 'student', issuedToName: ''})}
+                      <input
+                        type="radio"
+                        name="issueType"
+                        checked={newIssue.issuedToType === "student"}
+                        onChange={() =>
+                          setNewIssue({
+                            ...newIssue,
+                            issuedToType: "student",
+                            issuedToName: "",
+                          })
+                        }
                         className="text-emerald-600 focus:ring-emerald-500"
                       />
                       <span className="text-sm text-gray-700">Student</span>
                     </label>
                     <label className="flex items-center gap-2">
-                      <input 
-                        type="radio" 
-                        name="issueType" 
-                        checked={newIssue.issuedToType === 'teacher'}
-                        onChange={() => setNewIssue({...newIssue, issuedToType: 'teacher', issuedToName: ''})}
+                      <input
+                        type="radio"
+                        name="issueType"
+                        checked={newIssue.issuedToType === "teacher"}
+                        onChange={() =>
+                          setNewIssue({
+                            ...newIssue,
+                            issuedToType: "teacher",
+                            issuedToName: "",
+                          })
+                        }
                         className="text-emerald-600 focus:ring-emerald-500"
                       />
                       <span className="text-sm text-gray-700">Teacher</span>
@@ -989,15 +1313,21 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Enter {newIssue.issuedToType === 'student' ? 'Student' : 'Teacher'} Name *
+                    Enter{" "}
+                    {newIssue.issuedToType === "student"
+                      ? "Student"
+                      : "Teacher"}{" "}
+                    Name *
                   </label>
                   <input
                     type="text"
                     required
                     value={newIssue.issuedToName}
-                    onChange={e => setNewIssue({...newIssue, issuedToName: e.target.value})}
+                    onChange={(e) =>
+                      setNewIssue({ ...newIssue, issuedToName: e.target.value })
+                    }
                     className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border border-white/60 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none"
-                    placeholder={`e.g. ${newIssue.issuedToType === 'student' ? 'John Doe' : 'Mr. Smith'}`}
+                    placeholder={`e.g. ${newIssue.issuedToType === "student" ? "John Doe" : "Mr. Smith"}`}
                   />
                 </div>
 
@@ -1030,7 +1360,7 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white/70 backdrop-blur-xl rounded-[2rem] shadow-2xl shadow-gray-200/40 w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]"
+              className="bg-white/70 backdrop-blur-xl rounded-3xl md:rounded-[2rem] shadow-2xl shadow-gray-200/40 w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]"
             >
               <div className="p-6 border-b border-white/60 flex justify-between items-center bg-white/60 backdrop-blur-md/50">
                 <div className="flex items-center gap-3">
@@ -1038,45 +1368,79 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
                     <User className="w-5 h-5 text-emerald-600" />
                   </div>
                   <div>
-                    <h2 className="text-[1.35rem] font-extrabold tracking-tight text-gray-900">{selectedUserHistory.name}</h2>
-                    <p className="text-sm text-gray-500 capitalize">{selectedUserHistory.type} History</p>
+                    <h2 className="text-[1.35rem] font-extrabold tracking-tight text-gray-900">
+                      {selectedUserHistory.name}
+                    </h2>
+                    <p className="text-sm text-gray-500 capitalize">
+                      {selectedUserHistory.type} History
+                    </p>
                   </div>
                 </div>
-                <button onClick={() => setSelectedUserHistory(null)} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
+                <button
+                  onClick={() => setSelectedUserHistory(null)}
+                  className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+                >
                   <X className="w-5 h-5 text-gray-500" />
                 </button>
               </div>
-              
+
               <div className="p-6 overflow-y-auto">
                 <div className="space-y-4">
-                  {issues.filter(i => i.issuedToName === selectedUserHistory.name).length > 0 ? (
-                    issues.filter(i => i.issuedToName === selectedUserHistory.name).map(issue => {
-                      const isOverdue = issue.status === 'issued' && new Date(issue.dueDate) < new Date();
-                      return (
-                        <div key={issue.id} className="p-4 rounded-[1rem] border border-white/60 hover:bg-white/60 backdrop-blur-md transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                          <div>
-                            <p className="font-semibold text-gray-900">{issue.bookTitle}</p>
-                            <p className="text-sm text-gray-500 font-mono mt-0.5">{issue.bookCode}</p>
+                  {issues.filter(
+                    (i) => i.issuedToName === selectedUserHistory.name,
+                  ).length > 0 ? (
+                    issues
+                      .filter(
+                        (i) => i.issuedToName === selectedUserHistory.name,
+                      )
+                      .map((issue) => {
+                        const isOverdue =
+                          issue.status === "issued" &&
+                          new Date(issue.dueDate) < new Date();
+                        return (
+                          <div
+                            key={issue.id}
+                            className="p-4 rounded-[1rem] border border-white/60 hover:bg-white/60 backdrop-blur-md transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                          >
+                            <div>
+                              <p className="font-semibold text-gray-900">
+                                {issue.bookTitle}
+                              </p>
+                              <p className="text-sm text-gray-500 font-mono mt-0.5">
+                                {issue.bookCode}
+                              </p>
+                            </div>
+                            <div className="flex flex-col sm:items-end gap-1">
+                              {issue.status === "returned" ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 w-fit">
+                                  <CheckCircle className="w-3 h-3" /> Returned
+                                  on{" "}
+                                  {new Date(
+                                    issue.returnDate,
+                                  ).toLocaleDateString()}
+                                </span>
+                              ) : isOverdue ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700 w-fit">
+                                  <AlertCircle className="w-3 h-3" /> Overdue
+                                  (Due:{" "}
+                                  {new Date(issue.dueDate).toLocaleDateString()}
+                                  )
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 w-fit">
+                                  <Clock className="w-3 h-3" /> Issued (Due:{" "}
+                                  {new Date(issue.dueDate).toLocaleDateString()}
+                                  )
+                                </span>
+                              )}
+                              <p className="text-xs text-gray-400">
+                                Issued on:{" "}
+                                {new Date(issue.issueDate).toLocaleDateString()}
+                              </p>
+                            </div>
                           </div>
-                          <div className="flex flex-col sm:items-end gap-1">
-                            {issue.status === 'returned' ? (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 w-fit">
-                                <CheckCircle className="w-3 h-3" /> Returned on {new Date(issue.returnDate).toLocaleDateString()}
-                              </span>
-                            ) : isOverdue ? (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700 w-fit">
-                                <AlertCircle className="w-3 h-3" /> Overdue (Due: {new Date(issue.dueDate).toLocaleDateString()})
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 w-fit">
-                                <Clock className="w-3 h-3" /> Issued (Due: {new Date(issue.dueDate).toLocaleDateString()})
-                              </span>
-                            )}
-                            <p className="text-xs text-gray-400">Issued on: {new Date(issue.issueDate).toLocaleDateString()}</p>
-                          </div>
-                        </div>
-                      );
-                    })
+                        );
+                      })
                   ) : (
                     <div className="text-center py-8 text-gray-500">
                       No book history found for this user.
@@ -1097,15 +1461,18 @@ export default function LibraryDashboard({ profile, isAdmin }: LibraryDashboardP
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white/70 backdrop-blur-xl rounded-[2rem] shadow-2xl shadow-gray-200/40 w-full max-w-sm overflow-hidden"
+              className="bg-white/70 backdrop-blur-xl rounded-3xl md:rounded-[2rem] shadow-2xl shadow-gray-200/40 w-full max-w-sm overflow-hidden"
             >
               <div className="p-6 text-center">
                 <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <AlertCircle className="w-8 h-8 text-red-600" />
                 </div>
-                <h2 className="text-[1.35rem] font-extrabold tracking-tight text-gray-900 mb-2">Confirm Deletion</h2>
+                <h2 className="text-[1.35rem] font-extrabold tracking-tight text-gray-900 mb-2">
+                  Confirm Deletion
+                </h2>
                 <p className="text-gray-500 mb-6">
-                  Are you sure you want to delete this {deleteConfirm.type}? This action cannot be undone.
+                  Are you sure you want to delete this {deleteConfirm.type}?
+                  This action cannot be undone.
                 </p>
                 <div className="flex gap-3">
                   <button

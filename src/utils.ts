@@ -1,16 +1,20 @@
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from './firebase';
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "./firebase";
 
-export const addAppNotification = async (title: string, message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') => {
+export const addAppNotification = async (
+  title: string,
+  message: string,
+  type: "info" | "success" | "warning" | "error" = "info",
+) => {
   try {
-    await addDoc(collection(db, 'app_notifications'), {
+    await addDoc(collection(db, "app_notifications"), {
       title,
       message,
       type,
       createdAt: serverTimestamp(),
-      readBy: []
+      readBy: [],
     });
-  } catch(error) {
+  } catch (error) {
     console.error("Failed to add notification", error);
   }
 };

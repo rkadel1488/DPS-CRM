@@ -1,4 +1,10 @@
-export type UserRole = 'admin' | 'staff' | 'parent' | 'driver' | 'teacher' | 'librarian';
+export type UserRole =
+  | "admin"
+  | "staff"
+  | "parent"
+  | "driver"
+  | "teacher"
+  | "librarian";
 
 export interface UserProfile {
   uid: string;
@@ -39,11 +45,11 @@ export interface BookIssue {
   bookTitle: string;
   issuedToId: string; // studentId or teacherId
   issuedToName: string;
-  issuedToType: 'student' | 'teacher';
+  issuedToType: "student" | "teacher";
   issueDate: any;
   dueDate: any;
   returnDate?: any;
-  status: 'issued' | 'returned' | 'overdue';
+  status: "issued" | "returned" | "overdue";
   issuedBy: string;
 }
 
@@ -85,7 +91,7 @@ export interface Transaction {
   id: string;
   studentId: string;
   amount: number;
-  type: 'credit' | 'debit';
+  type: "credit" | "debit";
   items: string[];
   timestamp: any;
   processedBy: string;
@@ -96,7 +102,7 @@ export interface Vehicle {
   busNumber: string;
   plateNumber: string;
   capacity: number;
-  status: 'active' | 'maintenance' | 'inactive';
+  status: "active" | "maintenance" | "inactive";
   currentLat?: number;
   currentLng?: number;
   lastUpdate?: any;
@@ -116,7 +122,7 @@ export interface BoardingLog {
   studentId: string;
   routeId: string;
   vehicleId: string;
-  type: 'boarding' | 'alighting';
+  type: "boarding" | "alighting";
   timestamp: any;
   location?: { lat: number; lng: number };
 }
@@ -133,7 +139,7 @@ export interface TransportAttendance {
   date: string; // YYYY-MM-DD
   routeId: string;
   studentId: string;
-  status: 'present' | 'absent';
+  status: "present" | "absent";
   timestamp: any;
   markedBy: string;
 }
@@ -142,7 +148,7 @@ export interface AppNotification {
   id: string;
   title: string;
   message: string;
-  type: 'info' | 'success' | 'warning' | 'error';
+  type: "info" | "success" | "warning" | "error";
   createdAt: any;
   readBy: string[];
 }
@@ -154,7 +160,7 @@ export interface GatePass {
   reason: string;
   departureTime: any;
   arrivalTime?: any;
-  status: 'active' | 'returned' | 'cancelled';
+  status: "active" | "returned" | "cancelled";
   authorizedBy: string;
   createdAt: any;
 }
