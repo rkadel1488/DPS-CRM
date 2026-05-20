@@ -19,7 +19,8 @@ import {
   Edit2,
   QrCode,
   Download,
-  Camera
+  Camera,
+  Eye
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { db } from '../firebase';
@@ -33,7 +34,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
-export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialAction, onActionComplete }: { profile: UserProfile | null, isAdmin: boolean, isMainAdmin: boolean, initialAction?: 'add_student' | 'add_teacher' | 'add_staff' | 'add_parent' | null, onActionComplete?: () => void }) {
+export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialAction, onActionComplete, onImpersonate }: { profile: UserProfile | null, isAdmin: boolean, isMainAdmin: boolean, initialAction?: 'add_student' | 'add_teacher' | 'add_staff' | 'add_parent' | null, onActionComplete?: () => void, onImpersonate?: (profile: UserProfile) => void }) {
   const [students, setStudents] = useState<Student[]>([]);
   const [staff, setStaff] = useState<UserProfile[]>([]);
   const [invites, setInvites] = useState<StaffInvite[]>([]);
@@ -1067,6 +1068,18 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
+                        {isMainAdmin && onImpersonate && member.email !== profile?.email && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onImpersonate(member);
+                            }}
+                            title="Log in as user"
+                            className="p-2 hover:bg-amber-50 text-amber-500 hover:text-amber-600 rounded-lg transition-all"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                        )}
                         {isAdmin && (
                           <button 
                             onClick={(e) => {
@@ -1216,6 +1229,18 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
+                        {isMainAdmin && onImpersonate && member.email !== profile?.email && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onImpersonate(member);
+                            }}
+                            title="Log in as user"
+                            className="p-2 hover:bg-amber-50 text-amber-500 hover:text-amber-600 rounded-lg transition-all"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                        )}
                         {isAdmin && member.email !== MAIN_ADMIN_EMAIL && (
                           <button 
                             onClick={(e) => {
@@ -1344,6 +1369,18 @@ export default function AdminDashboard({ profile, isAdmin, isMainAdmin, initialA
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
+                        {isMainAdmin && onImpersonate && member.email !== profile?.email && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onImpersonate(member);
+                            }}
+                            title="Log in as user"
+                            className="p-2 hover:bg-amber-50 text-amber-500 hover:text-amber-600 rounded-lg transition-all"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                        )}
                         {isAdmin && (
                           <button 
                             onClick={(e) => {

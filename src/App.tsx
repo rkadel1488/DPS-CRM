@@ -193,6 +193,9 @@ export default function App() {
 function AppContent() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [impersonatingProfile, setImpersonatingProfile] = useState<UserProfile | null>(null);
+  const activeProfile = impersonatingProfile || profile;
+  
   const [activeTab, setActiveTab] = useState('dashboard');
   const [adminAction, setAdminAction] = useState<'add_student' | 'add_teacher' | 'add_staff' | 'add_parent' | null>(null);
   const [initialVerifyId, setInitialVerifyId] = useState<string | null>(null);
@@ -228,7 +231,8 @@ function AppContent() {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   
   const isMainAdmin = profile?.email === MAIN_ADMIN_EMAIL;
-  const isAdmin = isMainAdmin || profile?.role === 'admin';
+  const trueIsAdmin = isMainAdmin || profile?.role === 'admin';
+  const isAdmin = activeProfile?.role === 'admin' || (isMainAdmin && !impersonatingProfile);
 
   useEffect(() => {
     if (!user) return;
@@ -551,7 +555,7 @@ function AppContent() {
   });
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex relative overflow-hidden">
+    <div className="h-screen bg-[#F8FAFC] flex relative overflow-hidden">
       {/* Vibrant Background Mesh */}
       <div className="fixed inset-0 z-0 pointer-events-none">
         <div className="absolute top-[-20%] right-[-10%] w-[800px] h-[800px] bg-blue-400/10 rounded-full blur-[120px] mix-blend-multiply"></div>
@@ -642,8 +646,27 @@ function AppContent() {
       </motion.aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col min-w-0 relative z-10">
-        <header className="h-24 bg-white/40 backdrop-blur-3xl border-b border-white/60 px-4 md:px-8 flex items-center justify-between sticky top-0 z-40">
+      <main className="flex-1 flex flex-col min-w-0 relative z-10 h-screen overflow-y-auto">
+        {impersonatingProfile && (
+          <div className="bg-amber-50 border-b border-amber-200 px-4 py-3 flex items-center justify-between sticky top-0 z-50">
+            <div className="flex items-center gap-2 text-amber-800">
+              <UserPlus className="w-5 h-5" />
+              <span className="text-sm font-bold">
+                You are currently impersonating {impersonatingProfile.displayName || impersonatingProfile.email}
+              </span>
+            </div>
+            <button 
+              onClick={() => {
+                setImpersonatingProfile(null);
+                setActiveTab('admin');
+              }}
+              className="px-4 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded-lg text-sm font-bold transition-colors"
+            >
+              Stop Impersonating
+            </button>
+          </div>
+        )}
+        <header className={`h-24 bg-white/40 backdrop-blur-3xl border-b border-white/60 px-4 md:px-8 flex items-center justify-between sticky ${impersonatingProfile ? 'top-[52px]' : 'top-0'} z-40`}>
           <div className="flex items-center gap-4">
             <button 
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -763,11 +786,11 @@ function AppContent() {
             </div>
             <div className="flex items-center gap-3 pl-4 md:pl-6 border-l border-white/60">
               <div className="text-right hidden sm:block">
-                <p className="text-sm font-semibold text-gray-900">{profile?.displayName}</p>
-                <p className="text-xs text-gray-500 capitalize">{profile?.role}</p>
+                <p className="text-sm font-semibold text-gray-900">{activeProfile?.displayName}</p>
+                <p className="text-xs text-gray-500 capitalize">{activeProfile?.role}</p>
               </div>
               <img 
-                src={user.photoURL || `https://ui-avatars.com/api/?name=${profile?.displayName}`} 
+                src={(activeProfile === profile && user.photoURL) ? user.photoURL : `https://ui-avatars.com/api/?name=${activeProfile?.displayName}`} 
                 className="w-10 h-10 rounded-xl border border-white/60"
                 alt="Profile"
               />
@@ -784,13 +807,13 @@ function AppContent() {
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
             >
-              {activeTab === 'dashboard' && <DashboardOverview profile={profile} isAdmin={isAdmin} setActiveTab={setActiveTab} setAdminAction={setAdminAction} setIsQuickScanning={setIsQuickScanning} />}
-              {activeTab === 'gatepass' && <GatePassDashboard profile={profile} isAdmin={isAdmin} initialScan={isQuickScanning} verifyId={initialVerifyId} />}
-              {activeTab === 'canteen' && <CanteenDashboard profile={profile} isAdmin={isAdmin} />}
-              {activeTab === 'transport' && <TransportDashboard profile={profile} isAdmin={isAdmin} />}
-              {activeTab === 'library' && <LibraryDashboard profile={profile} isAdmin={isAdmin} />}
-              {activeTab === 'admin' && <AdminDashboard profile={profile} isAdmin={isAdmin} isMainAdmin={isMainAdmin} initialAction={adminAction} onActionComplete={() => setAdminAction(null)} />}
-              {activeTab === 'settings' && <SettingsView profile={profile} isAdmin={isAdmin} />}
+              {activeTab === 'dashboard' && <DashboardOverview profile={activeProfile} isAdmin={isAdmin} setActiveTab={setActiveTab} setAdminAction={setAdminAction} setIsQuickScanning={setIsQuickScanning} />}
+              {activeTab === 'gatepass' && <GatePassDashboard profile={activeProfile} isAdmin={isAdmin} initialScan={isQuickScanning} verifyId={initialVerifyId} />}
+              {activeTab === 'canteen' && <CanteenDashboard profile={activeProfile} isAdmin={isAdmin} />}
+              {activeTab === 'transport' && <TransportDashboard profile={activeProfile} isAdmin={isAdmin} />}
+              {activeTab === 'library' && <LibraryDashboard profile={activeProfile} isAdmin={isAdmin} />}
+              {activeTab === 'admin' && <AdminDashboard profile={activeProfile} isAdmin={isAdmin} isMainAdmin={trueIsAdmin} initialAction={adminAction} onActionComplete={() => setAdminAction(null)} onImpersonate={(p: UserProfile) => { setImpersonatingProfile(p); setActiveTab('dashboard'); }} />}
+              {activeTab === 'settings' && <SettingsView profile={activeProfile} isAdmin={isAdmin} />}
             </motion.div>
           </AnimatePresence>
         </div>
