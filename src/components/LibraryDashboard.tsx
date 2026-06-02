@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useToast } from "./Toast";
 import {
   collection,
   query,
@@ -40,6 +41,7 @@ export default function LibraryDashboard({
   profile,
   isAdmin,
 }: LibraryDashboardProps) {
+  const { toast } = useToast();
   const [books, setBooks] = useState<Book[]>([]);
   const [issues, setIssues] = useState<BookIssue[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
@@ -313,11 +315,9 @@ export default function LibraryDashboard({
         }
 
         if (importedCount === 0) {
-          alert(
-            'No valid books found in the Excel file. Please ensure there is a "Title" or "Name" column.',
-          );
+          toast('No valid books found in the Excel file. Please ensure there is a "Title" or "Name" column.', "warning");
         } else {
-          alert(`${importedCount} books imported successfully!`);
+          toast(`${importedCount} books imported successfully!`, "success");
         }
 
         // Reset file input
@@ -326,7 +326,7 @@ export default function LibraryDashboard({
         }
       } catch (error) {
         console.error("Error importing books:", error);
-        alert("Failed to import books. Please check the file format.");
+        toast("Failed to import books. Please check the file format.", "error");
       }
     };
     reader.readAsBinaryString(file);
@@ -340,7 +340,7 @@ export default function LibraryDashboard({
     const issuedToName = newIssue.issuedToName.trim();
 
     if (!issuedToName) {
-      alert("Please enter a valid student or teacher name.");
+      toast("Please enter a valid student or teacher name.", "warning");
       return;
     }
 
