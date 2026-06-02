@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useToast } from "./Toast";
 import {
   Bus,
   MapPin,
@@ -121,6 +122,7 @@ export default function TransportDashboard({
   profile: UserProfile | null;
   isAdmin: boolean;
 }) {
+  const { toast } = useToast();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [routes, setRoutes] = useState<Route[]>([]);
   const [logs, setLogs] = useState<BoardingLog[]>([]);
@@ -194,9 +196,7 @@ export default function TransportDashboard({
           },
           (error) => {
             console.error("Geolocation error:", error);
-            alert(
-              "Failed to get location. Please ensure location permissions are granted.",
-            );
+            toast("Failed to get location. Please ensure location permissions are granted.", "error");
             setBroadcastingVehicleId(null);
             if (watchId !== null) setWatchId(null);
           },
@@ -205,7 +205,7 @@ export default function TransportDashboard({
         setWatchId(id);
         setBroadcastingVehicleId(vehicleId);
       } else {
-        alert("Geolocation is not supported by your browser");
+        toast("Geolocation is not supported by your browser", "warning");
       }
     }
   };
@@ -609,7 +609,7 @@ export default function TransportDashboard({
                     </div>
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => alert("Route details coming soon!")}
+                        onClick={() => toast("Route details coming soon!", "info")}
                         className="p-2 hover:bg-white/60 backdrop-blur-md rounded-xl transition-all"
                       >
                         <ChevronRight className="w-5 h-5 text-gray-400" />

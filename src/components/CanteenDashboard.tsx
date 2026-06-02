@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useToast } from "./Toast";
 import {
   Plus,
   Search,
@@ -37,6 +38,7 @@ export default function CanteenDashboard({
   profile: UserProfile | null;
   isAdmin: boolean;
 }) {
+  const { toast } = useToast();
   const [meals, setMeals] = useState<Meal[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [mealPlans, setMealPlans] = useState<MealPlan[]>([]);
@@ -257,9 +259,7 @@ export default function CanteenDashboard({
         updatedAt: serverTimestamp(),
         updatedBy: profile?.uid,
       });
-      alert(
-        "Attendance saved successfully! Data will be automatically deleted after 45 days.",
-      );
+      toast("Attendance saved successfully! Data will be automatically deleted after 45 days.", "success");
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, "lunch_attendance");
     }

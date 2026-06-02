@@ -40,10 +40,7 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return (('email' in request.auth.token) && 
-              request.auth.token.email == "rkadel1488@gmail.com" && 
-              request.auth.token.email_verified == true) || 
-             hasRole('admin');
+      return hasRole('admin');
     }
 
     function isStaff() {

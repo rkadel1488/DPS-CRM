@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useToast } from "./Toast";
 import {
   Ticket,
   Plus,
@@ -43,6 +44,7 @@ export default function GatePassDashboard({
   initialScan?: boolean;
   verifyId?: string | null;
 }) {
+  const { toast } = useToast();
   const [gatePasses, setGatePasses] = useState<GatePass[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [isAddingGatePass, setIsAddingGatePass] = useState(false);
@@ -360,9 +362,7 @@ export default function GatePassDashboard({
       setIsScanning(false);
       setOtherPersonName("");
 
-      alert(
-        `✅ Verification Successful\n\nStudents: ${studentNames}\nTime: ${scannedDate}\n\nGate pass has been recorded and an SMS notification was initiated for ${phone}.`,
-      );
+      toast(`Verification successful! Gate pass recorded for ${studentNames}. SMS notification initiated for ${phone}.`, "success");
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, "gate_passes");
     } finally {
@@ -452,9 +452,7 @@ export default function GatePassDashboard({
       if (!response.ok) {
         const errorData = await response.json();
         console.error("SMS API Error:", errorData);
-        alert(
-          `Warning: Gate pass created, but SMS alert failed to send.\n\nReason: ${errorData.details?.message || errorData.error || "Unknown Error"}\n\nDid you verify Vercel is deployed with TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN, or enter API Keys in Settings?`,
-        );
+        toast(`Gate pass created, but SMS alert failed: ${errorData.details?.message || errorData.error || "Unknown Error"}`, "warning");
       }
     } catch (err) {
       console.error("Failed to call SMS send endpoint:", err);

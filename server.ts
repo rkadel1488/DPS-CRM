@@ -1,4 +1,5 @@
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
 
@@ -12,8 +13,24 @@ async function startServer() {
   // ==========================================
   // SMS SEND SETUP
   // ==========================================
-  app.post('/api/sms/send', async (req, res) => {
+  const smsRateLimit = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 10,
+    message: { error: 'Too many SMS requests, please try again later.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
+  app.post('/api/sms/send', smsRateLimit, async (req, res) => {
     const { phone, variables, customApi } = req.body;
+
+    // Input validation
+    if (typeof phone !== 'string' || !/^\+?[0-9]{7,15}$/.test(phone.trim())) {
+      return res.status(400).json({ error: 'Invalid phone number format.' });
+    }
+    if (variables !== undefined && (typeof variables !== 'object' || Array.isArray(variables))) {
+      return res.status(400).json({ error: 'Invalid variables format.' });
+    }
     
     // Mapping from Settings View:
     const smsKey = customApi?.apiKey;

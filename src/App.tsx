@@ -20,6 +20,7 @@ import {
   Ticket,
   QrCode,
   School,
+  UserPlus,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { auth, db } from "./firebase";
@@ -42,6 +43,7 @@ import {
   limit,
   getDocs,
   addDoc,
+  updateDoc,
   serverTimestamp,
 } from "firebase/firestore";
 import { StaffInvite, UserProfile, UserRole, AppNotification } from "./types";
@@ -63,6 +65,7 @@ import AdminDashboard from "./components/AdminDashboard";
 import LibraryDashboard from "./components/LibraryDashboard";
 import GatePassDashboard from "./components/GatePassDashboard";
 import { COUNTRY_CODES } from "./countryCodes";
+import { useToast } from "./components/Toast";
 
 // Firestore Error Handling
 export enum OperationType {
@@ -1113,6 +1116,7 @@ function DashboardOverview({
     fetchStats();
   }, [profile]);
 
+  const { toast } = useToast();
   const [isDownloading, setIsDownloading] = useState(false);
   const [showQuickAction, setShowQuickAction] = useState(false);
 
@@ -1165,7 +1169,7 @@ function DashboardOverview({
       xlsx.writeFile(workbook, `DPS_CRM_Report_${today}.xlsx`);
     } catch (error) {
       console.error("Error downloading report:", error);
-      alert("Failed to download report. Please try again.");
+      toast("Failed to download report. Please try again.", "error");
     } finally {
       setIsDownloading(false);
     }
@@ -1469,6 +1473,7 @@ function SettingsView({
   profile: UserProfile | null;
   isAdmin: boolean;
 }) {
+  const { toast } = useToast();
   const [smsEndpoint, setSmsEndpoint] = useState(""); // Stores campaign ID
   const [smsApiKey, setSmsApiKey] = useState(""); // Stores API Key
   const [smsSenderId, setSmsSenderId] = useState(""); // Stores Sender ID
@@ -1507,10 +1512,10 @@ function SettingsView({
         },
         { merge: true },
       );
-      alert("Settings saved successfully!");
+      toast("Settings saved successfully!", "success");
     } catch (e) {
       console.error("Failed to save settings:", e);
-      alert("Failed to save settings.");
+      toast("Failed to save settings.", "error");
     } finally {
       setIsSaving(false);
     }

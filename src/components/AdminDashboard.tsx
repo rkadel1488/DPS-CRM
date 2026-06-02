@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useToast } from "./Toast";
 import QRCode from "qrcode";
 import {
   Users,
@@ -77,6 +78,7 @@ export default function AdminDashboard({
 }) {
   const [students, setStudents] = useState<Student[]>([]);
   const [staff, setStaff] = useState<UserProfile[]>([]);
+  const { toast } = useToast();
   const [invites, setInvites] = useState<StaffInvite[]>([]);
   const [activeTab, setActiveTab] = useState<
     "students" | "teachers" | "staff" | "parents"
@@ -210,7 +212,7 @@ export default function AdminDashboard({
         otherPhotoUrl: "",
         photoUrl: "",
       });
-      alert("Student added successfully!");
+      toast("Student added successfully!", "success");
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, "students");
     }
@@ -317,9 +319,7 @@ export default function AdminDashboard({
           { name: "", studentId: "", grade: "", section: "", photoUrl: "" },
         ],
       });
-      alert(
-        "Family Gate Pass added successfully! You can download the QR Code from the students list.",
-      );
+      toast("Family Gate Pass added successfully! You can download the QR Code from the students list.", "success");
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, "students");
     }
@@ -495,7 +495,7 @@ export default function AdminDashboard({
       document.body.removeChild(link);
     } catch (err) {
       console.error("Group ID Card Generation error:", err);
-      alert("Failed to generate full group ID card.");
+      toast("Failed to generate full group ID card.", "error");
     }
   };
 
@@ -702,7 +702,7 @@ export default function AdminDashboard({
       document.body.removeChild(link);
     } catch (err) {
       console.error("ID Card Generation error:", err);
-      alert("Failed to generate full ID card.");
+      toast("Failed to generate full ID card.", "error");
     }
   };
 
@@ -804,9 +804,7 @@ export default function AdminDashboard({
         role: "staff",
         allowedTabs: ["dashboard"],
       });
-      alert(
-        "User added successfully. They can now log in using their phone number.",
-      );
+      toast("User added successfully. They can now log in using their phone number.", "success");
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, "staff_invites");
     }
@@ -902,7 +900,7 @@ export default function AdminDashboard({
   const updateRole = async (user: UserProfile, newRole: UserRole) => {
     if (user.email === MAIN_ADMIN_EMAIL) return; // Cannot edit main admin
     if (newRole === "admin" && !isMainAdmin) {
-      alert("Only the main admin can assign the admin role.");
+      toast("Only the main admin can assign the admin role.", "warning");
       return;
     }
 
@@ -942,7 +940,7 @@ export default function AdminDashboard({
             createdAt: new Date().toISOString(),
           });
         }
-        alert("Students imported successfully!");
+        toast("Students imported successfully!", "success");
       } else {
         for (const row of jsonData as any[]) {
           if (!row.name || !row.phoneNumber) continue;
@@ -963,13 +961,11 @@ export default function AdminDashboard({
             createdBy: profile?.uid || "admin",
           });
         }
-        alert(
-          `${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} imported successfully!`,
-        );
+        toast(`${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} imported successfully!`, "success");
       }
     } catch (error) {
       console.error("Error importing Excel:", error);
-      alert("Failed to import Excel file. Please check the format.");
+      toast("Failed to import Excel file. Please check the format.", "error");
     }
 
     e.target.value = "";
