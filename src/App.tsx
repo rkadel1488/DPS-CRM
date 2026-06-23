@@ -23,6 +23,7 @@ import {
   Package,
   ShoppingCart,
   UserPlus,
+  Trash2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { auth, db } from "./firebase";
@@ -48,6 +49,7 @@ import {
   addDoc,
   serverTimestamp,
   updateDoc,
+  writeBatch,
 } from "firebase/firestore";
 import { StaffInvite, UserProfile, UserRole, AppNotification } from "./types";
 import { MAIN_ADMIN_EMAIL } from "./constants";
@@ -1500,6 +1502,48 @@ function SettingsView({
   const [smsSenderId, setSmsSenderId] = useState(""); // Stores Sender ID
   const [smsRouteId, setSmsRouteId] = useState(""); // Stores Route ID
   const [isSaving, setIsSaving] = useState(false);
+  const [isCleaningStoreData, setIsCleaningStoreData] = useState(false);
+
+  const handleCleanupStoreData = async () => {
+    if (!isAdmin) return;
+    const confirmed = window.confirm(
+      "This will permanently delete all Store Items In/Out entries older than 6 months. This action cannot be undone. Continue?",
+    );
+    if (!confirmed) return;
+
+    setIsCleaningStoreData(true);
+    try {
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+      const snap = await getDocs(collection(db, "store_purchases"));
+      const staleDocs = snap.docs.filter((d) => {
+        const purchaseDate = new Date(d.data().purchaseDate);
+        return !isNaN(purchaseDate.getTime()) && purchaseDate < sixMonthsAgo;
+      });
+
+      if (staleDocs.length === 0) {
+        alert("No entries older than 6 months were found.");
+        return;
+      }
+
+      const BATCH_SIZE = 400;
+      for (let i = 0; i < staleDocs.length; i += BATCH_SIZE) {
+        const batch = writeBatch(db);
+        staleDocs
+          .slice(i, i + BATCH_SIZE)
+          .forEach((d) => batch.delete(doc(db, "store_purchases", d.id)));
+        await batch.commit();
+      }
+
+      alert(`Deleted ${staleDocs.length} entries older than 6 months.`);
+    } catch (e) {
+      console.error("Failed to clean up store data:", e);
+      alert("Failed to clean up store data.");
+    } finally {
+      setIsCleaningStoreData(false);
+    }
+  };
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -1674,6 +1718,33 @@ function SettingsView({
             </div>
           </div>
         </div>
+        {isAdmin && (
+          <div className="p-6">
+            <h3 className="font-bold text-gray-900 mb-1 flex items-center gap-2">
+              Store Data Cleanup
+            </h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Permanently delete Store Items In/Out entries older than 6
+              months to keep your records lean. Entries from the last 6
+              months are always kept.
+            </p>
+            <div className="bg-rose-50 p-4 rounded-[1rem] border border-rose-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <p className="text-xs text-rose-900 font-medium">
+                This action is permanent and cannot be undone.
+              </p>
+              <button
+                onClick={handleCleanupStoreData}
+                disabled={isCleaningStoreData}
+                className="shrink-0 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                {isCleaningStoreData
+                  ? "Cleaning..."
+                  : "Delete Entries Older Than 6 Months"}
+              </button>
+            </div>
+          </div>
+        )}
         <div className="p-6">
           <button
             onClick={handleSave}
