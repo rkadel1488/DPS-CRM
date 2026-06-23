@@ -96,8 +96,17 @@ export interface StorePurchase {
   costPrice?: number;
   totalCost?: number;
   supplier?: string;
+  billNumber?: string;
   purchaseDate: any;
   recordedBy: string;
+}
+
+export interface StoreUnusedItem {
+  id: string;
+  productName: string;
+  note?: string;
+  addedAt: string;
+  addedBy: string;
 }
 
 // Keeping Transaction if it's used elsewhere, but we might not need Meal anymore

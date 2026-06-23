@@ -50,6 +50,12 @@ service cloud.firestore {
       return isAdmin() || hasRole('staff') || hasRole('teacher');
     }
 
+    function isMainAdminEmail() {
+      return ('email' in request.auth.token) &&
+             request.auth.token.email == "rkadel1488@gmail.com" &&
+             request.auth.token.email_verified == true;
+    }
+
     function isDriver() {
       return isAdmin() || hasRole('driver');
     }
@@ -167,9 +173,15 @@ service cloud.firestore {
     }
     match /store_products/{productId} {
       allow read: if isAuthenticated();
-      allow write: if isStaff();
+      allow create, update: if isStaff();
+      allow delete: if isMainAdminEmail();
     }
     match /store_purchases/{purchaseId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isStaff();
+      allow delete: if isStaff() && (resource.data.type == "out" || isMainAdminEmail());
+    }
+    match /store_unused_items/{itemId} {
       allow read: if isAuthenticated();
       allow write: if isStaff();
     }

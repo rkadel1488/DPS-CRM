@@ -10,6 +10,8 @@ import {
   AlertCircle,
   Download,
   Upload,
+  PackageX,
+  Pencil,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { db } from "../firebase";
@@ -25,21 +27,26 @@ import {
   increment,
 } from "firebase/firestore";
 import NepaliDate from "nepali-date-converter";
-import { StoreProduct, StorePurchase, UserProfile } from "../types";
+import { StoreProduct, StorePurchase, StoreUnusedItem, UserProfile } from "../types";
 import { handleFirestoreError, OperationType } from "../App";
+
+const UNUSED_DAYS_THRESHOLD = 45;
 
 export default function StoreDashboard({
   profile,
   isAdmin,
+  isMainAdmin,
 }: {
   profile: UserProfile | null;
   isAdmin: boolean;
+  isMainAdmin: boolean;
 }) {
   const [products, setProducts] = useState<StoreProduct[]>([]);
   const [logs, setLogs] = useState<StorePurchase[]>([]);
-  const [activeTab, setActiveTab] = useState<"inventory" | "in" | "out">(
-    "inventory",
-  );
+  const [unusedItems, setUnusedItems] = useState<StoreUnusedItem[]>([]);
+  const [activeTab, setActiveTab] = useState<
+    "inventory" | "in" | "out" | "unused"
+  >("inventory");
   const [searchTerm, setSearchTerm] = useState("");
 
   const [isAddingProduct, setIsAddingProduct] = useState(false);
@@ -57,6 +64,7 @@ export default function StoreDashboard({
     quantity: number;
     costPrice?: number;
     supplier?: string;
+    billNumber?: string;
     category: "Store" | "Canteen";
     purchaseDate: string;
   }>({
@@ -64,12 +72,26 @@ export default function StoreDashboard({
     quantity: 0,
     costPrice: 0,
     supplier: "",
+    billNumber: "",
     category: "Store",
     purchaseDate: new Date().toISOString().split("T")[0],
   });
 
+  const [isAddingUnused, setIsAddingUnused] = useState(false);
+  const [newUnusedItem, setNewUnusedItem] = useState({
+    productName: "",
+    note: "",
+  });
+
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
   const [logToDelete, setLogToDelete] = useState<StorePurchase | null>(null);
+  const [unusedToDelete, setUnusedToDelete] = useState<StoreUnusedItem | null>(
+    null,
+  );
+  const [editingBillNumberId, setEditingBillNumberId] = useState<
+    string | null
+  >(null);
+  const [editingBillNumberValue, setEditingBillNumberValue] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<StoreProduct | null>(null);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [exportCategory, setExportCategory] = useState("All");
@@ -110,9 +132,24 @@ export default function StoreDashboard({
       },
     );
 
+    const unsubscribeUnused = onSnapshot(
+      collection(db, "store_unused_items"),
+      (snapshot) => {
+        setUnusedItems(
+          snapshot.docs.map(
+            (doc) => ({ id: doc.id, ...doc.data() }) as StoreUnusedItem,
+          ),
+        );
+      },
+      (error) => {
+        handleFirestoreError(error, OperationType.LIST, "store_unused_items");
+      },
+    );
+
     return () => {
       unsubscribeProducts();
       unsubscribeLogs();
+      unsubscribeUnused();
     };
   }, []);
 
@@ -135,7 +172,7 @@ export default function StoreDashboard({
   };
 
   const handleDeleteProduct = async () => {
-    if (!isAdmin || !productToDelete) return;
+    if (!isMainAdmin || !productToDelete) return;
     try {
       await deleteDoc(doc(db, "store_products", productToDelete));
       setProductToDelete(null);
@@ -145,7 +182,10 @@ export default function StoreDashboard({
   };
 
   const handleDeleteLog = async () => {
-    if (!isAdmin || !logToDelete) return;
+    if (!logToDelete) return;
+    const canDelete =
+      logToDelete.type === "out" ? isAdmin : isMainAdmin;
+    if (!canDelete) return;
     try {
       await deleteDoc(doc(db, "store_purchases", logToDelete.id));
 
@@ -163,6 +203,58 @@ export default function StoreDashboard({
       setLogToDelete(null);
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, "store_purchases");
+    }
+  };
+
+  const handleAddUnusedItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isAdmin || !newUnusedItem.productName) return;
+    try {
+      await addDoc(collection(db, "store_unused_items"), {
+        productName: newUnusedItem.productName,
+        note: newUnusedItem.note || "",
+        addedAt: new Date().toISOString(),
+        addedBy: profile?.displayName || "Admin",
+      });
+      setIsAddingUnused(false);
+      setNewUnusedItem({ productName: "", note: "" });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, "store_unused_items");
+    }
+  };
+
+  const handleDeleteUnusedItem = async () => {
+    if (!isAdmin || !unusedToDelete) return;
+    try {
+      await deleteDoc(doc(db, "store_unused_items", unusedToDelete.id));
+      setUnusedToDelete(null);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, "store_unused_items");
+    }
+  };
+
+  const handleSaveBillNumber = async (logId: string) => {
+    if (!isAdmin) return;
+    try {
+      await updateDoc(doc(db, "store_purchases", logId), {
+        billNumber: editingBillNumberValue,
+      });
+      setEditingBillNumberId(null);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, "store_purchases");
+    }
+  };
+
+  const removeMatchingUnusedItems = async (productName: string) => {
+    try {
+      const matches = unusedItems.filter(
+        (u) => u.productName.toLowerCase() === productName.toLowerCase(),
+      );
+      await Promise.all(
+        matches.map((u) => deleteDoc(doc(db, "store_unused_items", u.id))),
+      );
+    } catch (error) {
+      console.error("Failed to clear unused item entries:", error);
     }
   };
 
@@ -246,6 +338,7 @@ export default function StoreDashboard({
         costPrice: newLog.costPrice || 0,
         totalCost: newLog.quantity * (newLog.costPrice || 0),
         supplier: newLog.supplier || "",
+        ...(isAddingLog === "in" ? { billNumber: newLog.billNumber || "" } : {}),
         purchaseDate: new Date(newLog.purchaseDate).toISOString(),
         recordedBy: profile?.displayName || "Admin",
       };
@@ -272,12 +365,17 @@ export default function StoreDashboard({
         });
       }
 
+      if (isAddingLog === "out") {
+        await removeMatchingUnusedItems(newLog.productName);
+      }
+
       setIsAddingLog(false);
       setNewLog({
         productName: "",
         quantity: 0,
         costPrice: 0,
         supplier: "",
+        billNumber: "",
         category: "Store",
         purchaseDate: new Date().toISOString().split("T")[0],
       });
@@ -290,6 +388,38 @@ export default function StoreDashboard({
     (p) =>
       p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.category.toLowerCase().includes(searchTerm.toLowerCase()),
+  );
+
+  const getLastOutDate = (productName: string) => {
+    const outLogs = logs.filter(
+      (l) =>
+        l.type === "out" &&
+        l.productName.toLowerCase() === productName.toLowerCase(),
+    );
+    if (outLogs.length === 0) return null;
+    return outLogs.reduce(
+      (latest, l) =>
+        new Date(l.purchaseDate) > new Date(latest) ? l.purchaseDate : latest,
+      outLogs[0].purchaseDate,
+    );
+  };
+
+  const autoUnusedProducts = products.filter((p) => {
+    if (p.currentStock <= 0) return false;
+    const lastOutDate = getLastOutDate(p.name);
+    if (!lastOutDate) return true;
+    const daysSince =
+      (Date.now() - new Date(lastOutDate).getTime()) / (1000 * 60 * 60 * 24);
+    return daysSince > UNUSED_DAYS_THRESHOLD;
+  });
+
+  const manualUnusedItems = unusedItems.filter(
+    (u) => !logs.some(
+      (l) =>
+        l.type === "out" &&
+        l.productName.toLowerCase() === u.productName.toLowerCase() &&
+        new Date(l.purchaseDate) > new Date(u.addedAt),
+    ),
   );
 
   return (
@@ -338,6 +468,17 @@ export default function StoreDashboard({
           >
             <History className="w-4 h-4 inline-block mr-2" />
             Items Out
+          </button>
+          <button
+            onClick={() => setActiveTab("unused")}
+            className={`px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all ${
+              activeTab === "unused"
+                ? "bg-slate-900 text-white shadow-lg shadow-slate-900/20"
+                : "bg-white text-gray-600 hover:bg-gray-50"
+            }`}
+          >
+            <PackageX className="w-4 h-4 inline-block mr-2" />
+            Unused Items
           </button>
         </div>
       </div>
@@ -420,7 +561,7 @@ export default function StoreDashboard({
                   <span>₹{product.price || 0}</span>
                 </div>
 
-                {isAdmin && (
+                {isMainAdmin && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -444,7 +585,7 @@ export default function StoreDashboard({
               <button
                 onClick={() => setIsAddingLog(activeTab)}
                 className={`px-6 py-3 text-white rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-2 ${
-                  activeTab === "in" 
+                  activeTab === "in"
                     ? "bg-indigo-500 hover:bg-indigo-600 shadow-indigo-500/20"
                     : "bg-rose-500 hover:bg-rose-600 shadow-rose-500/20"
                 }`}
@@ -479,6 +620,9 @@ export default function StoreDashboard({
                     {activeTab === "in" && (
                       <>
                         <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
+                          Bill No.
+                        </th>
+                        <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
                           Rate
                         </th>
                         <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
@@ -492,7 +636,8 @@ export default function StoreDashboard({
                     <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider pr-6">
                       Recorded By
                     </th>
-                    {isAdmin && (
+                    {((activeTab === "in" && isMainAdmin) ||
+                      (activeTab === "out" && isAdmin)) && (
                       <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider pr-6">
                         Actions
                       </th>
@@ -500,7 +645,10 @@ export default function StoreDashboard({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {logs.filter(log => log.type === activeTab).map((log) => (
+                  {logs.filter(log => log.type === activeTab).map((log) => {
+                    const canDeleteThisLog =
+                      activeTab === "in" ? isMainAdmin : isAdmin;
+                    return (
                     <tr
                       key={log.id}
                       className="hover:bg-gray-50/50 transition-colors"
@@ -520,6 +668,51 @@ export default function StoreDashboard({
                       {activeTab === "in" && (
                         <>
                           <td className="p-4 font-medium text-gray-500">
+                            {editingBillNumberId === log.id ? (
+                              <div className="flex items-center gap-1">
+                                <input
+                                  autoFocus
+                                  type="text"
+                                  value={editingBillNumberValue}
+                                  onChange={(e) =>
+                                    setEditingBillNumberValue(e.target.value)
+                                  }
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter")
+                                      handleSaveBillNumber(log.id);
+                                    if (e.key === "Escape")
+                                      setEditingBillNumberId(null);
+                                  }}
+                                  className="w-24 px-2 py-1 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+                                />
+                                <button
+                                  onClick={() => handleSaveBillNumber(log.id)}
+                                  className="text-xs font-bold text-emerald-600 hover:text-emerald-700"
+                                >
+                                  Save
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <span>{log.billNumber || "-"}</span>
+                                {isAdmin && (
+                                  <button
+                                    onClick={() => {
+                                      setEditingBillNumberId(log.id);
+                                      setEditingBillNumberValue(
+                                        log.billNumber || "",
+                                      );
+                                    }}
+                                    className="text-gray-300 hover:text-indigo-600 transition-colors"
+                                    title="Edit bill number"
+                                  >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </td>
+                          <td className="p-4 font-medium text-gray-500">
                             {log.costPrice ? `₹${log.costPrice}` : "-"}
                           </td>
                           <td className={`p-4 font-bold ${activeTab === "in" ? "text-emerald-600" : "text-rose-600"}`}>
@@ -533,7 +726,7 @@ export default function StoreDashboard({
                       <td className="p-4 pr-6 text-gray-400 text-sm">
                         {log.recordedBy}
                       </td>
-                      {isAdmin && (
+                      {canDeleteThisLog && (
                         <td className="p-4 pr-6">
                           <button
                             onClick={() => setLogToDelete(log)}
@@ -545,11 +738,111 @@ export default function StoreDashboard({
                         </td>
                       )}
                     </tr>
-                  ))}
+                    );
+                  })}
                   {logs.filter(log => log.type === activeTab).length === 0 && (
                     <tr>
-                      <td colSpan={activeTab === "in" ? (isAdmin ? 9 : 8) : (isAdmin ? 7 : 6)} className="p-8 text-center text-gray-500">
+                      <td colSpan={activeTab === "in" ? (isMainAdmin ? 10 : 9) : (isAdmin ? 7 : 6)} className="p-8 text-center text-gray-500">
                         No history found
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "unused" && (
+        <div className="space-y-6">
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-sm text-amber-800 font-medium">
+            Items with stock that haven't had an "Items Out" entry in the
+            last {UNUSED_DAYS_THRESHOLD} days are listed automatically. They
+            disappear from this list as soon as they're used in an Items Out
+            entry.
+          </div>
+
+          {isAdmin && (
+            <div className="flex justify-end">
+              <button
+                onClick={() => setIsAddingUnused(true)}
+                className="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2"
+              >
+                <Plus className="w-5 h-5" /> Add Unused Item
+              </button>
+            </div>
+          )}
+
+          <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
+            <div className="p-6 border-b border-gray-100">
+              <h2 className="text-lg font-bold text-gray-900">
+                Unused Items
+              </h2>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-gray-50/50">
+                    <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider pl-6">
+                      Product
+                    </th>
+                    <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
+                      Stock
+                    </th>
+                    <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
+                      Reason
+                    </th>
+                    <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider pr-6">
+                      Note
+                    </th>
+                    {isAdmin && (
+                      <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider pr-6">
+                        Actions
+                      </th>
+                    )}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {autoUnusedProducts.map((p) => {
+                    const lastOutDate = getLastOutDate(p.name);
+                    return (
+                      <tr key={`auto-${p.id}`} className="hover:bg-gray-50/50 transition-colors">
+                        <td className="p-4 pl-6 font-medium text-gray-900">{p.name}</td>
+                        <td className="p-4 font-medium text-gray-500">{p.currentStock} {p.unit}</td>
+                        <td className="p-4 text-sm text-gray-500">
+                          {lastOutDate
+                            ? `Not used since ${new NepaliDate(new Date(lastOutDate)).format("YYYY-MM-DD")}`
+                            : "Never used"}
+                        </td>
+                        <td className="p-4 pr-6 text-gray-400 text-sm">-</td>
+                        {isAdmin && <td className="p-4 pr-6"></td>}
+                      </tr>
+                    );
+                  })}
+                  {manualUnusedItems.map((item) => (
+                    <tr key={item.id} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="p-4 pl-6 font-medium text-gray-900">{item.productName}</td>
+                      <td className="p-4 font-medium text-gray-500">-</td>
+                      <td className="p-4 text-sm text-gray-500">Manually added</td>
+                      <td className="p-4 pr-6 text-gray-400 text-sm">{item.note || "-"}</td>
+                      {isAdmin && (
+                        <td className="p-4 pr-6">
+                          <button
+                            onClick={() => setUnusedToDelete(item)}
+                            className="text-gray-400 hover:text-red-600 transition-colors"
+                            title="Remove entry"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                  {autoUnusedProducts.length === 0 && manualUnusedItems.length === 0 && (
+                    <tr>
+                      <td colSpan={isAdmin ? 5 : 4} className="p-8 text-center text-gray-500">
+                        No unused items found
                       </td>
                     </tr>
                   )}
@@ -753,6 +1046,119 @@ export default function StoreDashboard({
         )}
       </AnimatePresence>
 
+      {/* Add Unused Item Modal */}
+      <AnimatePresence>
+        {isAddingUnused && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white rounded-[2rem] p-8 w-full max-w-md shadow-2xl relative"
+            >
+              <button
+                onClick={() => setIsAddingUnused(false)}
+                className="absolute top-6 right-6 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+
+              <h2 className="text-2xl font-bold text-gray-900 mb-6 font-sans tracking-tight">
+                Add Unused Item
+              </h2>
+
+              <form onSubmit={handleAddUnusedItem} className="space-y-4 text-left">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">
+                    Product Name
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newUnusedItem.productName}
+                    onChange={(e) =>
+                      setNewUnusedItem({
+                        ...newUnusedItem,
+                        productName: e.target.value,
+                      })
+                    }
+                    className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-amber-500 outline-none font-medium"
+                    placeholder="Enter product name..."
+                    list="product-list-unused"
+                  />
+                  <datalist id="product-list-unused">
+                    {products.map((p) => (
+                      <option key={p.id} value={p.name} />
+                    ))}
+                  </datalist>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">
+                    Note <span className="text-gray-400 font-normal">(Optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={newUnusedItem.note}
+                    onChange={(e) =>
+                      setNewUnusedItem({
+                        ...newUnusedItem,
+                        note: e.target.value,
+                      })
+                    }
+                    className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-amber-500 outline-none font-medium"
+                    placeholder="e.g. Damaged, out of season"
+                  />
+                </div>
+
+                <button type="submit" className="w-full pt-2">
+                  <div className="w-full py-4 bg-amber-500 text-white rounded-xl font-bold hover:bg-amber-600 transition-all text-center">
+                    Save
+                  </div>
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Unused Item Confirm Modal */}
+      <AnimatePresence>
+        {unusedToDelete && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white rounded-[2rem] p-8 w-full max-w-sm shadow-2xl text-center"
+            >
+              <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertCircle className="w-8 h-8" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">
+                Remove Entry?
+              </h3>
+              <p className="text-gray-500 mb-8">
+                This will remove the manual unused item entry. This action cannot be undone.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setUnusedToDelete(null)}
+                  className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteUnusedItem}
+                  className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-all"
+                >
+                  Remove
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Add Log Entry Modal */}
       <AnimatePresence>
         {isAddingLog && (
@@ -861,6 +1267,26 @@ export default function StoreDashboard({
                     />
                   </div>
                 </div>
+
+                {isAddingLog === "in" && (
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">
+                      Bill Number <span className="text-gray-400 font-normal">(Optional)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={newLog.billNumber}
+                      onChange={(e) =>
+                        setNewLog({
+                          ...newLog,
+                          billNumber: e.target.value,
+                        })
+                      }
+                      className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium"
+                      placeholder="e.g. INV-2026-0145"
+                    />
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1">
