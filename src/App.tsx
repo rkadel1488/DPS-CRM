@@ -48,7 +48,6 @@ import {
   addDoc,
   serverTimestamp,
   updateDoc,
-  deleteDoc,
 } from "firebase/firestore";
 import { StaffInvite, UserProfile, UserRole, AppNotification } from "./types";
 import { MAIN_ADMIN_EMAIL } from "./constants";
@@ -485,13 +484,10 @@ function AppContent() {
         createdAt: existingProfile?.createdAt || new Date().toISOString(),
       };
 
-      // 4. Remove any stale duplicate profile(s) for this phone number so the
-      // user doesn't show up twice with conflicting permissions.
-      await Promise.all(
-        existingUsersSnap.docs.map((d) => deleteDoc(d.ref)),
-      );
-
-      // 5. Create/replace the user profile
+      // 4. Create/replace the user profile. Any stale duplicate profile left
+      // behind by a previous anonymous session can't be deleted here (an
+      // anonymous user isn't an admin per Firestore rules) — that's cleaned
+      // up later via the Admin dashboard's "Clean Up Duplicates" tool.
       await setDoc(doc(db, "users", userCred.user.uid), newProfile);
 
       // 6. Update local state
