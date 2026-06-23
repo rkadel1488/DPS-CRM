@@ -272,6 +272,14 @@ function AppContent() {
   const isAdmin =
     activeProfile?.role === "admin" || (isMainAdmin && !impersonatingProfile);
 
+  const canManageTab = (tabId: string) =>
+    isAdmin || !!activeProfile?.allowedTabs?.includes(tabId);
+  const canManageGatePass = canManageTab("gatepass");
+  const canManageStore = canManageTab("store");
+  const canManageTransport = canManageTab("transport");
+  const canManageLibrary = canManageTab("library");
+  const canManageAdminTab = canManageTab("admin");
+
   useEffect(() => {
     if (!user) return;
     const q = query(
@@ -1044,24 +1052,24 @@ function AppContent() {
               {activeTab === "gatepass" && (
                 <GatePassDashboard
                   profile={activeProfile}
-                  isAdmin={isAdmin}
+                  isAdmin={canManageGatePass}
                   initialScan={isQuickScanning}
                   verifyId={initialVerifyId}
                 />
               )}
               {activeTab === "store" && (
-                <StoreDashboard profile={activeProfile} isAdmin={isAdmin} />
+                <StoreDashboard profile={activeProfile} isAdmin={canManageStore} />
               )}
               {activeTab === "transport" && (
-                <TransportDashboard profile={activeProfile} isAdmin={isAdmin} />
+                <TransportDashboard profile={activeProfile} isAdmin={canManageTransport} />
               )}
               {activeTab === "library" && (
-                <LibraryDashboard profile={activeProfile} isAdmin={isAdmin} />
+                <LibraryDashboard profile={activeProfile} isAdmin={canManageLibrary} />
               )}
               {activeTab === "admin" && (
                 <AdminDashboard
                   profile={activeProfile}
-                  isAdmin={isAdmin}
+                  isAdmin={canManageAdminTab}
                   isMainAdmin={trueIsAdmin}
                   initialAction={adminAction}
                   onActionComplete={() => setAdminAction(null)}
