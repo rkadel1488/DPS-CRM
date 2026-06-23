@@ -1056,7 +1056,11 @@ function AppContent() {
                 />
               )}
               {activeTab === "store" && (
-                <StoreDashboard profile={activeProfile} isAdmin={canManageStore} />
+                <StoreDashboard
+                  profile={activeProfile}
+                  isAdmin={canManageStore}
+                  isMainAdmin={isMainAdmin && !impersonatingProfile}
+                />
               )}
               {activeTab === "transport" && (
                 <TransportDashboard profile={activeProfile} isAdmin={canManageTransport} />
