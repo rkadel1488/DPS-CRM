@@ -69,6 +69,7 @@ export default function StoreDashboard({
   });
 
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
+  const [logToDelete, setLogToDelete] = useState<StorePurchase | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<StoreProduct | null>(null);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [exportCategory, setExportCategory] = useState("All");
@@ -140,6 +141,28 @@ export default function StoreDashboard({
       setProductToDelete(null);
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, "store_products");
+    }
+  };
+
+  const handleDeleteLog = async () => {
+    if (!isAdmin || !logToDelete) return;
+    try {
+      await deleteDoc(doc(db, "store_purchases", logToDelete.id));
+
+      const existingProduct = products.find(
+        (p) => p.name.toLowerCase() === logToDelete.productName.toLowerCase()
+      );
+      if (existingProduct) {
+        const quantityDelta =
+          logToDelete.type === "in" ? logToDelete.quantity : -logToDelete.quantity;
+        await updateDoc(doc(db, "store_products", existingProduct.id), {
+          currentStock: increment(-quantityDelta),
+        });
+      }
+
+      setLogToDelete(null);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, "store_purchases");
     }
   };
 
@@ -469,6 +492,11 @@ export default function StoreDashboard({
                     <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider pr-6">
                       Recorded By
                     </th>
+                    {isAdmin && (
+                      <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider pr-6">
+                        Actions
+                      </th>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -505,11 +533,22 @@ export default function StoreDashboard({
                       <td className="p-4 pr-6 text-gray-400 text-sm">
                         {log.recordedBy}
                       </td>
+                      {isAdmin && (
+                        <td className="p-4 pr-6">
+                          <button
+                            onClick={() => setLogToDelete(log)}
+                            className="text-gray-400 hover:text-red-600 transition-colors"
+                            title="Delete entry"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                   {logs.filter(log => log.type === activeTab).length === 0 && (
                     <tr>
-                      <td colSpan={activeTab === "in" ? 8 : 6} className="p-8 text-center text-gray-500">
+                      <td colSpan={activeTab === "in" ? (isAdmin ? 9 : 8) : (isAdmin ? 7 : 6)} className="p-8 text-center text-gray-500">
                         No history found
                       </td>
                     </tr>
@@ -666,6 +705,44 @@ export default function StoreDashboard({
                 </button>
                 <button
                   onClick={handleDeleteProduct}
+                  className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-all"
+                >
+                  Delete
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Log Entry Confirm Modal */}
+      <AnimatePresence>
+        {logToDelete && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white rounded-[2rem] p-8 w-full max-w-sm shadow-2xl text-center"
+            >
+              <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertCircle className="w-8 h-8" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">
+                Delete Entry?
+              </h3>
+              <p className="text-gray-500 mb-8">
+                This will remove the log entry and reverse its stock adjustment. This action cannot be undone.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setLogToDelete(null)}
+                  className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteLog}
                   className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-all"
                 >
                   Delete
