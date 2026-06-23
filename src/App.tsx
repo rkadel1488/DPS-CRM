@@ -878,7 +878,7 @@ function AppContent() {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
                     transition={{ duration: 0.2 }}
-                    className="absolute right-0 mt-2 w-80 bg-white rounded-2xl md:rounded-[1.5rem] shadow-2xl shadow-gray-200/40 border border-white/60 overflow-hidden z-50"
+                    className="absolute right-0 mt-2 w-[calc(100vw-2rem)] max-w-80 bg-white rounded-2xl md:rounded-[1.5rem] shadow-2xl shadow-gray-200/40 border border-white/60 overflow-hidden z-50"
                   >
                     <div className="p-4 border-b border-white/60 flex justify-between items-center bg-white/60 backdrop-blur-md/50">
                       <h3 className="font-semibold text-gray-900">
