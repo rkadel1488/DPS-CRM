@@ -21,6 +21,7 @@ import {
   Download,
   Camera,
   Eye,
+  AlertTriangle,
 } from "lucide-react";
 import { motion } from "motion/react";
 import { db } from "../firebase";
@@ -866,6 +867,57 @@ export default function AdminDashboard({
     (invite) => !staff.some((s) => s.phoneNumber === invite.phoneNumber),
   );
 
+  // Detect users with duplicate profiles for the same phone number, left
+  // over from re-logins that pre-date the fix that reuses an existing
+  // profile's role instead of recreating it.
+  const ROLE_PRIORITY: Record<UserRole, number> = {
+    admin: 4,
+    staff: 3,
+    teacher: 2,
+    librarian: 2,
+    driver: 2,
+    parent: 1,
+  };
+
+  const duplicateUserGroups = Object.values(
+    staff
+      .filter((s) => s.phoneNumber && s.email !== MAIN_ADMIN_EMAIL)
+      .reduce((groups: Record<string, UserProfile[]>, member) => {
+        const key = member.phoneNumber as string;
+        groups[key] = groups[key] || [];
+        groups[key].push(member);
+        return groups;
+      }, {}),
+  ).filter((group) => group.length > 1);
+
+  const handleCleanupDuplicateUsers = async () => {
+    try {
+      for (const group of duplicateUserGroups) {
+        const keeper = [...group].sort((a, b) => {
+          const roleDiff =
+            (ROLE_PRIORITY[b.role] || 0) - (ROLE_PRIORITY[a.role] || 0);
+          if (roleDiff !== 0) return roleDiff;
+          return (
+            new Date(b.createdAt || 0).getTime() -
+            new Date(a.createdAt || 0).getTime()
+          );
+        })[0];
+
+        const duplicates = group.filter((m) => m.uid !== keeper.uid);
+        await Promise.all(
+          duplicates.map((m) => deleteDoc(doc(db, "users", m.uid))),
+        );
+      }
+      await addAppNotification(
+        "Duplicate Accounts Cleaned",
+        `Removed ${duplicateUserGroups.reduce((sum, g) => sum + g.length - 1, 0)} duplicate user profile(s).`,
+        "success",
+      );
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, "users");
+    }
+  };
+
   const teacherMembers = staff.filter((s) => s.role === "teacher");
   const parentMembers = staff.filter((s) => s.role === "parent");
   const staffMembers = staff.filter(
@@ -1128,6 +1180,26 @@ export default function AdminDashboard({
           )}
         </div>
       </div>
+
+      {isAdmin && duplicateUserGroups.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-start gap-3 text-amber-800">
+            <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
+            <p className="text-sm font-medium">
+              Found {duplicateUserGroups.length} user(s) with duplicate
+              profiles for the same phone number (leftover from re-logins
+              before the fix). The highest-privilege profile will be kept
+              and the rest removed.
+            </p>
+          </div>
+          <button
+            onClick={handleCleanupDuplicateUsers}
+            className="shrink-0 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-bold transition-colors"
+          >
+            Clean Up Duplicates
+          </button>
+        </div>
+      )}
 
       <div className="bg-white/70 backdrop-blur-xl rounded-3xl md:rounded-[2rem] border border-white/80 shadow-2xl shadow-gray-200/50 overflow-hidden">
         <div className="p-6 border-b border-white/60 flex flex-col md:flex-row md:items-center justify-between gap-4">
