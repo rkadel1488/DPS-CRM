@@ -77,15 +77,30 @@ export interface Student {
   familyId?: string;
 }
 
-export interface Meal {
+export interface StoreProduct {
   id: string;
   name: string;
   category: string;
-  items?: string;
-  calories?: number;
-  inventory?: number;
-  available: boolean;
+  barcode?: string;
+  currentStock: number;
+  unit: string;
+  price?: number;
 }
+
+export interface StorePurchase {
+  id: string;
+  type: "in" | "out";
+  category: "Store" | "Canteen";
+  productName: string;
+  quantity: number;
+  costPrice?: number;
+  totalCost?: number;
+  supplier?: string;
+  purchaseDate: any;
+  recordedBy: string;
+}
+
+// Keeping Transaction if it's used elsewhere, but we might not need Meal anymore
 
 export interface Transaction {
   id: string;

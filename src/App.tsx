@@ -20,6 +20,9 @@ import {
   Ticket,
   QrCode,
   School,
+  Package,
+  ShoppingCart,
+  UserPlus,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { auth, db } from "./firebase";
@@ -43,6 +46,7 @@ import {
   getDocs,
   addDoc,
   serverTimestamp,
+  updateDoc,
 } from "firebase/firestore";
 import { StaffInvite, UserProfile, UserRole, AppNotification } from "./types";
 import { MAIN_ADMIN_EMAIL } from "./constants";
@@ -57,7 +61,7 @@ import {
 } from "recharts";
 
 // Components
-import CanteenDashboard from "./components/CanteenDashboard";
+import StoreDashboard from "./components/StoreDashboard";
 import TransportDashboard from "./components/TransportDashboard";
 import AdminDashboard from "./components/AdminDashboard";
 import LibraryDashboard from "./components/LibraryDashboard";
@@ -318,7 +322,7 @@ function AppContent() {
                 allowedTabs: [
                   "dashboard",
                   "gatepass",
-                  "canteen",
+                  "store",
                   "transport",
                   "library",
                   "admin",
@@ -343,7 +347,7 @@ function AppContent() {
                 ? [
                     "dashboard",
                     "gatepass",
-                    "canteen",
+                    "store",
                     "transport",
                     "library",
                     "admin",
@@ -525,7 +529,7 @@ function AppContent() {
                   DPS CRM
                 </h2>
                 <p className="text-emerald-100 text-sm font-medium">
-                  Canteen & Transport
+                  Store & Transport
                 </p>
               </div>
             </div>
@@ -537,7 +541,7 @@ function AppContent() {
                 operations, effortlessly.
               </h1>
               <p className="text-emerald-50 text-lg leading-relaxed mb-12 font-medium opacity-90 max-w-sm">
-                One platform for gate passes, canteen, transport, and library
+                One platform for gate passes, stores, transport, and library
                 management — built for administrators and parents.
               </p>
             </div>
@@ -680,7 +684,7 @@ function AppContent() {
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "gatepass", label: "Gate Pass", icon: Ticket },
     { id: "library", label: "Library", icon: BookOpen },
-    { id: "canteen", label: "Canteen", icon: Utensils },
+    { id: "store", label: "Store", icon: Package },
     { id: "transport", label: "Transport", icon: Bus },
     { id: "admin", label: "Management", icon: Users },
     { id: "settings", label: "Settings", icon: Settings },
@@ -1027,8 +1031,8 @@ function AppContent() {
                   verifyId={initialVerifyId}
                 />
               )}
-              {activeTab === "canteen" && (
-                <CanteenDashboard profile={activeProfile} isAdmin={isAdmin} />
+              {activeTab === "store" && (
+                <StoreDashboard profile={activeProfile} isAdmin={isAdmin} />
               )}
               {activeTab === "transport" && (
                 <TransportDashboard profile={activeProfile} isAdmin={isAdmin} />
@@ -1078,7 +1082,7 @@ function DashboardOverview({
   const [stats, setStats] = useState({
     totalStudents: 0,
     activeBuses: 0,
-    canteenLunchRegs: 0,
+    storeProductsCount: 0,
     activeGatePasses: 0,
   });
 
@@ -1094,12 +1098,12 @@ function DashboardOverview({
         const vehiclesSnap = await getDocs(collection(db, "vehicles"));
         const gatePassesSnap = await getDocs(collection(db, "gate_passes"));
 
+        const productsSnap = await getDocs(collection(db, "store_products"));
+
         setStats({
           totalStudents: studentsSnap.size,
           activeBuses: vehiclesSnap.size,
-          canteenLunchRegs: studentsSnap.docs.filter(
-            (d) => (d.data().balance || 0) > 0,
-          ).length,
+          storeProductsCount: productsSnap.size,
           activeGatePasses: gatePassesSnap.docs.filter(
             (d) => d.data().status === "active",
           ).length,
@@ -1283,9 +1287,9 @@ function DashboardOverview({
             trend: "Active",
           },
           {
-            label: "Lunch Regs",
-            value: stats.canteenLunchRegs,
-            icon: Utensils,
+            label: "Store Items",
+            value: stats.storeProductsCount,
+            icon: Package,
             color: "from-violet-400 to-purple-500",
             bg: "bg-violet-50/50",
             trend: "Active",
@@ -1350,8 +1354,8 @@ function DashboardOverview({
                   fill: "#f97316",
                 },
                 {
-                  name: "Lunch Regs",
-                  count: stats.canteenLunchRegs,
+                  name: "Store Items",
+                  count: stats.storeProductsCount,
                   fill: "#6366f1",
                 },
               ]}
@@ -1426,8 +1430,8 @@ function DashboardOverview({
                   tab: "gatepass",
                   quickScan: true,
                 },
-                { label: "New Transaction", icon: CreditCard, tab: "canteen" },
-                { label: "Menu Planner", icon: ClipboardList, tab: "canteen" },
+                { label: "Add Product", icon: Package, tab: "store" },
+                { label: "Purchase Entry", icon: ShoppingCart, tab: "store" },
               ].map((action, i) => {
                 const isDisabled = action.adminOnly && !isAdmin;
                 return (

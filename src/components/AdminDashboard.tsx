@@ -936,7 +936,7 @@ export default function AdminDashboard({
             parentName: String(row.parentName || ""),
             parentPhone: String(row.parentPhone || ""),
             parentEmail: String(row.parentEmail || ""),
-            canteenBalance: Number(row.canteenBalance) || 0,
+            balance: Number(row.balance) || 0,
             transportRoute: String(row.transportRoute || ""),
             busStop: String(row.busStop || ""),
             createdAt: new Date().toISOString(),
@@ -1017,7 +1017,7 @@ export default function AdminDashboard({
   const availableTabs = [
     { id: "dashboard", label: "Dashboard" },
     { id: "gatepass", label: "Gate Pass" },
-    { id: "canteen", label: "Canteen" },
+    { id: "store", label: "Store Management" },
     { id: "transport", label: "Transport" },
     { id: "library", label: "Library" },
     { id: "admin", label: "Management" },
