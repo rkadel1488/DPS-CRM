@@ -41,12 +41,14 @@ import {
   onSnapshot,
   collection,
   query,
+  where,
   orderBy,
   limit,
   getDocs,
   addDoc,
   serverTimestamp,
   updateDoc,
+  deleteDoc,
 } from "firebase/firestore";
 import { StaffInvite, UserProfile, UserRole, AppNotification } from "./types";
 import { MAIN_ADMIN_EMAIL } from "./constants";
@@ -456,19 +458,35 @@ function AppContent() {
 
       const invite = inviteDoc.data() as StaffInvite;
 
+      // 3. If this phone number already has a profile (e.g. an admin already
+      // assigned/updated its role), reuse that role instead of the invite's
+      // original role so re-logins don't reset previously granted permissions.
+      const existingUsersSnap = await getDocs(
+        query(collection(db, "users"), where("phoneNumber", "==", matchedPhone)),
+      );
+      const existingProfile = existingUsersSnap.docs[0]?.data() as
+        | UserProfile
+        | undefined;
+
       const newProfile: UserProfile = {
         uid: userCred.user.uid,
         phoneNumber: matchedPhone,
-        displayName: invite.name,
-        role: invite.role,
-        allowedTabs: invite.allowedTabs,
-        createdAt: new Date().toISOString(),
+        displayName: existingProfile?.displayName || invite.name,
+        role: existingProfile?.role || invite.role,
+        allowedTabs: existingProfile?.allowedTabs || invite.allowedTabs,
+        createdAt: existingProfile?.createdAt || new Date().toISOString(),
       };
 
-      // 3. Create user profile
+      // 4. Remove any stale duplicate profile(s) for this phone number so the
+      // user doesn't show up twice with conflicting permissions.
+      await Promise.all(
+        existingUsersSnap.docs.map((d) => deleteDoc(d.ref)),
+      );
+
+      // 5. Create/replace the user profile
       await setDoc(doc(db, "users", userCred.user.uid), newProfile);
 
-      // 4. Update local state
+      // 6. Update local state
       setProfile(newProfile);
     } catch (error: any) {
       console.error(error);
@@ -860,7 +878,7 @@ function AppContent() {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
                     transition={{ duration: 0.2 }}
-                    className="absolute right-0 mt-2 w-80 bg-white rounded-2xl md:rounded-[1.5rem] shadow-2xl shadow-gray-200/40 border border-white/60 overflow-hidden z-50"
+                    className="absolute right-0 mt-2 w-[calc(100vw-2rem)] max-w-80 bg-white rounded-2xl md:rounded-[1.5rem] shadow-2xl shadow-gray-200/40 border border-white/60 overflow-hidden z-50"
                   >
                     <div className="p-4 border-b border-white/60 flex justify-between items-center bg-white/60 backdrop-blur-md/50">
                       <h3 className="font-semibold text-gray-900">

@@ -789,7 +789,7 @@ export default function GatePassDashboard({
                     Authorized Recovery Personnel
                   </p>
 
-                  <div className="grid grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
                     {/* Father */}
                     <div
                       className={`space-y-2 cursor-pointer transition-all ${selectedPickup === "father" ? "scale-105" : "hover:scale-105 opacity-70"}`}
