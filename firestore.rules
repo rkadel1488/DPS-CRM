@@ -185,5 +185,9 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow write: if isStaff();
     }
+    match /store_suppliers/{supplierId} {
+      allow read: if isAuthenticated();
+      allow write: if isStaff();
+    }
   }
 }

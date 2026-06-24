@@ -89,7 +89,7 @@ export interface StoreProduct {
 
 export interface StorePurchase {
   id: string;
-  type: "in" | "out";
+  type: "in" | "out" | "purchase";
   category: "Store" | "Canteen";
   productName: string;
   quantity: number;
@@ -110,6 +110,11 @@ export interface StoreUnusedItem {
 }
 
 // Keeping Transaction if it's used elsewhere, but we might not need Meal anymore
+
+export interface StoreSupplier {
+  id: string;
+  name: string;
+}
 
 export interface Transaction {
   id: string;
