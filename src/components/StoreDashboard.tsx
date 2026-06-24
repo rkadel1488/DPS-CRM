@@ -565,7 +565,7 @@ export default function StoreDashboard({
           </p>
         </div>
 
-        <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
+        <div className="flex gap-2 w-full md:w-auto min-w-0 overflow-x-auto pb-2 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <button
             onClick={() => setActiveTab("inventory")}
             className={`px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all ${
