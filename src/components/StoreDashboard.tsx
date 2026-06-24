@@ -11,7 +11,6 @@ import {
   Download,
   Upload,
   PackageX,
-  Pencil,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { db } from "../firebase";
@@ -27,10 +26,16 @@ import {
   increment,
 } from "firebase/firestore";
 import NepaliDate from "nepali-date-converter";
-import { StoreProduct, StorePurchase, StoreUnusedItem, UserProfile } from "../types";
+import { StoreProduct, StorePurchase, StoreUnusedItem, StoreSupplier, UserProfile } from "../types";
 import { handleFirestoreError, OperationType } from "../App";
 
 const UNUSED_DAYS_THRESHOLD = 45;
+
+interface PurchaseItemRow {
+  productName: string;
+  quantity: number;
+  costPrice?: number;
+}
 
 export default function StoreDashboard({
   profile,
@@ -44,8 +49,9 @@ export default function StoreDashboard({
   const [products, setProducts] = useState<StoreProduct[]>([]);
   const [logs, setLogs] = useState<StorePurchase[]>([]);
   const [unusedItems, setUnusedItems] = useState<StoreUnusedItem[]>([]);
+  const [suppliers, setSuppliers] = useState<StoreSupplier[]>([]);
   const [activeTab, setActiveTab] = useState<
-    "inventory" | "in" | "out" | "unused"
+    "inventory" | "purchase" | "in" | "out" | "unused"
   >("inventory");
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -64,7 +70,6 @@ export default function StoreDashboard({
     quantity: number;
     costPrice?: number;
     supplier?: string;
-    billNumber?: string;
     category: "Store" | "Canteen";
     purchaseDate: string;
   }>({
@@ -72,9 +77,23 @@ export default function StoreDashboard({
     quantity: 0,
     costPrice: 0,
     supplier: "",
-    billNumber: "",
     category: "Store",
     purchaseDate: new Date().toISOString().split("T")[0],
+  });
+
+  const [isAddingPurchase, setIsAddingPurchase] = useState(false);
+  const [newPurchase, setNewPurchase] = useState<{
+    billNumber: string;
+    supplier: string;
+    category: "Store" | "Canteen";
+    purchaseDate: string;
+    items: PurchaseItemRow[];
+  }>({
+    billNumber: "",
+    supplier: "",
+    category: "Store",
+    purchaseDate: new Date().toISOString().split("T")[0],
+    items: [{ productName: "", quantity: 0, costPrice: 0 }],
   });
 
   const [isAddingUnused, setIsAddingUnused] = useState(false);
@@ -88,10 +107,6 @@ export default function StoreDashboard({
   const [unusedToDelete, setUnusedToDelete] = useState<StoreUnusedItem | null>(
     null,
   );
-  const [editingBillNumberId, setEditingBillNumberId] = useState<
-    string | null
-  >(null);
-  const [editingBillNumberValue, setEditingBillNumberValue] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<StoreProduct | null>(null);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [exportCategory, setExportCategory] = useState("All");
@@ -146,10 +161,25 @@ export default function StoreDashboard({
       },
     );
 
+    const unsubscribeSuppliers = onSnapshot(
+      collection(db, "store_suppliers"),
+      (snapshot) => {
+        setSuppliers(
+          snapshot.docs.map(
+            (doc) => ({ id: doc.id, ...doc.data() }) as StoreSupplier,
+          ),
+        );
+      },
+      (error) => {
+        handleFirestoreError(error, OperationType.LIST, "store_suppliers");
+      },
+    );
+
     return () => {
       unsubscribeProducts();
       unsubscribeLogs();
       unsubscribeUnused();
+      unsubscribeSuppliers();
     };
   }, []);
 
@@ -194,7 +224,7 @@ export default function StoreDashboard({
       );
       if (existingProduct) {
         const quantityDelta =
-          logToDelete.type === "in" ? logToDelete.quantity : -logToDelete.quantity;
+          logToDelete.type !== "out" ? logToDelete.quantity : -logToDelete.quantity;
         await updateDoc(doc(db, "store_products", existingProduct.id), {
           currentStock: increment(-quantityDelta),
         });
@@ -233,18 +263,6 @@ export default function StoreDashboard({
     }
   };
 
-  const handleSaveBillNumber = async (logId: string) => {
-    if (!isAdmin) return;
-    try {
-      await updateDoc(doc(db, "store_purchases", logId), {
-        billNumber: editingBillNumberValue,
-      });
-      setEditingBillNumberId(null);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, "store_purchases");
-    }
-  };
-
   const removeMatchingUnusedItems = async (productName: string) => {
     try {
       const matches = unusedItems.filter(
@@ -265,7 +283,7 @@ export default function StoreDashboard({
     }
     const csvContent =
       "data:text/csv;charset=utf-8," +
-      "ID,Name,Category,Stock,Unit,Price,Month In,Month Out\n" +
+      "Item Name,Previous Stock,Purchase This Month,Out This Month,In This Month,Total Current Stock\n" +
       dataToExport
         .map(
           (p) => {
@@ -274,13 +292,18 @@ export default function StoreDashboard({
                 l.productName === p.name &&
                 new NepaliDate(new Date(l.purchaseDate)).format("YYYY-MM") === `${exportBsYear}-${exportBsMonth}`
             );
-            const monthIn = productLogs
+            const purchaseThisMonth = productLogs
+              .filter((l) => l.type === "purchase")
+              .reduce((sum, l) => sum + l.quantity, 0);
+            const inThisMonth = productLogs
               .filter((l) => l.type === "in")
               .reduce((sum, l) => sum + l.quantity, 0);
-            const monthOut = productLogs
+            const outThisMonth = productLogs
               .filter((l) => l.type === "out")
               .reduce((sum, l) => sum + l.quantity, 0);
-            return `${p.id},${p.name},${p.category},${p.currentStock},${p.unit},${p.price},${monthIn},${monthOut}`;
+            const previousStock =
+              p.currentStock - purchaseThisMonth - inThisMonth + outThisMonth;
+            return `${p.name},${previousStock},${purchaseThisMonth},${outThisMonth},${inThisMonth},${p.currentStock}`;
           }
         )
         .join("\n");
@@ -338,7 +361,6 @@ export default function StoreDashboard({
         costPrice: newLog.costPrice || 0,
         totalCost: newLog.quantity * (newLog.costPrice || 0),
         supplier: newLog.supplier || "",
-        ...(isAddingLog === "in" ? { billNumber: newLog.billNumber || "" } : {}),
         purchaseDate: new Date(newLog.purchaseDate).toISOString(),
         recordedBy: profile?.displayName || "Admin",
       };
@@ -375,9 +397,95 @@ export default function StoreDashboard({
         quantity: 0,
         costPrice: 0,
         supplier: "",
-        billNumber: "",
         category: "Store",
         purchaseDate: new Date().toISOString().split("T")[0],
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, "store_purchases");
+    }
+  };
+
+  const addPurchaseItemRow = () => {
+    setNewPurchase({
+      ...newPurchase,
+      items: [...newPurchase.items, { productName: "", quantity: 0, costPrice: 0 }],
+    });
+  };
+
+  const removePurchaseItemRow = (index: number) => {
+    setNewPurchase({
+      ...newPurchase,
+      items: newPurchase.items.filter((_, i) => i !== index),
+    });
+  };
+
+  const updatePurchaseItemRow = (index: number, patch: Partial<PurchaseItemRow>) => {
+    setNewPurchase({
+      ...newPurchase,
+      items: newPurchase.items.map((row, i) => (i === index ? { ...row, ...patch } : row)),
+    });
+  };
+
+  const handleAddPurchase = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isAdmin) return;
+    if (!newPurchase.billNumber.trim()) return;
+    const validItems = newPurchase.items.filter(
+      (item) => item.productName.trim() && item.quantity > 0,
+    );
+    if (validItems.length === 0) return;
+
+    try {
+      for (const item of validItems) {
+        const logData: Omit<StorePurchase, "id"> = {
+          type: "purchase",
+          category: newPurchase.category,
+          productName: item.productName,
+          quantity: item.quantity,
+          costPrice: item.costPrice || 0,
+          totalCost: item.quantity * (item.costPrice || 0),
+          supplier: newPurchase.supplier || "",
+          billNumber: newPurchase.billNumber,
+          purchaseDate: new Date(newPurchase.purchaseDate).toISOString(),
+          recordedBy: profile?.displayName || "Admin",
+        };
+
+        await addDoc(collection(db, "store_purchases"), logData);
+
+        const existingProduct = products.find(
+          (p) => p.name.toLowerCase() === item.productName.toLowerCase(),
+        );
+
+        if (existingProduct) {
+          await updateDoc(doc(db, "store_products", existingProduct.id), {
+            currentStock: increment(item.quantity),
+          });
+        } else {
+          await addDoc(collection(db, "store_products"), {
+            name: item.productName,
+            category: newPurchase.category,
+            unit: "pcs",
+            currentStock: item.quantity,
+            price: 0,
+          });
+        }
+      }
+
+      const supplierName = newPurchase.supplier.trim();
+      if (
+        supplierName &&
+        !suppliers.some((s) => s.name.toLowerCase() === supplierName.toLowerCase())
+      ) {
+        await addDoc(collection(db, "store_suppliers"), { name: supplierName });
+      }
+
+      setIsAddingPurchase(false);
+      setNewPurchase({
+        billNumber: "",
+        supplier: "",
+        category: "Store",
+        purchaseDate: new Date().toISOString().split("T")[0],
+        items: [{ productName: "", quantity: 0, costPrice: 0 }],
       });
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, "store_purchases");
@@ -446,6 +554,17 @@ export default function StoreDashboard({
           >
             <Package className="w-4 h-4 inline-block mr-2" />
             Inventory
+          </button>
+          <button
+            onClick={() => setActiveTab("purchase")}
+            className={`px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all ${
+              activeTab === "purchase"
+                ? "bg-slate-900 text-white shadow-lg shadow-slate-900/20"
+                : "bg-white text-gray-600 hover:bg-gray-50"
+            }`}
+          >
+            <ShoppingCart className="w-4 h-4 inline-block mr-2" />
+            Purchase Entry
           </button>
           <button
             onClick={() => setActiveTab("in")}
@@ -617,19 +736,6 @@ export default function StoreDashboard({
                     <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
                       Quantity
                     </th>
-                    {activeTab === "in" && (
-                      <>
-                        <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
-                          Bill No.
-                        </th>
-                        <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
-                          Rate
-                        </th>
-                        <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
-                          Total Amount
-                        </th>
-                      </>
-                    )}
                     <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
                       Supplier
                     </th>
@@ -665,61 +771,6 @@ export default function StoreDashboard({
                       <td className="p-4 font-medium text-gray-500">
                         {log.quantity}
                       </td>
-                      {activeTab === "in" && (
-                        <>
-                          <td className="p-4 font-medium text-gray-500">
-                            {editingBillNumberId === log.id ? (
-                              <div className="flex items-center gap-1">
-                                <input
-                                  autoFocus
-                                  type="text"
-                                  value={editingBillNumberValue}
-                                  onChange={(e) =>
-                                    setEditingBillNumberValue(e.target.value)
-                                  }
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter")
-                                      handleSaveBillNumber(log.id);
-                                    if (e.key === "Escape")
-                                      setEditingBillNumberId(null);
-                                  }}
-                                  className="w-24 px-2 py-1 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500"
-                                />
-                                <button
-                                  onClick={() => handleSaveBillNumber(log.id)}
-                                  className="text-xs font-bold text-emerald-600 hover:text-emerald-700"
-                                >
-                                  Save
-                                </button>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-2">
-                                <span>{log.billNumber || "-"}</span>
-                                {isAdmin && (
-                                  <button
-                                    onClick={() => {
-                                      setEditingBillNumberId(log.id);
-                                      setEditingBillNumberValue(
-                                        log.billNumber || "",
-                                      );
-                                    }}
-                                    className="text-gray-300 hover:text-indigo-600 transition-colors"
-                                    title="Edit bill number"
-                                  >
-                                    <Pencil className="w-3.5 h-3.5" />
-                                  </button>
-                                )}
-                              </div>
-                            )}
-                          </td>
-                          <td className="p-4 font-medium text-gray-500">
-                            {log.costPrice ? `₹${log.costPrice}` : "-"}
-                          </td>
-                          <td className={`p-4 font-bold ${activeTab === "in" ? "text-emerald-600" : "text-rose-600"}`}>
-                            {log.totalCost ? `₹${log.totalCost}` : "-"}
-                          </td>
-                        </>
-                      )}
                       <td className="p-4 font-medium text-gray-500">
                         {log.supplier || "-"}
                       </td>
@@ -742,8 +793,116 @@ export default function StoreDashboard({
                   })}
                   {logs.filter(log => log.type === activeTab).length === 0 && (
                     <tr>
-                      <td colSpan={activeTab === "in" ? (isMainAdmin ? 10 : 9) : (isAdmin ? 7 : 6)} className="p-8 text-center text-gray-500">
+                      <td colSpan={activeTab === "in" ? (isMainAdmin ? 7 : 6) : (isAdmin ? 7 : 6)} className="p-8 text-center text-gray-500">
                         No history found
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "purchase" && (
+        <div className="space-y-6">
+          {isAdmin && (
+            <div className="flex justify-end">
+              <button
+                onClick={() => setIsAddingPurchase(true)}
+                className="px-6 py-3 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-bold transition-all shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2"
+              >
+                <ShoppingCart className="w-5 h-5" /> New Purchase Entry
+              </button>
+            </div>
+          )}
+
+          <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
+            <div className="p-6 border-b border-gray-100">
+              <h2 className="text-lg font-bold text-gray-900">
+                Purchase Entry History
+              </h2>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-gray-50/50">
+                    <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider pl-6">
+                      Date
+                    </th>
+                    <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
+                      Bill No.
+                    </th>
+                    <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
+                      Product
+                    </th>
+                    <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
+                      Quantity
+                    </th>
+                    <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
+                      Rate
+                    </th>
+                    <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
+                      Total Amount
+                    </th>
+                    <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
+                      Supplier
+                    </th>
+                    <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider pr-6">
+                      Recorded By
+                    </th>
+                    {isMainAdmin && (
+                      <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider pr-6">
+                        Actions
+                      </th>
+                    )}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {logs.filter((log) => log.type === "purchase").map((log) => (
+                    <tr key={log.id} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="p-4 pl-6 font-medium text-gray-900 whitespace-nowrap">
+                        {new NepaliDate(new Date(log.purchaseDate)).format("YYYY-MM-DD")}
+                      </td>
+                      <td className="p-4 font-medium text-gray-500">
+                        {log.billNumber || "-"}
+                      </td>
+                      <td className="p-4 font-medium text-gray-900">
+                        {log.productName}
+                      </td>
+                      <td className="p-4 font-medium text-gray-500">
+                        {log.quantity}
+                      </td>
+                      <td className="p-4 font-medium text-gray-500">
+                        {log.costPrice ? `₹${log.costPrice}` : "-"}
+                      </td>
+                      <td className="p-4 font-bold text-emerald-600">
+                        {log.totalCost ? `₹${log.totalCost}` : "-"}
+                      </td>
+                      <td className="p-4 font-medium text-gray-500">
+                        {log.supplier || "-"}
+                      </td>
+                      <td className="p-4 pr-6 text-gray-400 text-sm">
+                        {log.recordedBy}
+                      </td>
+                      {isMainAdmin && (
+                        <td className="p-4 pr-6">
+                          <button
+                            onClick={() => setLogToDelete(log)}
+                            className="text-gray-400 hover:text-red-600 transition-colors"
+                            title="Delete entry"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                  {logs.filter((log) => log.type === "purchase").length === 0 && (
+                    <tr>
+                      <td colSpan={isMainAdmin ? 9 : 8} className="p-8 text-center text-gray-500">
+                        No purchase entries found
                       </td>
                     </tr>
                   )}
@@ -1268,26 +1427,6 @@ export default function StoreDashboard({
                   </div>
                 </div>
 
-                {isAddingLog === "in" && (
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">
-                      Bill Number <span className="text-gray-400 font-normal">(Optional)</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={newLog.billNumber}
-                      onChange={(e) =>
-                        setNewLog({
-                          ...newLog,
-                          billNumber: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium"
-                      placeholder="e.g. INV-2026-0145"
-                    />
-                  </div>
-                )}
-
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1">
                     Entry Date
@@ -1352,6 +1491,200 @@ export default function StoreDashboard({
           </div>
         )}
       </AnimatePresence>
+      {/* Add Purchase Entry Modal */}
+      <AnimatePresence>
+        {isAddingPurchase && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white rounded-[2rem] p-8 w-full max-w-2xl shadow-2xl relative max-h-[90vh] overflow-y-auto"
+            >
+              <button
+                onClick={() => setIsAddingPurchase(false)}
+                className="absolute top-6 right-6 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+
+              <h2 className="text-2xl font-bold text-gray-900 mb-6 font-sans tracking-tight">
+                New Purchase Entry
+              </h2>
+
+              <form onSubmit={handleAddPurchase} className="space-y-4 text-left">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">
+                      Bill Number
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={newPurchase.billNumber}
+                      onChange={(e) =>
+                        setNewPurchase({ ...newPurchase, billNumber: e.target.value })
+                      }
+                      className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium"
+                      placeholder="e.g. INV-2026-0145"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">
+                      Entry Category
+                    </label>
+                    <select
+                      required
+                      value={newPurchase.category}
+                      onChange={(e) =>
+                        setNewPurchase({
+                          ...newPurchase,
+                          category: e.target.value as "Store" | "Canteen",
+                        })
+                      }
+                      className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium cursor-pointer"
+                    >
+                      <option value="Store">Store</option>
+                      <option value="Canteen">Canteen</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">
+                      Supplier
+                    </label>
+                    <input
+                      type="text"
+                      value={newPurchase.supplier}
+                      onChange={(e) =>
+                        setNewPurchase({ ...newPurchase, supplier: e.target.value })
+                      }
+                      className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium"
+                      placeholder="Select or type a new supplier..."
+                      list="supplier-list"
+                    />
+                    <datalist id="supplier-list">
+                      {suppliers.map((s) => (
+                        <option key={s.id} value={s.name} />
+                      ))}
+                    </datalist>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">
+                      Entry Date
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={newPurchase.purchaseDate}
+                      onChange={(e) =>
+                        setNewPurchase({ ...newPurchase, purchaseDate: e.target.value })
+                      }
+                      className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="block text-sm font-bold text-gray-700">
+                    Items
+                  </label>
+                  {newPurchase.items.map((item, index) => (
+                    <div key={index} className="flex gap-2 items-end bg-gray-50 p-3 rounded-xl">
+                      <div className="flex-1">
+                        <input
+                          type="text"
+                          required
+                          value={item.productName}
+                          onChange={(e) =>
+                            updatePurchaseItemRow(index, { productName: e.target.value })
+                          }
+                          className="w-full px-3 py-2 bg-white border-none rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-sm"
+                          placeholder="Product name"
+                          list="product-list-purchase"
+                        />
+                      </div>
+                      <div className="w-20">
+                        <input
+                          type="number"
+                          min="1"
+                          required
+                          value={item.quantity || ""}
+                          onChange={(e) =>
+                            updatePurchaseItemRow(index, { quantity: Number(e.target.value) })
+                          }
+                          className="w-full px-3 py-2 bg-white border-none rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-sm"
+                          placeholder="Qty"
+                        />
+                      </div>
+                      <div className="w-24">
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={item.costPrice || ""}
+                          onChange={(e) =>
+                            updatePurchaseItemRow(index, { costPrice: Number(e.target.value) })
+                          }
+                          className="w-full px-3 py-2 bg-white border-none rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-sm"
+                          placeholder="Rate"
+                        />
+                      </div>
+                      {newPurchase.items.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removePurchaseItemRow(index)}
+                          className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <datalist id="product-list-purchase">
+                    {products.map((p) => (
+                      <option key={p.id} value={p.name} />
+                    ))}
+                  </datalist>
+                  <button
+                    type="button"
+                    onClick={addPurchaseItemRow}
+                    className="text-sm font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
+                  >
+                    <Plus className="w-4 h-4" /> Add Item
+                  </button>
+                </div>
+
+                {(() => {
+                  const total = newPurchase.items.reduce(
+                    (sum, item) => sum + item.quantity * (item.costPrice || 0),
+                    0,
+                  );
+                  return total > 0 ? (
+                    <div className="bg-indigo-50 p-4 rounded-xl flex justify-between items-center mt-2">
+                      <span className="font-bold text-indigo-700 text-sm">
+                        Bill Total Amount:
+                      </span>
+                      <span className="font-bold text-indigo-700 text-xl">
+                        ₹{total.toFixed(2)}
+                      </span>
+                    </div>
+                  ) : null;
+                })()}
+
+                <button type="submit" className="w-full pt-2">
+                  <div className="w-full py-4 bg-indigo-500 text-white rounded-xl font-bold hover:bg-indigo-600 transition-all text-center flex items-center justify-center gap-2">
+                    <ShoppingCart className="w-5 h-5" /> Record Purchase Entry
+                  </div>
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Product Detail Modal */}
       <AnimatePresence>
         {selectedProduct && (
@@ -1409,9 +1742,13 @@ export default function StoreDashboard({
                           </td>
                           <td className="p-3">
                             <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
-                              log.type === "in" ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
+                              log.type === "purchase"
+                                ? "bg-indigo-100 text-indigo-700"
+                                : log.type === "in"
+                                  ? "bg-emerald-100 text-emerald-700"
+                                  : "bg-rose-100 text-rose-700"
                             }`}>
-                              {log.type === "in" ? "IN" : "OUT"}
+                              {log.type === "purchase" ? "PURCHASE" : log.type === "in" ? "IN" : "OUT"}
                             </span>
                           </td>
                           <td className="p-3 text-gray-900 font-medium">{log.quantity}</td>
