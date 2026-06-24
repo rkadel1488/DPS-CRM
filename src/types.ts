@@ -97,6 +97,8 @@ export interface StorePurchase {
   totalCost?: number;
   supplier?: string;
   billNumber?: string;
+  vatRate?: number;
+  vatAmount?: number;
   purchaseDate: any;
   recordedBy: string;
 }
