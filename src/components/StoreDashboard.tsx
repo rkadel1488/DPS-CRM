@@ -11,6 +11,7 @@ import {
   Download,
   Upload,
   PackageX,
+  FileText,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { db } from "../firebase";
@@ -51,7 +52,7 @@ export default function StoreDashboard({
   const [unusedItems, setUnusedItems] = useState<StoreUnusedItem[]>([]);
   const [suppliers, setSuppliers] = useState<StoreSupplier[]>([]);
   const [activeTab, setActiveTab] = useState<
-    "inventory" | "purchase" | "in" | "out" | "unused"
+    "inventory" | "purchase" | "invoices" | "in" | "out" | "unused"
   >("inventory");
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -88,13 +89,18 @@ export default function StoreDashboard({
     category: "Store" | "Canteen";
     purchaseDate: string;
     items: PurchaseItemRow[];
+    vatEnabled: boolean;
+    vatRate: number;
   }>({
     billNumber: "",
     supplier: "",
     category: "Store",
     purchaseDate: new Date().toISOString().split("T")[0],
     items: [{ productName: "", quantity: 0, costPrice: 0 }],
+    vatEnabled: false,
+    vatRate: 13,
   });
+  const [selectedInvoiceBillNumber, setSelectedInvoiceBillNumber] = useState<string | null>(null);
 
   const [isAddingUnused, setIsAddingUnused] = useState(false);
   const [newUnusedItem, setNewUnusedItem] = useState({
@@ -110,8 +116,12 @@ export default function StoreDashboard({
   const [selectedProduct, setSelectedProduct] = useState<StoreProduct | null>(null);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [exportCategory, setExportCategory] = useState("All");
-  const [exportBsYear, setExportBsYear] = useState(() => NepaliDate.now().getYear().toString());
-  const [exportBsMonth, setExportBsMonth] = useState(() => (NepaliDate.now().getMonth() + 1).toString().padStart(2, '0'));
+  const [exportDateFrom, setExportDateFrom] = useState(() => {
+    const d = new Date();
+    d.setDate(1);
+    return d.toISOString().split("T")[0];
+  });
+  const [exportDateTo, setExportDateTo] = useState(() => new Date().toISOString().split("T")[0]);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -287,10 +297,13 @@ export default function StoreDashboard({
       dataToExport
         .map(
           (p) => {
+            const fromDate = new Date(exportDateFrom);
+            const toDate = new Date(exportDateTo + "T23:59:59");
             const productLogs = logs.filter(
               (l) =>
                 l.productName === p.name &&
-                new NepaliDate(new Date(l.purchaseDate)).format("YYYY-MM") === `${exportBsYear}-${exportBsMonth}`
+                new Date(l.purchaseDate) >= fromDate &&
+                new Date(l.purchaseDate) <= toDate
             );
             const purchaseThisMonth = productLogs
               .filter((l) => l.type === "purchase")
@@ -311,7 +324,7 @@ export default function StoreDashboard({
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `inventory_${exportCategory}_${exportBsYear}-${exportBsMonth}.csv`);
+    link.setAttribute("download", `inventory_${exportCategory}_${exportDateFrom}_to_${exportDateTo}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -437,17 +450,24 @@ export default function StoreDashboard({
 
     try {
       for (const item of validItems) {
+        const itemTotal = item.quantity * (item.costPrice || 0);
+        const vatAmount = newPurchase.vatEnabled
+          ? itemTotal * (newPurchase.vatRate / 100)
+          : 0;
         const logData: Omit<StorePurchase, "id"> = {
           type: "purchase",
           category: newPurchase.category,
           productName: item.productName,
           quantity: item.quantity,
           costPrice: item.costPrice || 0,
-          totalCost: item.quantity * (item.costPrice || 0),
+          totalCost: itemTotal,
           supplier: newPurchase.supplier || "",
           billNumber: newPurchase.billNumber,
           purchaseDate: new Date(newPurchase.purchaseDate).toISOString(),
           recordedBy: profile?.displayName || "Admin",
+          ...(newPurchase.vatEnabled
+            ? { vatRate: newPurchase.vatRate, vatAmount }
+            : {}),
         };
 
         await addDoc(collection(db, "store_purchases"), logData);
@@ -486,6 +506,8 @@ export default function StoreDashboard({
         category: "Store",
         purchaseDate: new Date().toISOString().split("T")[0],
         items: [{ productName: "", quantity: 0, costPrice: 0 }],
+        vatEnabled: false,
+        vatRate: 13,
       });
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, "store_purchases");
@@ -565,6 +587,17 @@ export default function StoreDashboard({
           >
             <ShoppingCart className="w-4 h-4 inline-block mr-2" />
             Purchase Entry
+          </button>
+          <button
+            onClick={() => setActiveTab("invoices")}
+            className={`px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all ${
+              activeTab === "invoices"
+                ? "bg-slate-900 text-white shadow-lg shadow-slate-900/20"
+                : "bg-white text-gray-600 hover:bg-gray-50"
+            }`}
+          >
+            <FileText className="w-4 h-4 inline-block mr-2" />
+            Invoices
           </button>
           <button
             onClick={() => setActiveTab("in")}
@@ -737,7 +770,7 @@ export default function StoreDashboard({
                       Quantity
                     </th>
                     <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
-                      Supplier
+                      {activeTab === "in" ? "Returned By" : "Ordered By"}
                     </th>
                     <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider pr-6">
                       Recorded By
@@ -847,6 +880,9 @@ export default function StoreDashboard({
                       Total Amount
                     </th>
                     <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
+                      VAT
+                    </th>
+                    <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
                       Supplier
                     </th>
                     <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider pr-6">
@@ -881,6 +917,9 @@ export default function StoreDashboard({
                         {log.totalCost ? `₹${log.totalCost}` : "-"}
                       </td>
                       <td className="p-4 font-medium text-gray-500">
+                        {log.vatAmount ? `₹${log.vatAmount.toFixed(2)} (${log.vatRate}%)` : "-"}
+                      </td>
+                      <td className="p-4 font-medium text-gray-500">
                         {log.supplier || "-"}
                       </td>
                       <td className="p-4 pr-6 text-gray-400 text-sm">
@@ -903,6 +942,90 @@ export default function StoreDashboard({
                     <tr>
                       <td colSpan={isMainAdmin ? 9 : 8} className="p-8 text-center text-gray-500">
                         No purchase entries found
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "invoices" && (
+        <div className="space-y-6">
+          <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
+            <div className="p-6 border-b border-gray-100">
+              <h2 className="text-lg font-bold text-gray-900">Invoices</h2>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-gray-50/50">
+                    <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider pl-6">
+                      Bill No.
+                    </th>
+                    <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
+                      Date
+                    </th>
+                    <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
+                      Supplier
+                    </th>
+                    <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
+                      Items
+                    </th>
+                    <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
+                      VAT
+                    </th>
+                    <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider pr-6">
+                      Grand Total
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {Object.entries(
+                    logs
+                      .filter((log) => log.type === "purchase" && log.billNumber)
+                      .reduce<Record<string, StorePurchase[]>>((acc, log) => {
+                        const key = log.billNumber as string;
+                        acc[key] = acc[key] ? [...acc[key], log] : [log];
+                        return acc;
+                      }, {})
+                  ).map(([billNumber, items]) => {
+                    const subtotal = items.reduce((sum, l) => sum + (l.totalCost || 0), 0);
+                    const vatTotal = items.reduce((sum, l) => sum + (l.vatAmount || 0), 0);
+                    const first = items[0];
+                    return (
+                      <tr
+                        key={billNumber}
+                        onClick={() => setSelectedInvoiceBillNumber(billNumber)}
+                        className="hover:bg-gray-50/50 transition-colors cursor-pointer"
+                      >
+                        <td className="p-4 pl-6 font-bold text-indigo-600">
+                          {billNumber}
+                        </td>
+                        <td className="p-4 font-medium text-gray-900 whitespace-nowrap">
+                          {new NepaliDate(new Date(first.purchaseDate)).format("YYYY-MM-DD")}
+                        </td>
+                        <td className="p-4 font-medium text-gray-500">
+                          {first.supplier || "-"}
+                        </td>
+                        <td className="p-4 font-medium text-gray-500">
+                          {items.length}
+                        </td>
+                        <td className="p-4 font-medium text-gray-500">
+                          {vatTotal > 0 ? `₹${vatTotal.toFixed(2)}` : "-"}
+                        </td>
+                        <td className="p-4 pr-6 font-bold text-emerald-600">
+                          ₹{(subtotal + vatTotal).toFixed(2)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {logs.filter((log) => log.type === "purchase" && log.billNumber).length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="p-8 text-center text-gray-500">
+                        No invoices found
                       </td>
                     </tr>
                   )}
@@ -1447,7 +1570,7 @@ export default function StoreDashboard({
 
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1">
-                    Supplier / Source <span className="text-gray-400 font-normal">(Optional)</span>
+                    {isAddingLog === "in" ? "Returned By" : "Ordered By"} <span className="text-gray-400 font-normal">(Optional)</span>
                   </label>
                   <input
                     type="text"
@@ -1459,7 +1582,7 @@ export default function StoreDashboard({
                       })
                     }
                     className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium"
-                    placeholder="e.g. ABC Distributors"
+                    placeholder={isAddingLog === "in" ? "e.g. John Doe" : "e.g. Class Teacher"}
                   />
                 </div>
 
@@ -1657,19 +1780,65 @@ export default function StoreDashboard({
                   </button>
                 </div>
 
+                <div className="flex items-center gap-3 mt-2">
+                  <input
+                    type="checkbox"
+                    id="vat-enabled"
+                    checked={newPurchase.vatEnabled}
+                    onChange={(e) =>
+                      setNewPurchase({ ...newPurchase, vatEnabled: e.target.checked })
+                    }
+                    className="w-5 h-5 rounded cursor-pointer accent-indigo-500"
+                  />
+                  <label htmlFor="vat-enabled" className="font-bold text-gray-700 text-sm cursor-pointer">
+                    Add VAT
+                  </label>
+                  {newPurchase.vatEnabled && (
+                    <div className="flex items-center gap-2 ml-auto">
+                      <input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={newPurchase.vatRate}
+                        onChange={(e) =>
+                          setNewPurchase({ ...newPurchase, vatRate: Number(e.target.value) })
+                        }
+                        className="w-20 px-3 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-right"
+                      />
+                      <span className="font-bold text-gray-500 text-sm">%</span>
+                    </div>
+                  )}
+                </div>
+
                 {(() => {
-                  const total = newPurchase.items.reduce(
+                  const subtotal = newPurchase.items.reduce(
                     (sum, item) => sum + item.quantity * (item.costPrice || 0),
                     0,
                   );
-                  return total > 0 ? (
-                    <div className="bg-indigo-50 p-4 rounded-xl flex justify-between items-center mt-2">
-                      <span className="font-bold text-indigo-700 text-sm">
-                        Bill Total Amount:
-                      </span>
-                      <span className="font-bold text-indigo-700 text-xl">
-                        ₹{total.toFixed(2)}
-                      </span>
+                  const vatAmount = newPurchase.vatEnabled
+                    ? subtotal * (newPurchase.vatRate / 100)
+                    : 0;
+                  const grandTotal = subtotal + vatAmount;
+                  return subtotal > 0 ? (
+                    <div className="bg-indigo-50 p-4 rounded-xl space-y-1 mt-2">
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold text-indigo-700 text-sm">Subtotal:</span>
+                        <span className="font-bold text-indigo-700">₹{subtotal.toFixed(2)}</span>
+                      </div>
+                      {newPurchase.vatEnabled && (
+                        <div className="flex justify-between items-center">
+                          <span className="font-bold text-indigo-700 text-sm">
+                            VAT ({newPurchase.vatRate}%):
+                          </span>
+                          <span className="font-bold text-indigo-700">₹{vatAmount.toFixed(2)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold text-indigo-700 text-sm">Grand Total:</span>
+                        <span className="font-bold text-indigo-700 text-xl">
+                          ₹{grandTotal.toFixed(2)}
+                        </span>
+                      </div>
                     </div>
                   ) : null;
                 })()}
@@ -1792,28 +1961,21 @@ export default function StoreDashboard({
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1">
-                    Select Month for Analytics (Nepali)
+                    Select Date Range
                   </label>
                   <div className="flex gap-2">
-                    <select
-                      value={exportBsYear}
-                      onChange={(e) => setExportBsYear(e.target.value)}
+                    <input
+                      type="date"
+                      value={exportDateFrom}
+                      onChange={(e) => setExportDateFrom(e.target.value)}
                       className="w-1/2 px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-medium cursor-pointer"
-                    >
-                      {Array.from({ length: 10 }).map((_, i) => {
-                        const yr = NepaliDate.now().getYear() - 5 + i;
-                        return <option key={yr} value={yr}>{yr}</option>;
-                      })}
-                    </select>
-                    <select
-                      value={exportBsMonth}
-                      onChange={(e) => setExportBsMonth(e.target.value)}
+                    />
+                    <input
+                      type="date"
+                      value={exportDateTo}
+                      onChange={(e) => setExportDateTo(e.target.value)}
                       className="w-1/2 px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-medium cursor-pointer"
-                    >
-                      {[{v: "01", n: "Baisakh"}, {v: "02", n: "Jestha"}, {v: "03", n: "Asar"}, {v: "04", n: "Shrawan"}, {v: "05", n: "Bhadra"}, {v: "06", n: "Aswin"}, {v: "07", n: "Kartik"}, {v: "08", n: "Mangsir"}, {v: "09", n: "Poush"}, {v: "10", n: "Magh"}, {v: "11", n: "Falgun"}, {v: "12", n: "Chaitra"}].map((m) => (
-                        <option key={m.v} value={m.v}>{m.n}</option>
-                      ))}
-                    </select>
+                    />
                   </div>
                 </div>
 
@@ -1839,6 +2001,81 @@ export default function StoreDashboard({
                   <Download className="w-5 h-5" /> Download CSV
                 </button>
               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Invoice Detail Modal */}
+      <AnimatePresence>
+        {selectedInvoiceBillNumber && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white rounded-[2rem] p-8 w-full max-w-2xl shadow-2xl relative max-h-[85vh] overflow-y-auto"
+            >
+              <button
+                onClick={() => setSelectedInvoiceBillNumber(null)}
+                className="absolute top-6 right-6 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+
+              <h2 className="text-2xl font-bold text-gray-900 mb-1 font-sans tracking-tight">
+                Invoice {selectedInvoiceBillNumber}
+              </h2>
+
+              {(() => {
+                const items = logs.filter(
+                  (l) => l.type === "purchase" && l.billNumber === selectedInvoiceBillNumber
+                );
+                if (items.length === 0) return null;
+                const first = items[0];
+                const subtotal = items.reduce((sum, l) => sum + (l.totalCost || 0), 0);
+                const vatTotal = items.reduce((sum, l) => sum + (l.vatAmount || 0), 0);
+                return (
+                  <>
+                    <p className="text-gray-500 font-medium mb-6">
+                      {new NepaliDate(new Date(first.purchaseDate)).format("YYYY-MM-DD")} &middot; {first.supplier || "No supplier"} &middot; Recorded by {first.recordedBy}
+                    </p>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="bg-gray-50/50">
+                            <th className="p-3 font-bold text-sm text-gray-500 uppercase tracking-wider">Product</th>
+                            <th className="p-3 font-bold text-sm text-gray-500 uppercase tracking-wider">Qty</th>
+                            <th className="p-3 font-bold text-sm text-gray-500 uppercase tracking-wider">Rate</th>
+                            <th className="p-3 font-bold text-sm text-gray-500 uppercase tracking-wider">Total</th>
+                            <th className="p-3 font-bold text-sm text-gray-500 uppercase tracking-wider">VAT</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {items.map((item) => (
+                            <tr key={item.id}>
+                              <td className="p-3 font-medium text-gray-900">{item.productName}</td>
+                              <td className="p-3 text-gray-500">{item.quantity}</td>
+                              <td className="p-3 text-gray-500">{item.costPrice ? `₹${item.costPrice}` : "-"}</td>
+                              <td className="p-3 font-bold text-emerald-600">{item.totalCost ? `₹${item.totalCost}` : "-"}</td>
+                              <td className="p-3 text-gray-500">{item.vatAmount ? `₹${item.vatAmount.toFixed(2)}` : "-"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="mt-6 space-y-1 text-right">
+                      <p className="text-gray-500 font-medium">Subtotal: ₹{subtotal.toFixed(2)}</p>
+                      {vatTotal > 0 && (
+                        <p className="text-gray-500 font-medium">VAT: ₹{vatTotal.toFixed(2)}</p>
+                      )}
+                      <p className="text-gray-900 font-bold text-lg">
+                        Grand Total: ₹{(subtotal + vatTotal).toFixed(2)}
+                      </p>
+                    </div>
+                  </>
+                );
+              })()}
             </motion.div>
           </div>
         )}
