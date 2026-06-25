@@ -302,6 +302,14 @@ export default function StoreDashboard({
     const fromDate = new Date(exportDateFrom);
     const toDate = new Date(exportDateTo + "T23:59:59");
 
+    const getWeightedRate = (purchaseLogs: StorePurchase[]) => {
+      const qty = purchaseLogs.reduce((sum, l) => sum + l.quantity, 0);
+      if (qty === 0) return { rate: 0, rateInclVat: 0 };
+      const cost = purchaseLogs.reduce((sum, l) => sum + (l.totalCost || 0), 0);
+      const vat = purchaseLogs.reduce((sum, l) => sum + (l.vatAmount || 0), 0);
+      return { rate: cost / qty, rateInclVat: (cost + vat) / qty };
+    };
+
     const rows = dataToExport.map((p) => {
       const productLogs = logs.filter(
         (l) =>
@@ -309,9 +317,11 @@ export default function StoreDashboard({
           new Date(l.purchaseDate) >= fromDate &&
           new Date(l.purchaseDate) <= toDate
       );
-      const purchaseThisMonth = productLogs
-        .filter((l) => l.type === "purchase")
-        .reduce((sum, l) => sum + l.quantity, 0);
+      const purchaseLogsInRange = productLogs.filter((l) => l.type === "purchase");
+      const purchaseThisMonth = purchaseLogsInRange.reduce(
+        (sum, l) => sum + l.quantity,
+        0
+      );
       const inThisMonth = productLogs
         .filter((l) => l.type === "in")
         .reduce((sum, l) => sum + l.quantity, 0);
@@ -320,13 +330,26 @@ export default function StoreDashboard({
         .reduce((sum, l) => sum + l.quantity, 0);
       const previousStock =
         p.currentStock - purchaseThisMonth - inThisMonth + outThisMonth;
+
+      const allPurchaseLogs = logs.filter(
+        (l) => l.type === "purchase" && l.productName === p.name
+      );
+      const purchaseRate = getWeightedRate(purchaseLogsInRange);
+      const totalRate = getWeightedRate(allPurchaseLogs);
+
       return {
         "Item Name": p.name,
         "Previous Stock": previousStock,
         "Purchase This Month": purchaseThisMonth,
+        "Purchase Rate": Number(purchaseRate.rateInclVat.toFixed(2)),
+        "Purchase Total Value": Number(
+          (purchaseThisMonth * purchaseRate.rateInclVat).toFixed(2)
+        ),
         "Out This Month": outThisMonth,
         "In This Month": inThisMonth,
         "Total Current Stock": p.currentStock,
+        "Total Rate": Number(totalRate.rateInclVat.toFixed(2)),
+        "Total Value": Number((p.currentStock * totalRate.rateInclVat).toFixed(2)),
       };
     });
 
@@ -793,6 +816,27 @@ export default function StoreDashboard({
                   <span>{product.category || "Uncategorized"}</span>
                   <span>₹{product.price || 0}</span>
                 </div>
+
+                {(() => {
+                  const purchaseLogs = logs.filter(
+                    (l) => l.type === "purchase" && l.productName === product.name
+                  );
+                  const qty = purchaseLogs.reduce((sum, l) => sum + l.quantity, 0);
+                  const cost = purchaseLogs.reduce((sum, l) => sum + (l.totalCost || 0), 0);
+                  const vat = purchaseLogs.reduce((sum, l) => sum + (l.vatAmount || 0), 0);
+                  const rateInclVat = qty > 0 ? (cost + vat) / qty : product.price || 0;
+                  const totalValue = product.currentStock * rateInclVat;
+                  return totalValue > 0 ? (
+                    <div className="mt-2 pt-2 border-t border-gray-100 flex justify-between items-center text-sm">
+                      <span className="font-bold text-gray-500">
+                        Total Value (incl. VAT)
+                      </span>
+                      <span className="font-bold text-emerald-600">
+                        ₹{totalValue.toFixed(2)}
+                      </span>
+                    </div>
+                  ) : null;
+                })()}
 
                 {isMainAdmin && (
                   <button
