@@ -32,6 +32,15 @@ import { handleFirestoreError, OperationType } from "../App";
 import { addAppNotification } from "../utils";
 import { Html5Qrcode } from "html5-qrcode";
 
+// ─── SMS Gateway Config ───────────────────────────────────────────────────────
+// Update SMS_GATEWAY_URL whenever ngrok restarts (free plan changes URL each time)
+// Tip: store in .env as VITE_SMS_GATEWAY_URL and use import.meta.env.VITE_SMS_GATEWAY_URL
+const SMS_GATEWAY_URL =
+  import.meta.env.VITE_SMS_GATEWAY_URL ||
+  "https://sushi-bok-hula.ngrok-free.dev";
+const SMS_SECRET = import.meta.env.VITE_SMS_SECRET || "";
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function GatePassDashboard({
   profile,
   isAdmin,
@@ -62,6 +71,7 @@ export default function GatePassDashboard({
     "father" | "mother" | "driver" | "other" | null
   >(null);
   const [otherPersonName, setOtherPersonName] = useState("");
+  const [smsStatus, setSmsStatus] = useState<"idle" | "sending" | "sent" | "failed">("idle");
 
   useEffect(() => {
     if (verifyId && students.length > 0) {
@@ -91,7 +101,6 @@ export default function GatePassDashboard({
 
     const startScanner = async () => {
       try {
-        // Double check element existence
         const element = document.getElementById("qr-reader");
         if (!element) {
           if (isMounted) setTimeout(startScanner, 200);
@@ -105,7 +114,6 @@ export default function GatePassDashboard({
 
         try {
           const savedCameraId = localStorage.getItem("preferredQrCameraId");
-          // Try saved camera or environment (back) camera first
           await html5QrCode.start(
             savedCameraId ? savedCameraId : { facingMode: "environment" },
             config,
@@ -139,11 +147,7 @@ export default function GatePassDashboard({
             () => {},
           );
         } catch (envErr) {
-          console.warn(
-            "Back camera failed, trying any available camera",
-            envErr,
-          );
-          // Fallback: Use the first available camera
+          console.warn("Back camera failed, trying any available camera", envErr);
           const cameras = await Html5Qrcode.getCameras();
           if (cameras && cameras.length > 0 && isMounted) {
             const defaultCamera =
@@ -343,25 +347,20 @@ export default function GatePassDashboard({
         "info",
       );
 
-      studentNames = studentNames.slice(0, -2); // Remove trailing comma and space
+      studentNames = studentNames.slice(0, -2);
 
-      // Send SMS logic via the integration hook
+      // Send SMS via Android gateway
       if (phone !== "N/A") {
-        await sendSmsNotification(
-          phone,
-          studentNames,
-          scannedDate,
-          tickedPerson,
-        );
+        await sendSmsNotification(phone, studentNames, scannedDate, tickedPerson);
       }
 
-      // Close the modal and the scanner
       setScannedStudents(null);
       setIsScanning(false);
       setOtherPersonName("");
+      setSmsStatus("idle");
 
       alert(
-        `✅ Verification Successful\n\nStudents: ${studentNames}\nTime: ${scannedDate}\n\nGate pass has been recorded and an SMS notification was initiated for ${phone}.`,
+        `✅ Verification Successful\n\nStudents: ${studentNames}\nTime: ${scannedDate}\n\nGate pass recorded and SMS notification sent to ${phone}.`,
       );
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, "gate_passes");
@@ -407,59 +406,70 @@ export default function GatePassDashboard({
     }
   };
 
+  // ─── SMS via Android Gateway ──────────────────────────────────────────────
   const sendSmsNotification = async (
     phone: string,
     studentName: string,
     date: string,
     tickedPerson: string,
   ) => {
-    // Standardize phone number for the API (add generic country code if needed, but Twilio needs E.164)
-    // Basic stripping of spaces/dashes
     const cleanPhone = phone.replace(/[^\d+]/g, "");
 
-    console.log(
-      `[SMS-INTEGRATION] Calling API to send message to ${cleanPhone}`,
-    );
+    const message =
+      `DPS School Alert: ${studentName} has been checked out at ${date}. ` +
+      `Picked up by: ${tickedPerson}. ` +
+      `Authorized by: ${profile?.displayName || "Admin"}. ` +
+      `If this was not authorized, please contact the school immediately.`;
 
-    let customApi = null;
+    console.log(`[SMS Gateway] Sending to ${cleanPhone}`);
+    setSmsStatus("sending");
+
     try {
-      const dbSettings = await getDoc(doc(db, "settings", "sms"));
-      if (dbSettings.exists()) {
-        customApi = dbSettings.data();
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (SMS_SECRET) {
+        headers["X-SMS-Secret"] = SMS_SECRET;
       }
-    } catch (e) {
-      console.log("No custom SMS settings found in DB, relying on ENV vars.");
-    }
 
-    try {
-      const response = await fetch("/api/sms/send", {
+      const response = await fetch(`${SMS_GATEWAY_URL}/send-sms`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers,
         body: JSON.stringify({
-          phone: cleanPhone,
-          customApi,
-          variables: {
-            studentName,
-            date,
-            tickedPerson,
-            admin: profile?.displayName || "Admin",
-          },
+          to: cleanPhone,
+          message,
         }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error("SMS API Error:", errorData);
+        console.error("[SMS Gateway] Error:", data);
+        setSmsStatus("failed");
         alert(
-          `Warning: Gate pass created, but SMS alert failed to send.\n\nReason: ${errorData.details?.message || errorData.error || "Unknown Error"}\n\nDid you verify Vercel is deployed with TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN, or enter API Keys in Settings?`,
+          `⚠️ Gate pass created, but SMS failed.\n\n` +
+          `Reason: ${data.error || "Unknown error"}\n\n` +
+          `Check that:\n` +
+          `1. Android app is open on the phone\n` +
+          `2. ngrok is running: ngrok http 192.168.10.198:8080\n` +
+          `3. Phone and Mac are on same WiFi`,
         );
+      } else {
+        console.log("[SMS Gateway] Sent successfully:", data);
+        setSmsStatus("sent");
       }
-    } catch (err) {
-      console.error("Failed to call SMS send endpoint:", err);
+    } catch (err: any) {
+      console.error("[SMS Gateway] Network error:", err);
+      setSmsStatus("failed");
+      alert(
+        `⚠️ Could not reach SMS gateway.\n\n` +
+        `Make sure ngrok is running on your Mac:\n` +
+        `ngrok http 192.168.10.198:8080\n\n` +
+        `Current gateway URL: ${SMS_GATEWAY_URL}`,
+      );
     }
   };
+  // ─────────────────────────────────────────────────────────────────────────
 
   return (
     <div className="space-y-6">
@@ -710,7 +720,7 @@ export default function GatePassDashboard({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
-              className="bg-white/70 backdrop-blur-xl rounded-3xl md:rounded-[2rem] p-6 md:p-5 md:p-8 w-full max-w-2xl shadow-2xl relative max-h-[90vh] flex flex-col"
+              className="bg-white/70 backdrop-blur-xl rounded-3xl md:rounded-[2rem] p-6 md:p-8 w-full max-w-2xl shadow-2xl relative max-h-[90vh] flex flex-col"
             >
               <button
                 onClick={() => setScannedStudents(null)}
@@ -774,12 +784,32 @@ export default function GatePassDashboard({
                   <Phone className="w-5 h-5 text-gray-400" />
                   <div className="text-left">
                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-                      Primary WhatsApp Alert Contact
+                      SMS Alert Contact
                     </p>
                     <p className="font-bold text-gray-900">
                       {scannedStudents[0].phoneNumber || "No number linked"}
                     </p>
                   </div>
+                  {/* SMS status indicator */}
+                  {smsStatus !== "idle" && (
+                    <div className="ml-auto">
+                      {smsStatus === "sending" && (
+                        <span className="text-xs font-bold text-blue-500 bg-blue-50 px-3 py-1 rounded-full animate-pulse">
+                          Sending SMS...
+                        </span>
+                      )}
+                      {smsStatus === "sent" && (
+                        <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">
+                          ✓ SMS Sent
+                        </span>
+                      )}
+                      {smsStatus === "failed" && (
+                        <span className="text-xs font-bold text-red-600 bg-red-50 px-3 py-1 rounded-full">
+                          ✗ SMS Failed
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Recovery Personnel */}
@@ -807,21 +837,15 @@ export default function GatePassDashboard({
                         ) : (
                           <div className="w-full h-full flex flex-col items-center justify-center bg-white/60 backdrop-blur-md/50">
                             <Users className="w-8 h-8 text-gray-200" />
-                            <span className="text-[8px] text-gray-400 mt-2">
-                              No Photo
-                            </span>
+                            <span className="text-[8px] text-gray-400 mt-2">No Photo</span>
                           </div>
                         )}
                       </div>
                       <div className="text-center">
-                        <p
-                          className={`text-xs font-bold line-clamp-1 ${selectedPickup === "father" ? "text-blue-600" : "text-gray-900"}`}
-                        >
+                        <p className={`text-xs font-bold line-clamp-1 ${selectedPickup === "father" ? "text-blue-600" : "text-gray-900"}`}>
                           {scannedStudents[0].fatherName || "Father"}
                         </p>
-                        <p className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">
-                          Father
-                        </p>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">Father</p>
                       </div>
                     </div>
 
@@ -842,21 +866,15 @@ export default function GatePassDashboard({
                         ) : (
                           <div className="w-full h-full flex flex-col items-center justify-center bg-white/60 backdrop-blur-md/50">
                             <Users className="w-8 h-8 text-gray-200" />
-                            <span className="text-[8px] text-gray-400 mt-2">
-                              No Photo
-                            </span>
+                            <span className="text-[8px] text-gray-400 mt-2">No Photo</span>
                           </div>
                         )}
                       </div>
                       <div className="text-center">
-                        <p
-                          className={`text-xs font-bold line-clamp-1 ${selectedPickup === "mother" ? "text-blue-600" : "text-gray-900"}`}
-                        >
+                        <p className={`text-xs font-bold line-clamp-1 ${selectedPickup === "mother" ? "text-blue-600" : "text-gray-900"}`}>
                           {scannedStudents[0].motherName || "Mother"}
                         </p>
-                        <p className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">
-                          Mother
-                        </p>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">Mother</p>
                       </div>
                     </div>
 
@@ -877,21 +895,15 @@ export default function GatePassDashboard({
                         ) : (
                           <div className="w-full h-full flex flex-col items-center justify-center bg-white/60 backdrop-blur-md/50">
                             <Users className="w-8 h-8 text-gray-200" />
-                            <span className="text-[8px] text-gray-400 mt-2">
-                              No Photo
-                            </span>
+                            <span className="text-[8px] text-gray-400 mt-2">No Photo</span>
                           </div>
                         )}
                       </div>
                       <div className="text-center">
-                        <p
-                          className={`text-xs font-bold line-clamp-1 ${selectedPickup === "driver" ? "text-blue-600" : "text-gray-900"}`}
-                        >
+                        <p className={`text-xs font-bold line-clamp-1 ${selectedPickup === "driver" ? "text-blue-600" : "text-gray-900"}`}>
                           {scannedStudents[0].driverName || "Driver"}
                         </p>
-                        <p className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">
-                          Driver
-                        </p>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">Driver</p>
                       </div>
                     </div>
 
@@ -912,21 +924,15 @@ export default function GatePassDashboard({
                         ) : (
                           <div className="w-full h-full flex flex-col items-center justify-center bg-white/60 backdrop-blur-md/50">
                             <Users className="w-8 h-8 text-gray-200" />
-                            <span className="text-[8px] text-gray-400 mt-2">
-                              No Photo
-                            </span>
+                            <span className="text-[8px] text-gray-400 mt-2">No Photo</span>
                           </div>
                         )}
                       </div>
                       <div className="text-center">
-                        <p
-                          className={`text-xs font-bold line-clamp-1 ${selectedPickup === "other" ? "text-blue-600" : "text-gray-900"}`}
-                        >
+                        <p className={`text-xs font-bold line-clamp-1 ${selectedPickup === "other" ? "text-blue-600" : "text-gray-900"}`}>
                           {scannedStudents[0].otherName || "Other"}
                         </p>
-                        <p className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">
-                          Other
-                        </p>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">Other</p>
                       </div>
                     </div>
                   </div>
@@ -967,7 +973,7 @@ export default function GatePassDashboard({
                     <CheckCircle2 className="w-5 h-5" />
                   )}
                   {selectedPickup
-                    ? "Mark as Verified & Notify"
+                    ? "Mark as Verified & Send SMS"
                     : "Select Pickup Person to Verify"}
                 </button>
                 <div className="flex gap-2">
@@ -983,8 +989,8 @@ export default function GatePassDashboard({
                   </button>
                 </div>
                 <p className="text-[10px] text-gray-400 text-center italic mt-2">
-                  Clicking verify will issue an active gate pass for all listed
-                  students and initiate a WhatsApp message.
+                  Clicking verify will issue an active gate pass and send an SMS
+                  to the parent via your Android phone gateway.
                 </p>
               </div>
             </motion.div>
@@ -992,6 +998,7 @@ export default function GatePassDashboard({
         )}
       </AnimatePresence>
 
+      {/* Issue Gate Pass Modal */}
       {isAddingGatePass && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <motion.div
@@ -1022,10 +1029,7 @@ export default function GatePassDashboard({
                   required
                   value={newGatePass.studentId}
                   onChange={(e) =>
-                    setNewGatePass({
-                      ...newGatePass,
-                      studentId: e.target.value,
-                    })
+                    setNewGatePass({ ...newGatePass, studentId: e.target.value })
                   }
                   className="w-full px-4 py-3 bg-white/60 backdrop-blur-md border-none rounded-[1rem] focus:ring-2 focus:ring-emerald-500 outline-none font-medium"
                 >
@@ -1063,10 +1067,7 @@ export default function GatePassDashboard({
                   required
                   value={newGatePass.departureTime}
                   onChange={(e) =>
-                    setNewGatePass({
-                      ...newGatePass,
-                      departureTime: e.target.value,
-                    })
+                    setNewGatePass({ ...newGatePass, departureTime: e.target.value })
                   }
                   className="w-full px-4 py-3 bg-white/60 backdrop-blur-md border-none rounded-[1rem] focus:ring-2 focus:ring-emerald-500 outline-none font-medium"
                 />
