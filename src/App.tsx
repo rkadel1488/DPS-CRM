@@ -1059,7 +1059,7 @@ function AppContent() {
                 <StoreDashboard
                   profile={activeProfile}
                   isAdmin={canManageStore}
-                  isMainAdmin={isMainAdmin && !impersonatingProfile}
+                  isMainAdmin={trueIsAdmin && !impersonatingProfile}
                 />
               )}
               {activeTab === "transport" && (
