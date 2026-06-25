@@ -129,6 +129,7 @@ export default function StoreDashboard({
     return d.toISOString().split("T")[0];
   });
   const [invoiceExportDateTo, setInvoiceExportDateTo] = useState(() => new Date().toISOString().split("T")[0]);
+  const [invoiceExportBillNumber, setInvoiceExportBillNumber] = useState("All");
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -343,19 +344,49 @@ export default function StoreDashboard({
     const fromDate = new Date(invoiceExportDateFrom);
     const toDate = new Date(invoiceExportDateTo + "T23:59:59");
 
-    const grouped = logs
-      .filter(
-        (log) =>
-          log.type === "purchase" &&
-          log.billNumber &&
-          new Date(log.purchaseDate) >= fromDate &&
-          new Date(log.purchaseDate) <= toDate
-      )
-      .reduce<Record<string, StorePurchase[]>>((acc, log) => {
+    const inRangeLogs = logs.filter(
+      (log) =>
+        log.type === "purchase" &&
+        log.billNumber &&
+        new Date(log.purchaseDate) >= fromDate &&
+        new Date(log.purchaseDate) <= toDate
+    );
+
+    if (invoiceExportBillNumber !== "All") {
+      const billItems = inRangeLogs.filter(
+        (log) => log.billNumber === invoiceExportBillNumber
+      );
+      const rows = billItems.map((l) => ({
+        "Bill No.": l.billNumber,
+        Date: new NepaliDate(new Date(l.purchaseDate)).format("YYYY-MM-DD"),
+        Supplier: l.supplier || "-",
+        "Product Name": l.productName,
+        Quantity: l.quantity,
+        "Rate": l.costPrice || 0,
+        "Item Total": l.totalCost || 0,
+        "VAT Rate": l.vatRate ? `${l.vatRate}%` : "-",
+        "VAT Amount": l.vatAmount || 0,
+        "Item Grand Total": (l.totalCost || 0) + (l.vatAmount || 0),
+        "Recorded By": l.recordedBy,
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Invoice");
+      XLSX.writeFile(wb, `invoice_${invoiceExportBillNumber}.xlsx`);
+      setIsInvoiceExportModalOpen(false);
+      setInvoiceExportBillNumber("All");
+      return;
+    }
+
+    const grouped = inRangeLogs.reduce<Record<string, StorePurchase[]>>(
+      (acc, log) => {
         const key = log.billNumber as string;
         acc[key] = acc[key] ? [...acc[key], log] : [log];
         return acc;
-      }, {});
+      },
+      {}
+    );
 
     const rows = Object.entries(grouped).map(([billNumber, items]) => {
       const subtotal = items.reduce((sum, l) => sum + (l.totalCost || 0), 0);
@@ -2089,7 +2120,10 @@ export default function StoreDashboard({
               className="bg-white rounded-[2rem] p-8 w-full max-w-md shadow-2xl relative"
             >
               <button
-                onClick={() => setIsInvoiceExportModalOpen(false)}
+                onClick={() => {
+                  setIsInvoiceExportModalOpen(false);
+                  setInvoiceExportBillNumber("All");
+                }}
                 className="absolute top-6 right-6 text-gray-400 hover:text-gray-600 transition-colors"
               >
                 <X className="w-6 h-6" />
@@ -2118,6 +2152,36 @@ export default function StoreDashboard({
                       className="w-1/2 px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-medium cursor-pointer"
                     />
                   </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">
+                    Invoice Number <span className="text-gray-400 font-normal">(Optional)</span>
+                  </label>
+                  <select
+                    value={invoiceExportBillNumber}
+                    onChange={(e) => setInvoiceExportBillNumber(e.target.value)}
+                    className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-medium cursor-pointer"
+                  >
+                    <option value="All">All Invoices (Summary)</option>
+                    {Array.from(
+                      new Set(
+                        logs
+                          .filter(
+                            (log) =>
+                              log.type === "purchase" &&
+                              log.billNumber &&
+                              new Date(log.purchaseDate) >= new Date(invoiceExportDateFrom) &&
+                              new Date(log.purchaseDate) <= new Date(invoiceExportDateTo + "T23:59:59")
+                          )
+                          .map((log) => log.billNumber as string)
+                      )
+                    ).map((billNumber) => (
+                      <option key={billNumber} value={billNumber}>
+                        {billNumber}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <button
