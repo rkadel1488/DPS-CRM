@@ -962,6 +962,16 @@ export default function AdminDashboard({
       await updateDoc(doc(db, "users", user.uid), {
         role: newRole,
       });
+      // Keep the staff_invites doc in sync so re-logins (which re-create the
+      // users doc under a new anonymous uid) don't get rejected by Firestore
+      // rules, which check staff_invites.role when granting the admin role.
+      if (user.phoneNumber) {
+        await setDoc(
+          doc(db, "staff_invites", user.phoneNumber),
+          { role: newRole },
+          { merge: true },
+        );
+      }
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `users/${user.uid}`);
     }
