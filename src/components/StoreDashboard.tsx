@@ -37,6 +37,7 @@ interface PurchaseItemRow {
   productName: string;
   quantity: number;
   costPrice?: number;
+  vatEnabled?: boolean;
 }
 
 export default function StoreDashboard({
@@ -90,15 +91,13 @@ export default function StoreDashboard({
     category: "Store" | "Canteen";
     purchaseDate: string;
     items: PurchaseItemRow[];
-    vatEnabled: boolean;
     vatRate: number;
   }>({
     billNumber: "",
     supplier: "",
     category: "Store",
     purchaseDate: new Date().toISOString().split("T")[0],
-    items: [{ productName: "", quantity: 0, costPrice: 0 }],
-    vatEnabled: false,
+    items: [{ productName: "", quantity: 0, costPrice: 0, vatEnabled: false }],
     vatRate: 13,
   });
   const [selectedInvoiceBillNumber, setSelectedInvoiceBillNumber] = useState<string | null>(null);
@@ -473,7 +472,7 @@ export default function StoreDashboard({
   const addPurchaseItemRow = () => {
     setNewPurchase({
       ...newPurchase,
-      items: [...newPurchase.items, { productName: "", quantity: 0, costPrice: 0 }],
+      items: [...newPurchase.items, { productName: "", quantity: 0, costPrice: 0, vatEnabled: false }],
     });
   };
 
@@ -503,7 +502,7 @@ export default function StoreDashboard({
     try {
       for (const item of validItems) {
         const itemTotal = item.quantity * (item.costPrice || 0);
-        const vatAmount = newPurchase.vatEnabled
+        const vatAmount = item.vatEnabled
           ? itemTotal * (newPurchase.vatRate / 100)
           : 0;
         const logData: Omit<StorePurchase, "id"> = {
@@ -517,7 +516,7 @@ export default function StoreDashboard({
           billNumber: newPurchase.billNumber,
           purchaseDate: new Date(newPurchase.purchaseDate).toISOString(),
           recordedBy: profile?.displayName || "Admin",
-          ...(newPurchase.vatEnabled
+          ...(item.vatEnabled
             ? { vatRate: newPurchase.vatRate, vatAmount }
             : {}),
         };
@@ -557,8 +556,7 @@ export default function StoreDashboard({
         supplier: "",
         category: "Store",
         purchaseDate: new Date().toISOString().split("T")[0],
-        items: [{ productName: "", quantity: 0, costPrice: 0 }],
-        vatEnabled: false,
+        items: [{ productName: "", quantity: 0, costPrice: 0, vatEnabled: false }],
         vatRate: 13,
       });
     } catch (error) {
@@ -1772,58 +1770,84 @@ export default function StoreDashboard({
                   <label className="block text-sm font-bold text-gray-700">
                     Items
                   </label>
-                  {newPurchase.items.map((item, index) => (
-                    <div key={index} className="flex gap-2 items-end bg-gray-50 p-3 rounded-xl">
-                      <div className="flex-1">
-                        <input
-                          type="text"
-                          required
-                          value={item.productName}
-                          onChange={(e) =>
-                            updatePurchaseItemRow(index, { productName: e.target.value })
-                          }
-                          className="w-full px-3 py-2 bg-white border-none rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-sm"
-                          placeholder="Product name"
-                          list="product-list-purchase"
-                        />
+                  {newPurchase.items.map((item, index) => {
+                    const itemTotal = item.quantity * (item.costPrice || 0);
+                    const itemVat = item.vatEnabled
+                      ? itemTotal * (newPurchase.vatRate / 100)
+                      : 0;
+                    return (
+                      <div key={index} className="bg-gray-50 p-3 rounded-xl space-y-2">
+                        <div className="flex gap-2 items-end">
+                          <div className="flex-1">
+                            <input
+                              type="text"
+                              required
+                              value={item.productName}
+                              onChange={(e) =>
+                                updatePurchaseItemRow(index, { productName: e.target.value })
+                              }
+                              className="w-full px-3 py-2 bg-white border-none rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-sm"
+                              placeholder="Product name"
+                              list="product-list-purchase"
+                            />
+                          </div>
+                          <div className="w-20">
+                            <input
+                              type="number"
+                              min="1"
+                              required
+                              value={item.quantity || ""}
+                              onChange={(e) =>
+                                updatePurchaseItemRow(index, { quantity: Number(e.target.value) })
+                              }
+                              className="w-full px-3 py-2 bg-white border-none rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-sm"
+                              placeholder="Qty"
+                            />
+                          </div>
+                          <div className="w-24">
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={item.costPrice || ""}
+                              onChange={(e) =>
+                                updatePurchaseItemRow(index, { costPrice: Number(e.target.value) })
+                              }
+                              className="w-full px-3 py-2 bg-white border-none rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-sm"
+                              placeholder="Rate"
+                            />
+                          </div>
+                          <label className="flex items-center gap-1 px-2 py-2 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={!!item.vatEnabled}
+                              onChange={(e) =>
+                                updatePurchaseItemRow(index, { vatEnabled: e.target.checked })
+                              }
+                              className="w-4 h-4 rounded cursor-pointer accent-indigo-500"
+                            />
+                            <span className="text-xs font-bold text-gray-500">VAT</span>
+                          </label>
+                          {newPurchase.items.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removePurchaseItemRow(index)}
+                              className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                        {itemTotal > 0 && (
+                          <div className="text-right text-xs font-bold text-indigo-600">
+                            {item.vatEnabled
+                              ? `Total incl. VAT (${newPurchase.vatRate}%): ₹${(itemTotal + itemVat).toFixed(2)}`
+                              : `Total: ₹${itemTotal.toFixed(2)}`}
+                          </div>
+                        )}
                       </div>
-                      <div className="w-20">
-                        <input
-                          type="number"
-                          min="1"
-                          required
-                          value={item.quantity || ""}
-                          onChange={(e) =>
-                            updatePurchaseItemRow(index, { quantity: Number(e.target.value) })
-                          }
-                          className="w-full px-3 py-2 bg-white border-none rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-sm"
-                          placeholder="Qty"
-                        />
-                      </div>
-                      <div className="w-24">
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={item.costPrice || ""}
-                          onChange={(e) =>
-                            updatePurchaseItemRow(index, { costPrice: Number(e.target.value) })
-                          }
-                          className="w-full px-3 py-2 bg-white border-none rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-sm"
-                          placeholder="Rate"
-                        />
-                      </div>
-                      {newPurchase.items.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => removePurchaseItemRow(index)}
-                          className="p-2 text-gray-400 hover:text-red-600 transition-colors"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                   <datalist id="product-list-purchase">
                     {products.map((p) => (
                       <option key={p.id} value={p.name} />
@@ -1839,33 +1863,22 @@ export default function StoreDashboard({
                 </div>
 
                 <div className="flex items-center gap-3 mt-2">
-                  <input
-                    type="checkbox"
-                    id="vat-enabled"
-                    checked={newPurchase.vatEnabled}
-                    onChange={(e) =>
-                      setNewPurchase({ ...newPurchase, vatEnabled: e.target.checked })
-                    }
-                    className="w-5 h-5 rounded cursor-pointer accent-indigo-500"
-                  />
-                  <label htmlFor="vat-enabled" className="font-bold text-gray-700 text-sm cursor-pointer">
-                    Add VAT
+                  <label className="font-bold text-gray-700 text-sm">
+                    VAT Rate (applied to items ticked above)
                   </label>
-                  {newPurchase.vatEnabled && (
-                    <div className="flex items-center gap-2 ml-auto">
-                      <input
-                        type="number"
-                        min={0}
-                        step="0.01"
-                        value={newPurchase.vatRate}
-                        onChange={(e) =>
-                          setNewPurchase({ ...newPurchase, vatRate: Number(e.target.value) })
-                        }
-                        className="w-20 px-3 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-right"
-                      />
-                      <span className="font-bold text-gray-500 text-sm">%</span>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2 ml-auto">
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={newPurchase.vatRate}
+                      onChange={(e) =>
+                        setNewPurchase({ ...newPurchase, vatRate: Number(e.target.value) })
+                      }
+                      className="w-20 px-3 py-2 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-right"
+                    />
+                    <span className="font-bold text-gray-500 text-sm">%</span>
+                  </div>
                 </div>
 
                 {(() => {
@@ -1873,9 +1886,10 @@ export default function StoreDashboard({
                     (sum, item) => sum + item.quantity * (item.costPrice || 0),
                     0,
                   );
-                  const vatAmount = newPurchase.vatEnabled
-                    ? subtotal * (newPurchase.vatRate / 100)
-                    : 0;
+                  const vatAmount = newPurchase.items.reduce((sum, item) => {
+                    const itemTotal = item.quantity * (item.costPrice || 0);
+                    return sum + (item.vatEnabled ? itemTotal * (newPurchase.vatRate / 100) : 0);
+                  }, 0);
                   const grandTotal = subtotal + vatAmount;
                   return subtotal > 0 ? (
                     <div className="bg-indigo-50 p-4 rounded-xl space-y-1 mt-2">
@@ -1883,7 +1897,7 @@ export default function StoreDashboard({
                         <span className="font-bold text-indigo-700 text-sm">Subtotal:</span>
                         <span className="font-bold text-indigo-700">₹{subtotal.toFixed(2)}</span>
                       </div>
-                      {newPurchase.vatEnabled && (
+                      {vatAmount > 0 && (
                         <div className="flex justify-between items-center">
                           <span className="font-bold text-indigo-700 text-sm">
                             VAT ({newPurchase.vatRate}%):
