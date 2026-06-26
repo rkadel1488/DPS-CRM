@@ -33,12 +33,9 @@ import { addAppNotification } from "../utils";
 import { Html5Qrcode } from "html5-qrcode";
 
 // ─── SMS Gateway Config ───────────────────────────────────────────────────────
-// Update SMS_GATEWAY_URL whenever ngrok restarts (free plan changes URL each time)
-// Tip: store in .env as VITE_SMS_GATEWAY_URL and use import.meta.env.VITE_SMS_GATEWAY_URL
-const SMS_GATEWAY_URL =
-  import.meta.env.VITE_SMS_GATEWAY_URL ||
-  "https://sushi-bok-hula.ngrok-free.dev";
-const SMS_SECRET = import.meta.env.VITE_SMS_SECRET || "";
+// The ngrok URL and secret are kept server-side only (NGROK_URL/SMS_SECRET env
+// vars on the Vercel function) — the client calls our own /api/sms/send proxy
+// instead of hitting the gateway directly, so the secret never reaches the browser.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function GatePassDashboard({
@@ -415,29 +412,21 @@ export default function GatePassDashboard({
   ) => {
     const cleanPhone = phone.replace(/[^\d+]/g, "");
 
-    const message =
-      `DPS School Alert: ${studentName} has been checked out at ${date}. ` +
-      `Picked up by: ${tickedPerson}. ` +
-      `Authorized by: ${profile?.displayName || "Admin"}. ` +
-      `If this was not authorized, please contact the school immediately.`;
-
     console.log(`[SMS Gateway] Sending to ${cleanPhone}`);
     setSmsStatus("sending");
 
     try {
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      };
-      if (SMS_SECRET) {
-        headers["X-SMS-Secret"] = SMS_SECRET;
-      }
-
-      const response = await fetch(`${SMS_GATEWAY_URL}/send-sms`, {
+      const response = await fetch("/api/sms/send", {
         method: "POST",
-        headers,
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          to: cleanPhone,
-          message,
+          phone: cleanPhone,
+          variables: {
+            studentName,
+            date,
+            tickedPerson,
+            admin: profile?.displayName || "Admin",
+          },
         }),
       });
 
@@ -451,7 +440,7 @@ export default function GatePassDashboard({
           `Reason: ${data.error || "Unknown error"}\n\n` +
           `Check that:\n` +
           `1. Android app is open on the phone\n` +
-          `2. ngrok is running: ngrok http 192.168.10.198:8080\n` +
+          `2. ngrok is running and NGROK_URL is up to date on Vercel\n` +
           `3. Phone and Mac are on same WiFi`,
         );
       } else {
@@ -461,12 +450,7 @@ export default function GatePassDashboard({
     } catch (err: any) {
       console.error("[SMS Gateway] Network error:", err);
       setSmsStatus("failed");
-      alert(
-        `⚠️ Could not reach SMS gateway.\n\n` +
-        `Make sure ngrok is running on your Mac:\n` +
-        `ngrok http 192.168.10.198:8080\n\n` +
-        `Current gateway URL: ${SMS_GATEWAY_URL}`,
-      );
+      alert(`⚠️ Could not reach SMS gateway.\n\n${err.message || ""}`);
     }
   };
   // ─────────────────────────────────────────────────────────────────────────
