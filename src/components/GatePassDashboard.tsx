@@ -226,10 +226,12 @@ export default function GatePassDashboard({
   ) => {
     const cleanPhone = phone.replace(/[^\d+]/g, "");
     const message =
-      `DPS School Alert: ${studentName} has been checked out at ${date}. ` +
-      `Picked up by: ${tickedPerson}. ` +
-      `Authorized by: ${profile?.displayName || "Admin"}. ` +
-      `If this was not authorized, please contact the school immediately.`;
+      `[DPS Biratnagar Alert] Gate Pass Confirmed\n` +
+      `👤 Student: ${studentName}\n` +
+      `🕑 Time: ${date}\n` +
+      `🚗 Picked up by: ${tickedPerson}\n` +
+      `✅ Authorized by: ${profile?.displayName || "Admin"}\n` +
+      `⚠️ If unauthorized, contact school immediately.`;
 
     console.log(`[SMS Gateway] Sending to ${cleanPhone}`);
     setSmsStatus("sending");
