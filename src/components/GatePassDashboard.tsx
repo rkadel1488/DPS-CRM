@@ -33,9 +33,12 @@ import { addAppNotification } from "../utils";
 import { Html5Qrcode } from "html5-qrcode";
 
 // ─── SMS Gateway Config ───────────────────────────────────────────────────────
-// The ngrok URL and secret are kept server-side only (NGROK_URL/SMS_SECRET env
-// vars on the Vercel function) — the client calls our own /api/sms/send proxy
-// instead of hitting the gateway directly, so the secret never reaches the browser.
+// Update this URL every time cloudflared restarts in Termux
+// Or set VITE_SMS_GATEWAY_URL in your .env file so you only change it there
+const SMS_GATEWAY_URL =
+  import.meta.env.VITE_SMS_GATEWAY_URL ||
+  "https://tests-something-gregory-theology.trycloudflare.com";
+const SMS_SECRET = import.meta.env.VITE_SMS_SECRET || "";
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function GatePassDashboard({
@@ -59,9 +62,7 @@ export default function GatePassDashboard({
   });
   const [gatePassSearch, setGatePassSearch] = useState("");
   const [isScanning, setIsScanning] = useState(initialScan);
-  const [scannedStudents, setScannedStudents] = useState<Student[] | null>(
-    null,
-  );
+  const [scannedStudents, setScannedStudents] = useState<Student[] | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [selectedPickup, setSelectedPickup] = useState<
@@ -72,12 +73,11 @@ export default function GatePassDashboard({
 
   useEffect(() => {
     if (verifyId && students.length > 0) {
-      const decodedText = verifyId;
       const matchedStudents = students.filter(
         (s) =>
-          s.id === decodedText ||
-          s.studentId === decodedText ||
-          (s.familyId && s.familyId === decodedText),
+          s.id === verifyId ||
+          s.studentId === verifyId ||
+          (s.familyId && s.familyId === verifyId),
       );
       if (matchedStudents.length > 0) {
         setScannedStudents(matchedStudents);
@@ -87,9 +87,7 @@ export default function GatePassDashboard({
   }, [verifyId, students]);
 
   useEffect(() => {
-    if (initialScan) {
-      setIsScanning(true);
-    }
+    if (initialScan) setIsScanning(true);
   }, [initialScan]);
 
   useEffect(() => {
@@ -103,122 +101,70 @@ export default function GatePassDashboard({
           if (isMounted) setTimeout(startScanner, 200);
           return;
         }
-
         setCameraError(null);
         html5QrCode = new Html5Qrcode("qr-reader");
-
         const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+        const onScanSuccess = (decodedText: string) => {
+          let extractedId = decodedText;
+          try {
+            if (decodedText.includes("verify=")) {
+              const url = new URL(decodedText);
+              extractedId = url.searchParams.get("verify") || decodedText;
+            }
+          } catch (e) {}
+          const matchedStudents = students.filter(
+            (s) =>
+              s.id === extractedId ||
+              s.studentId === extractedId ||
+              (s.familyId && s.familyId === extractedId),
+          );
+          if (matchedStudents.length > 0 && isMounted) {
+            setSelectedPickup(null);
+            setScannedStudents(matchedStudents);
+            setIsScanning(false);
+            html5QrCode?.stop().catch(console.error);
+          }
+        };
 
         try {
           const savedCameraId = localStorage.getItem("preferredQrCameraId");
           await html5QrCode.start(
             savedCameraId ? savedCameraId : { facingMode: "environment" },
             config,
-            (decodedText) => {
-              let extractedId = decodedText;
-              try {
-                if (decodedText.includes("verify=")) {
-                  const url = new URL(decodedText);
-                  extractedId = url.searchParams.get("verify") || decodedText;
-                }
-              } catch (e) {}
-              const matchedStudents = students.filter(
-                (s) =>
-                  s.id === extractedId ||
-                  s.studentId === extractedId ||
-                  (s.familyId && s.familyId === extractedId),
-              );
-              if (matchedStudents.length > 0 && isMounted) {
-                setSelectedPickup(null);
-                setScannedStudents(matchedStudents);
-                setIsScanning(false);
-                if (html5QrCode) {
-                  html5QrCode
-                    .stop()
-                    .catch((err) =>
-                      console.error("Error stopping scanner", err),
-                    );
-                }
-              }
-            },
+            onScanSuccess,
             () => {},
           );
         } catch (envErr) {
-          console.warn("Back camera failed, trying any available camera", envErr);
           const cameras = await Html5Qrcode.getCameras();
           if (cameras && cameras.length > 0 && isMounted) {
             const defaultCamera =
-              cameras.find((c) => c.label.toLowerCase().includes("back")) ||
-              cameras[0];
+              cameras.find((c) => c.label.toLowerCase().includes("back")) || cameras[0];
             localStorage.setItem("preferredQrCameraId", defaultCamera.id);
-            await html5QrCode.start(
-              defaultCamera.id,
-              config,
-              (decodedText) => {
-                let extractedId = decodedText;
-                try {
-                  if (decodedText.includes("verify=")) {
-                    const url = new URL(decodedText);
-                    extractedId = url.searchParams.get("verify") || decodedText;
-                  }
-                } catch (e) {}
-                const matchedStudents = students.filter(
-                  (s) =>
-                    s.id === extractedId ||
-                    s.studentId === extractedId ||
-                    (s.familyId && s.familyId === extractedId),
-                );
-                if (matchedStudents.length > 0 && isMounted) {
-                  setSelectedPickup(null);
-                  setScannedStudents(matchedStudents);
-                  setIsScanning(false);
-                  if (html5QrCode) {
-                    html5QrCode
-                      .stop()
-                      .catch((err) =>
-                        console.error("Error stopping scanner", err),
-                      );
-                  }
-                }
-              },
-              () => {},
-            );
+            await html5QrCode.start(defaultCamera.id, config, onScanSuccess, () => {});
           } else {
             throw new Error("No cameras found on this device.");
           }
         }
       } catch (err: any) {
-        console.error("Scanner error:", err);
         if (isMounted) {
           if (err?.toString().includes("Permission denied")) {
-            setCameraError(
-              "Camera permission denied. Please enable camera access in your browser settings.",
-            );
+            setCameraError("Camera permission denied. Please enable camera access in your browser settings.");
           } else if (err?.toString().includes("NotFound")) {
-            setCameraError(
-              "No camera found. If you are on a laptop, ensure your webcam is connected.",
-            );
+            setCameraError("No camera found. If you are on a laptop, ensure your webcam is connected.");
           } else {
-            setCameraError(
-              "Could not access camera. Please ensure no other app is using it.",
-            );
+            setCameraError("Could not access camera. Please ensure no other app is using it.");
           }
         }
       }
     };
 
-    if (isScanning) {
-      startScanner();
-    }
+    if (isScanning) startScanner();
 
     return () => {
       isMounted = false;
-      if (html5QrCode && html5QrCode.isScanning) {
-        html5QrCode
-          .stop()
-          .catch((err) =>
-            console.error("Error stopping scanner on unmount", err),
-          );
+      if (html5QrCode?.isScanning) {
+        html5QrCode.stop().catch(console.error);
       }
     };
   }, [isScanning, students]);
@@ -229,29 +175,17 @@ export default function GatePassDashboard({
     const unsubscribeStudents = onSnapshot(
       collection(db, "students"),
       (snapshot) => {
-        setStudents(
-          snapshot.docs.map(
-            (doc) => ({ id: doc.id, ...doc.data() }) as Student,
-          ),
-        );
+        setStudents(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Student));
       },
-      (error) => {
-        handleFirestoreError(error, OperationType.LIST, "students");
-      },
+      (error) => handleFirestoreError(error, OperationType.LIST, "students"),
     );
 
     const unsubscribeGatePasses = onSnapshot(
       collection(db, "gate_passes"),
       (snapshot) => {
-        setGatePasses(
-          snapshot.docs.map(
-            (doc) => ({ id: doc.id, ...doc.data() }) as GatePass,
-          ),
-        );
+        setGatePasses(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as GatePass));
       },
-      (error) => {
-        handleFirestoreError(error, OperationType.LIST, "gate_passes");
-      },
+      (error) => handleFirestoreError(error, OperationType.LIST, "gate_passes"),
     );
 
     return () => {
@@ -263,10 +197,8 @@ export default function GatePassDashboard({
   const handleAddGatePass = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile) return;
-
     const student = students.find((s) => s.id === newGatePass.studentId);
     if (!student) return;
-
     try {
       await addDoc(collection(db, "gate_passes"), {
         studentId: newGatePass.studentId,
@@ -277,129 +209,11 @@ export default function GatePassDashboard({
         authorizedBy: profile.displayName || profile.email || "Admin",
         createdAt: serverTimestamp(),
       });
-      await addAppNotification(
-        "Gate Pass Issued",
-        `Gate pass issued for ${student.name}.`,
-        "warning",
-      );
+      await addAppNotification("Gate Pass Issued", `Gate pass issued for ${student.name}.`, "warning");
       setIsAddingGatePass(false);
-      setNewGatePass({
-        studentId: "",
-        reason: "",
-        departureTime: new Date().toISOString().slice(0, 16),
-      });
+      setNewGatePass({ studentId: "", reason: "", departureTime: new Date().toISOString().slice(0, 16) });
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, "gate_passes");
-    }
-  };
-
-  const handleVerifyAndIssue = async () => {
-    if (!profile || !scannedStudents || scannedStudents.length === 0) return;
-    setIsVerifying(true);
-
-    try {
-      const now = new Date();
-      const scannedDate = now.toLocaleString();
-
-      let phone = "N/A";
-      let studentNames = "";
-
-      const firstStudent = scannedStudents[0];
-      let tickedPerson = "";
-      if (selectedPickup === "father")
-        tickedPerson = firstStudent.fatherName || "Father";
-      else if (selectedPickup === "mother")
-        tickedPerson = firstStudent.motherName || "Mother";
-      else if (selectedPickup === "driver")
-        tickedPerson = firstStudent.driverName || "Driver";
-      else if (selectedPickup === "other")
-        tickedPerson = otherPersonName || firstStudent.otherName || "Other";
-
-      for (const student of scannedStudents) {
-        if (student.phoneNumber && phone === "N/A") {
-          phone = student.phoneNumber;
-        }
-        studentNames += student.name + ", ";
-
-        const passData = {
-          studentId: student.id,
-          studentName: student.name,
-          reason: "QR Verified Early Check-out",
-          departureTime: now.toISOString(),
-          verifiedAt: serverTimestamp(),
-          status: "active" as const,
-          authorizedBy: profile.displayName || profile.email || "Admin",
-          pickedUpBy: selectedPickup,
-          pickedUpByName: tickedPerson,
-          createdAt: serverTimestamp(),
-          qrVerified: true,
-        };
-
-        await addDoc(collection(db, "gate_passes"), passData);
-      }
-
-      await addAppNotification(
-        "QR Verified",
-        `Students verified for pickup: ${studentNames}`,
-        "info",
-      );
-
-      studentNames = studentNames.slice(0, -2);
-
-      // Send SMS via Android gateway
-      if (phone !== "N/A") {
-        await sendSmsNotification(phone, studentNames, scannedDate, tickedPerson);
-      }
-
-      setScannedStudents(null);
-      setIsScanning(false);
-      setOtherPersonName("");
-      setSmsStatus("idle");
-
-      alert(
-        `✅ Verification Successful\n\nStudents: ${studentNames}\nTime: ${scannedDate}\n\nGate pass recorded and SMS notification sent to ${phone}.`,
-      );
-    } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, "gate_passes");
-    } finally {
-      setIsVerifying(false);
-    }
-  };
-
-  const handleUpdateGatePassStatus = async (
-    passId: string,
-    status: "returned" | "cancelled",
-  ) => {
-    try {
-      const updateData: any = { status };
-      if (status === "returned") {
-        updateData.arrivalTime = new Date().toISOString();
-      }
-      await updateDoc(doc(db, "gate_passes", passId), updateData);
-      const studentName =
-        gatePasses.find((p) => p.id === passId)?.studentName || "";
-      await addAppNotification(
-        "Gate Pass Updated",
-        `Gate pass for ${studentName} marked as ${status}.`,
-        "success",
-      );
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, "gate_passes");
-    }
-  };
-
-  const handleDeleteGatePass = async (passId: string) => {
-    if (!window.confirm("Are you sure you want to delete this gate pass?"))
-      return;
-    try {
-      await deleteDoc(doc(db, "gate_passes", passId));
-      await addAppNotification(
-        "Gate Pass Deleted",
-        `A gate pass was removed.`,
-        "info",
-      );
-    } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, "gate_passes");
     }
   };
 
@@ -411,23 +225,25 @@ export default function GatePassDashboard({
     tickedPerson: string,
   ) => {
     const cleanPhone = phone.replace(/[^\d+]/g, "");
+    const message =
+      `DPS School Alert: ${studentName} has been checked out at ${date}. ` +
+      `Picked up by: ${tickedPerson}. ` +
+      `Authorized by: ${profile?.displayName || "Admin"}. ` +
+      `If this was not authorized, please contact the school immediately.`;
 
     console.log(`[SMS Gateway] Sending to ${cleanPhone}`);
     setSmsStatus("sending");
 
     try {
-      const response = await fetch("/api/sms/send", {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (SMS_SECRET) headers["X-SMS-Secret"] = SMS_SECRET;
+
+      const response = await fetch(`${SMS_GATEWAY_URL}/send-sms`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          phone: cleanPhone,
-          variables: {
-            studentName,
-            date,
-            tickedPerson,
-            admin: profile?.displayName || "Admin",
-          },
-        }),
+        headers,
+        body: JSON.stringify({ to: cleanPhone, message }),
       });
 
       const data = await response.json();
@@ -439,9 +255,9 @@ export default function GatePassDashboard({
           `⚠️ Gate pass created, but SMS failed.\n\n` +
           `Reason: ${data.error || "Unknown error"}\n\n` +
           `Check that:\n` +
-          `1. Android app is open on the phone\n` +
-          `2. ngrok is running and NGROK_URL is up to date on Vercel\n` +
-          `3. Phone and Mac are on same WiFi`,
+          `1. QR SMS Sender app is open on the phone\n` +
+          `2. Cloudflared is running in Termux\n` +
+          `3. VITE_SMS_GATEWAY_URL in .env matches current tunnel URL`,
         );
       } else {
         console.log("[SMS Gateway] Sent successfully:", data);
@@ -450,32 +266,117 @@ export default function GatePassDashboard({
     } catch (err: any) {
       console.error("[SMS Gateway] Network error:", err);
       setSmsStatus("failed");
-      alert(`⚠️ Could not reach SMS gateway.\n\n${err.message || ""}`);
+      alert(
+        `⚠️ Could not reach SMS gateway.\n\n` +
+        `Current URL: ${SMS_GATEWAY_URL}\n\n` +
+        `Fix:\n` +
+        `1. Open Termux on phone\n` +
+        `2. Run: cloudflared --url http://localhost:8080\n` +
+        `3. Copy the new trycloudflare.com URL\n` +
+        `4. Update VITE_SMS_GATEWAY_URL in .env\n` +
+        `5. Restart the dev server`,
+      );
     }
   };
   // ─────────────────────────────────────────────────────────────────────────
+
+  const handleVerifyAndIssue = async () => {
+    if (!profile || !scannedStudents || scannedStudents.length === 0) return;
+    setIsVerifying(true);
+
+    try {
+      const now = new Date();
+      const scannedDate = now.toLocaleString();
+      let phone = "N/A";
+      let studentNames = "";
+      const firstStudent = scannedStudents[0];
+
+      let tickedPerson = "";
+      if (selectedPickup === "father") tickedPerson = firstStudent.fatherName || "Father";
+      else if (selectedPickup === "mother") tickedPerson = firstStudent.motherName || "Mother";
+      else if (selectedPickup === "driver") tickedPerson = firstStudent.driverName || "Driver";
+      else if (selectedPickup === "other") tickedPerson = otherPersonName || firstStudent.otherName || "Other";
+
+      for (const student of scannedStudents) {
+        if (student.phoneNumber && phone === "N/A") phone = student.phoneNumber;
+        studentNames += student.name + ", ";
+        await addDoc(collection(db, "gate_passes"), {
+          studentId: student.id,
+          studentName: student.name,
+          reason: "QR Verified Early Check-out",
+          departureTime: now.toISOString(),
+          verifiedAt: serverTimestamp(),
+          status: "active" as const,
+          authorizedBy: profile.displayName || profile.email || "Admin",
+          pickedUpBy: selectedPickup,
+          pickedUpByName: tickedPerson,
+          createdAt: serverTimestamp(),
+          qrVerified: true,
+        });
+      }
+
+      await addAppNotification("QR Verified", `Students verified for pickup: ${studentNames}`, "info");
+      studentNames = studentNames.slice(0, -2);
+
+      if (phone !== "N/A") {
+        await sendSmsNotification(phone, studentNames, scannedDate, tickedPerson);
+      }
+
+      setScannedStudents(null);
+      setIsScanning(false);
+      setOtherPersonName("");
+      setSmsStatus("idle");
+
+      alert(
+        `✅ Verification Successful\n\nStudents: ${studentNames}\nTime: ${scannedDate}\n\n` +
+        `Gate pass recorded and SMS sent to ${phone}.`,
+      );
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, "gate_passes");
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const handleUpdateGatePassStatus = async (passId: string, status: "returned" | "cancelled") => {
+    try {
+      const updateData: any = { status };
+      if (status === "returned") updateData.arrivalTime = new Date().toISOString();
+      await updateDoc(doc(db, "gate_passes", passId), updateData);
+      const studentName = gatePasses.find((p) => p.id === passId)?.studentName || "";
+      await addAppNotification("Gate Pass Updated", `Gate pass for ${studentName} marked as ${status}.`, "success");
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, "gate_passes");
+    }
+  };
+
+  const handleDeleteGatePass = async (passId: string) => {
+    if (!window.confirm("Are you sure you want to delete this gate pass?")) return;
+    try {
+      await deleteDoc(doc(db, "gate_passes", passId));
+      await addAppNotification("Gate Pass Deleted", `A gate pass was removed.`, "info");
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, "gate_passes");
+    }
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-extrabold tracking-tight text-gray-900">
-            Gate Pass Management
-          </h2>
-          <p className="text-gray-500">
-            Monitor and issue student gate passes for early departures.
-          </p>
+          <h2 className="text-2xl font-extrabold tracking-tight text-gray-900">Gate Pass Management</h2>
+          <p className="text-gray-500">Monitor and issue student gate passes for early departures.</p>
         </div>
         <div className="flex gap-3 w-full lg:w-auto">
           <button
             onClick={() => setIsScanning(true)}
-            className="flex-1 lg:flex-none px-6 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 shadow-lg shadow-blue-500/20 border-none text-white rounded-[1rem] font-bold flex items-center justify-center gap-2 shadow-lg shadow-blue-100 hover:from-blue-600 hover:to-indigo-600 hover:shadow-xl hover:-translate-y-0.5 transition-all font-mono"
+            className="flex-1 lg:flex-none px-6 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 shadow-lg shadow-blue-500/20 border-none text-white rounded-[1rem] font-bold flex items-center justify-center gap-2 hover:from-blue-600 hover:to-indigo-600 hover:shadow-xl hover:-translate-y-0.5 transition-all font-mono"
           >
             <QrCode className="w-5 h-5" /> Scan QR
           </button>
           <button
             onClick={() => setIsAddingGatePass(true)}
-            className="flex-1 lg:flex-none px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white rounded-[1rem] font-bold flex items-center justify-center gap-2 shadow-lg shadow-emerald-100 hover:from-emerald-600 hover:to-teal-600 hover:shadow-xl hover:-translate-y-0.5 transition-all"
+            className="flex-1 lg:flex-none px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white rounded-[1rem] font-bold flex items-center justify-center gap-2 hover:from-emerald-600 hover:to-teal-600 hover:shadow-xl hover:-translate-y-0.5 transition-all"
           >
             <Plus className="w-5 h-5" /> Issue New Pass
           </button>
@@ -509,18 +410,12 @@ export default function GatePassDashboard({
         {gatePasses
           .filter(
             (gp) =>
-              gp.studentName
-                .toLowerCase()
-                .includes(gatePassSearch.toLowerCase()) ||
+              gp.studentName.toLowerCase().includes(gatePassSearch.toLowerCase()) ||
               gp.reason.toLowerCase().includes(gatePassSearch.toLowerCase()),
           )
           .sort((a, b) => {
-            const dateA = a.createdAt?.seconds
-              ? a.createdAt.seconds
-              : new Date(a.createdAt).getTime();
-            const dateB = b.createdAt?.seconds
-              ? b.createdAt.seconds
-              : new Date(b.createdAt).getTime();
+            const dateA = a.createdAt?.seconds ? a.createdAt.seconds : new Date(a.createdAt).getTime();
+            const dateB = b.createdAt?.seconds ? b.createdAt.seconds : new Date(b.createdAt).getTime();
             return dateB - dateA;
           })
           .map((pass) => (
@@ -535,15 +430,11 @@ export default function GatePassDashboard({
                 </div>
                 <div className="flex flex-col items-end gap-2">
                   <div className="flex items-center gap-2">
-                    <span
-                      className={`text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider ${
-                        pass.status === "active"
-                          ? "bg-orange-50 text-orange-600"
-                          : pass.status === "returned"
-                            ? "bg-emerald-50 text-emerald-600"
-                            : "bg-red-50 text-red-600"
-                      }`}
-                    >
+                    <span className={`text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider ${
+                      pass.status === "active" ? "bg-orange-50 text-orange-600"
+                      : pass.status === "returned" ? "bg-emerald-50 text-emerald-600"
+                      : "bg-red-50 text-red-600"
+                    }`}>
                       {pass.status}
                     </span>
                     <button
@@ -560,28 +451,18 @@ export default function GatePassDashboard({
                   </p>
                 </div>
               </div>
-
               <div>
-                <h4 className="font-bold text-gray-900 text-lg">
-                  {pass.studentName}
-                </h4>
-                <p className="text-sm text-gray-500">
-                  Authorized by {pass.authorizedBy}
-                </p>
+                <h4 className="font-bold text-gray-900 text-lg">{pass.studentName}</h4>
+                <p className="text-sm text-gray-500">Authorized by {pass.authorizedBy}</p>
               </div>
-
               <div className="space-y-3 border-t border-white/60 pt-4">
                 <div className="flex items-start gap-3">
                   <div className="w-8 h-8 rounded-lg bg-white/60 backdrop-blur-md flex items-center justify-center flex-shrink-0">
                     <Clock className="w-4 h-4 text-gray-400" />
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500 font-medium uppercase tracking-tight">
-                      Departure Time
-                    </p>
-                    <p className="text-sm font-bold text-gray-900">
-                      {new Date(pass.departureTime).toLocaleString()}
-                    </p>
+                    <p className="text-xs text-gray-500 font-medium uppercase tracking-tight">Departure Time</p>
+                    <p className="text-sm font-bold text-gray-900">{new Date(pass.departureTime).toLocaleString()}</p>
                   </div>
                 </div>
                 {pass.arrivalTime && (
@@ -590,39 +471,26 @@ export default function GatePassDashboard({
                       <Clock className="w-4 h-4 text-emerald-500" />
                     </div>
                     <div>
-                      <p className="text-xs text-emerald-600 font-medium uppercase tracking-tight">
-                        Returned At
-                      </p>
-                      <p className="text-sm font-bold text-gray-900">
-                        {new Date(pass.arrivalTime).toLocaleString()}
-                      </p>
+                      <p className="text-xs text-emerald-600 font-medium uppercase tracking-tight">Returned At</p>
+                      <p className="text-sm font-bold text-gray-900">{new Date(pass.arrivalTime).toLocaleString()}</p>
                     </div>
                   </div>
                 )}
                 <div className="bg-white/60 backdrop-blur-md p-3 rounded-[1rem]">
-                  <p className="text-xs text-gray-500 font-medium uppercase tracking-tight mb-1">
-                    Reason
-                  </p>
-                  <p className="text-sm text-gray-700 italic font-medium leading-relaxed">
-                    "{pass.reason}"
-                  </p>
+                  <p className="text-xs text-gray-500 font-medium uppercase tracking-tight mb-1">Reason</p>
+                  <p className="text-sm text-gray-700 italic font-medium leading-relaxed">"{pass.reason}"</p>
                 </div>
               </div>
-
               {pass.status === "active" && (
                 <div className="flex gap-2 pt-4 border-t border-white/60">
                   <button
-                    onClick={() =>
-                      handleUpdateGatePassStatus(pass.id, "returned")
-                    }
-                    className="flex-1 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white rounded-xl font-bold text-sm hover:from-emerald-600 hover:to-teal-600 hover:shadow-xl hover:-translate-y-0.5 transition-all shadow-md shadow-emerald-100"
+                    onClick={() => handleUpdateGatePassStatus(pass.id, "returned")}
+                    className="flex-1 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white rounded-xl font-bold text-sm hover:from-emerald-600 hover:to-teal-600 transition-all"
                   >
                     Mark Returned
                   </button>
                   <button
-                    onClick={() =>
-                      handleUpdateGatePassStatus(pass.id, "cancelled")
-                    }
+                    onClick={() => handleUpdateGatePassStatus(pass.id, "cancelled")}
                     className="flex-1 py-2.5 bg-white text-red-600 border border-red-100 rounded-xl font-bold text-sm hover:bg-red-50 transition-all"
                   >
                     Cancel
@@ -634,9 +502,7 @@ export default function GatePassDashboard({
         {gatePasses.length === 0 && (
           <div className="col-span-full py-20 text-center bg-white rounded-3xl md:rounded-[2rem] border border-dashed border-white/60">
             <Ticket className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500 font-medium">
-              No gate passes issued yet.
-            </p>
+            <p className="text-gray-500 font-medium">No gate passes issued yet.</p>
           </div>
         )}
       </div>
@@ -661,14 +527,9 @@ export default function GatePassDashboard({
                 <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-[1rem] flex items-center justify-center mx-auto mb-4">
                   <QrCode className="w-8 h-8" />
                 </div>
-                <h3 className="text-2xl font-extrabold tracking-tight text-gray-900">
-                  Scan Student QR Code
-                </h3>
-                <p className="text-gray-500">
-                  Point your camera at the student's ID card QR
-                </p>
+                <h3 className="text-2xl font-extrabold tracking-tight text-gray-900">Scan Student QR Code</h3>
+                <p className="text-gray-500">Point your camera at the student's ID card QR</p>
               </div>
-
               {cameraError ? (
                 <div className="bg-red-50 p-6 rounded-[1rem] text-center space-y-4">
                   <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto">
@@ -676,20 +537,14 @@ export default function GatePassDashboard({
                   </div>
                   <p className="text-red-700 font-medium">{cameraError}</p>
                   <button
-                    onClick={() => {
-                      setIsScanning(false);
-                      setTimeout(() => setIsScanning(true), 100);
-                    }}
+                    onClick={() => { setIsScanning(false); setTimeout(() => setIsScanning(true), 100); }}
                     className="px-6 py-2 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all"
                   >
                     Try Again
                   </button>
                 </div>
               ) : (
-                <div
-                  id="qr-reader"
-                  className="overflow-hidden rounded-[1rem] border-4 border-blue-50"
-                />
+                <div id="qr-reader" className="overflow-hidden rounded-[1rem] border-4 border-blue-50" />
               )}
             </motion.div>
           </div>
@@ -712,48 +567,32 @@ export default function GatePassDashboard({
               >
                 <X className="w-5 h-5 text-gray-400" />
               </button>
-
               <div className="text-center mb-6 shrink-0">
-                <h2 className="text-2xl font-extrabold tracking-tight text-gray-900">
-                  Gate Pass Verification
-                </h2>
-                <p className="text-sm text-gray-500">
-                  Review students and authorized pickup personnel
-                </p>
+                <h2 className="text-2xl font-extrabold tracking-tight text-gray-900">Gate Pass Verification</h2>
+                <p className="text-sm text-gray-500">Review students and authorized pickup personnel</p>
               </div>
 
               <div className="overflow-y-auto space-y-6 flex-1 pr-2">
-                {/* Students List */}
+                {/* Students */}
                 <div className="space-y-3">
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-wider text-left">
                     Students Checked Out ({scannedStudents.length})
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {scannedStudents.map((student) => (
-                      <div
-                        key={student.id}
-                        className="flex gap-4 p-4 rounded-[1rem] bg-blue-50/50 border border-blue-100"
-                      >
+                      <div key={student.id} className="flex gap-4 p-4 rounded-[1rem] bg-blue-50/50 border border-blue-100">
                         <div className="w-16 h-16 bg-white rounded-xl flex items-center justify-center shrink-0 border border-white/60 overflow-hidden">
                           {student.photoUrl ? (
-                            <img
-                              src={student.photoUrl}
-                              alt={student.name}
-                              className="w-full h-full object-cover"
-                            />
+                            <img src={student.photoUrl} alt={student.name} className="w-full h-full object-cover" />
                           ) : (
                             <Users className="w-6 h-6 text-blue-300" />
                           )}
                         </div>
                         <div className="text-left flex-1">
-                          <h3 className="font-bold text-gray-900 leading-tight">
-                            {student.name}
-                          </h3>
-                          <p className="text-xs text-blue-600 font-mono mt-0.5">
-                            {student.studentId || "ID Pending"}
-                          </p>
+                          <h3 className="font-bold text-gray-900 leading-tight">{student.name}</h3>
+                          <p className="text-xs text-blue-600 font-mono mt-0.5">{student.studentId || "ID Pending"}</p>
                           <div className="flex items-center gap-2 mt-2">
-                            <span className="text-[10px] font-bold text-gray-500 bg-white px-2 py-0.5 rounded shadow-2xl shadow-gray-200/50 border border-white/60">
+                            <span className="text-[10px] font-bold text-gray-500 bg-white px-2 py-0.5 rounded shadow border border-white/60">
                               {student.grade} - {student.section}
                             </span>
                           </div>
@@ -763,18 +602,13 @@ export default function GatePassDashboard({
                   </div>
                 </div>
 
-                {/* Primary Contact */}
+                {/* Contact + SMS status */}
                 <div className="bg-white/60 backdrop-blur-md p-4 rounded-[1rem] flex items-center gap-4 border border-white/60">
                   <Phone className="w-5 h-5 text-gray-400" />
                   <div className="text-left">
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-                      SMS Alert Contact
-                    </p>
-                    <p className="font-bold text-gray-900">
-                      {scannedStudents[0].phoneNumber || "No number linked"}
-                    </p>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">SMS Alert Contact</p>
+                    <p className="font-bold text-gray-900">{scannedStudents[0].phoneNumber || "No number linked"}</p>
                   </div>
-                  {/* SMS status indicator */}
                   {smsStatus !== "idle" && (
                     <div className="ml-auto">
                       {smsStatus === "sending" && (
@@ -796,133 +630,44 @@ export default function GatePassDashboard({
                   )}
                 </div>
 
-                {/* Recovery Personnel */}
+                {/* Pickup Personnel */}
                 <div className="space-y-4 pt-2">
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-wider text-left flex items-center gap-2">
-                    <Users className="w-4 h-4" />
-                    Authorized Recovery Personnel
+                    <Users className="w-4 h-4" /> Authorized Recovery Personnel
                   </p>
-
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-                    {/* Father */}
-                    <div
-                      className={`space-y-2 cursor-pointer transition-all ${selectedPickup === "father" ? "scale-105" : "hover:scale-105 opacity-70"}`}
-                      onClick={() => setSelectedPickup("father")}
-                    >
-                      <div
-                        className={`aspect-square rounded-[1rem] overflow-hidden shadow-2xl shadow-gray-200/50 ring-2 ${selectedPickup === "father" ? "ring-blue-500 ring-offset-2" : "ring-black/5 bg-white/60 backdrop-blur-md"}`}
-                      >
-                        {scannedStudents[0].fatherPhotoUrl ? (
-                          <img
-                            src={scannedStudents[0].fatherPhotoUrl}
-                            alt="Father"
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex flex-col items-center justify-center bg-white/60 backdrop-blur-md/50">
-                            <Users className="w-8 h-8 text-gray-200" />
-                            <span className="text-[8px] text-gray-400 mt-2">No Photo</span>
+                    {(["father", "mother", "driver", "other"] as const).map((role) => {
+                      const photoUrl = scannedStudents[0][`${role}PhotoUrl` as keyof Student] as string;
+                      const name = scannedStudents[0][`${role}Name` as keyof Student] as string;
+                      return (
+                        <div
+                          key={role}
+                          className={`space-y-2 cursor-pointer transition-all ${selectedPickup === role ? "scale-105" : "hover:scale-105 opacity-70"}`}
+                          onClick={() => setSelectedPickup(role)}
+                        >
+                          <div className={`aspect-square rounded-[1rem] overflow-hidden ring-2 ${selectedPickup === role ? "ring-blue-500 ring-offset-2" : "ring-black/5"}`}>
+                            {photoUrl ? (
+                              <img src={photoUrl} alt={role} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex flex-col items-center justify-center bg-white/60">
+                                <Users className="w-8 h-8 text-gray-200" />
+                                <span className="text-[8px] text-gray-400 mt-2">No Photo</span>
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                      <div className="text-center">
-                        <p className={`text-xs font-bold line-clamp-1 ${selectedPickup === "father" ? "text-blue-600" : "text-gray-900"}`}>
-                          {scannedStudents[0].fatherName || "Father"}
-                        </p>
-                        <p className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">Father</p>
-                      </div>
-                    </div>
-
-                    {/* Mother */}
-                    <div
-                      className={`space-y-2 cursor-pointer transition-all ${selectedPickup === "mother" ? "scale-105" : "hover:scale-105 opacity-70"}`}
-                      onClick={() => setSelectedPickup("mother")}
-                    >
-                      <div
-                        className={`aspect-square rounded-[1rem] overflow-hidden shadow-2xl shadow-gray-200/50 ring-2 ${selectedPickup === "mother" ? "ring-blue-500 ring-offset-2" : "ring-black/5 bg-white/60 backdrop-blur-md"}`}
-                      >
-                        {scannedStudents[0].motherPhotoUrl ? (
-                          <img
-                            src={scannedStudents[0].motherPhotoUrl}
-                            alt="Mother"
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex flex-col items-center justify-center bg-white/60 backdrop-blur-md/50">
-                            <Users className="w-8 h-8 text-gray-200" />
-                            <span className="text-[8px] text-gray-400 mt-2">No Photo</span>
+                          <div className="text-center">
+                            <p className={`text-xs font-bold line-clamp-1 ${selectedPickup === role ? "text-blue-600" : "text-gray-900"}`}>
+                              {name || role.charAt(0).toUpperCase() + role.slice(1)}
+                            </p>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">{role}</p>
                           </div>
-                        )}
-                      </div>
-                      <div className="text-center">
-                        <p className={`text-xs font-bold line-clamp-1 ${selectedPickup === "mother" ? "text-blue-600" : "text-gray-900"}`}>
-                          {scannedStudents[0].motherName || "Mother"}
-                        </p>
-                        <p className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">Mother</p>
-                      </div>
-                    </div>
-
-                    {/* Driver */}
-                    <div
-                      className={`space-y-2 cursor-pointer transition-all ${selectedPickup === "driver" ? "scale-105" : "hover:scale-105 opacity-70"}`}
-                      onClick={() => setSelectedPickup("driver")}
-                    >
-                      <div
-                        className={`aspect-square rounded-[1rem] overflow-hidden shadow-2xl shadow-gray-200/50 ring-2 ${selectedPickup === "driver" ? "ring-blue-500 ring-offset-2" : "ring-black/5 bg-white/60 backdrop-blur-md"}`}
-                      >
-                        {scannedStudents[0].driverPhotoUrl ? (
-                          <img
-                            src={scannedStudents[0].driverPhotoUrl}
-                            alt="Driver"
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex flex-col items-center justify-center bg-white/60 backdrop-blur-md/50">
-                            <Users className="w-8 h-8 text-gray-200" />
-                            <span className="text-[8px] text-gray-400 mt-2">No Photo</span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="text-center">
-                        <p className={`text-xs font-bold line-clamp-1 ${selectedPickup === "driver" ? "text-blue-600" : "text-gray-900"}`}>
-                          {scannedStudents[0].driverName || "Driver"}
-                        </p>
-                        <p className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">Driver</p>
-                      </div>
-                    </div>
-
-                    {/* Other */}
-                    <div
-                      className={`space-y-2 cursor-pointer transition-all ${selectedPickup === "other" ? "scale-105" : "hover:scale-105 opacity-70"}`}
-                      onClick={() => setSelectedPickup("other")}
-                    >
-                      <div
-                        className={`aspect-square rounded-[1rem] overflow-hidden shadow-2xl shadow-gray-200/50 ring-2 ${selectedPickup === "other" ? "ring-blue-500 ring-offset-2" : "ring-black/5 bg-white/60 backdrop-blur-md"}`}
-                      >
-                        {scannedStudents[0].otherPhotoUrl ? (
-                          <img
-                            src={scannedStudents[0].otherPhotoUrl}
-                            alt="Other"
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex flex-col items-center justify-center bg-white/60 backdrop-blur-md/50">
-                            <Users className="w-8 h-8 text-gray-200" />
-                            <span className="text-[8px] text-gray-400 mt-2">No Photo</span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="text-center">
-                        <p className={`text-xs font-bold line-clamp-1 ${selectedPickup === "other" ? "text-blue-600" : "text-gray-900"}`}>
-                          {scannedStudents[0].otherName || "Other"}
-                        </p>
-                        <p className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">Other</p>
-                      </div>
-                    </div>
+                        </div>
+                      );
+                    })}
                   </div>
 
                   {selectedPickup === "other" && (
-                    <div className="mt-4 p-4 bg-white/60 backdrop-blur-md rounded-[1rem] border border-white/60 animate-in fade-in slide-in-from-top-2">
+                    <div className="mt-4 p-4 bg-white/60 backdrop-blur-md rounded-[1rem] border border-white/60">
                       <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
                         Name of the person picking up
                       </label>
@@ -944,37 +689,25 @@ export default function GatePassDashboard({
                   disabled={
                     isVerifying ||
                     !selectedPickup ||
-                    (selectedPickup === "other" &&
-                      !otherPersonName.trim() &&
-                      !scannedStudents[0]?.otherName)
+                    (selectedPickup === "other" && !otherPersonName.trim() && !scannedStudents[0]?.otherName)
                   }
                   onClick={handleVerifyAndIssue}
-                  className="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white rounded-[1rem] font-bold flex items-center justify-center gap-3 shadow-lg shadow-emerald-100 hover:from-emerald-600 hover:to-teal-600 hover:shadow-xl hover:-translate-y-0.5 transition-all disabled:opacity-50"
+                  className="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white rounded-[1rem] font-bold flex items-center justify-center gap-3 hover:from-emerald-600 hover:to-teal-600 transition-all disabled:opacity-50"
                 >
-                  {isVerifying ? (
-                    <Clock className="w-5 h-5 animate-spin" />
-                  ) : (
-                    <CheckCircle2 className="w-5 h-5" />
-                  )}
-                  {selectedPickup
-                    ? "Mark as Verified & Send SMS"
-                    : "Select Pickup Person to Verify"}
+                  {isVerifying ? <Clock className="w-5 h-5 animate-spin" /> : <CheckCircle2 className="w-5 h-5" />}
+                  {selectedPickup ? "Mark as Verified & Send SMS" : "Select Pickup Person to Verify"}
                 </button>
                 <div className="flex gap-2">
                   <button
                     disabled={isVerifying}
-                    onClick={() => {
-                      setScannedStudents(null);
-                      setIsScanning(true);
-                    }}
+                    onClick={() => { setScannedStudents(null); setIsScanning(true); }}
                     className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-[1rem] font-bold flex items-center justify-center gap-2 hover:bg-gray-200 transition-all disabled:opacity-50"
                   >
                     Scan Another
                   </button>
                 </div>
                 <p className="text-[10px] text-gray-400 text-center italic mt-2">
-                  Clicking verify will issue an active gate pass and send an SMS
-                  to the parent via your Android phone gateway.
+                  Clicking verify will issue an active gate pass and send an SMS to the parent via your Android phone gateway.
                 </p>
               </div>
             </motion.div>
@@ -997,62 +730,42 @@ export default function GatePassDashboard({
               <X className="w-5 h-5 text-gray-400" />
             </button>
             <div className="mb-6">
-              <h3 className="text-2xl font-extrabold tracking-tight text-gray-900">
-                Issue Gate Pass
-              </h3>
-              <p className="text-gray-500 text-sm">
-                Fill in the details for early student departure.
-              </p>
+              <h3 className="text-2xl font-extrabold tracking-tight text-gray-900">Issue Gate Pass</h3>
+              <p className="text-gray-500 text-sm">Fill in the details for early student departure.</p>
             </div>
             <form onSubmit={handleAddGatePass} className="space-y-5">
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1.5">
-                  Select Student
-                </label>
+                <label className="block text-sm font-bold text-gray-700 mb-1.5">Select Student</label>
                 <select
                   required
                   value={newGatePass.studentId}
-                  onChange={(e) =>
-                    setNewGatePass({ ...newGatePass, studentId: e.target.value })
-                  }
+                  onChange={(e) => setNewGatePass({ ...newGatePass, studentId: e.target.value })}
                   className="w-full px-4 py-3 bg-white/60 backdrop-blur-md border-none rounded-[1rem] focus:ring-2 focus:ring-emerald-500 outline-none font-medium"
                 >
                   <option value="">Choose student...</option>
-                  {students
-                    .sort((a, b) => a.name.localeCompare(b.name))
-                    .map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name} (Grade {s.grade})
-                      </option>
-                    ))}
+                  {students.sort((a, b) => a.name.localeCompare(b.name)).map((s) => (
+                    <option key={s.id} value={s.id}>{s.name} (Grade {s.grade})</option>
+                  ))}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1.5">
-                  Reason for Leaving
-                </label>
+                <label className="block text-sm font-bold text-gray-700 mb-1.5">Reason for Leaving</label>
                 <textarea
                   required
                   value={newGatePass.reason}
-                  onChange={(e) =>
-                    setNewGatePass({ ...newGatePass, reason: e.target.value })
-                  }
+                  onChange={(e) => setNewGatePass({ ...newGatePass, reason: e.target.value })}
                   rows={3}
                   className="w-full px-4 py-3 bg-white/60 backdrop-blur-md border-none rounded-[1rem] focus:ring-2 focus:ring-emerald-500 outline-none resize-none font-medium"
                   placeholder="e.g., Medical appointment, Early dismissal..."
                 />
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1.5">
-                  Departure Time
-                </label>
+                <label className="block text-sm font-bold text-gray-700 mb-1.5">Departure Time</label>
                 <input
                   type="datetime-local"
                   required
                   value={newGatePass.departureTime}
-                  onChange={(e) =>
-                    setNewGatePass({ ...newGatePass, departureTime: e.target.value })
-                  }
+                  onChange={(e) => setNewGatePass({ ...newGatePass, departureTime: e.target.value })}
                   className="w-full px-4 py-3 bg-white/60 backdrop-blur-md border-none rounded-[1rem] focus:ring-2 focus:ring-emerald-500 outline-none font-medium"
                 />
               </div>
@@ -1066,7 +779,7 @@ export default function GatePassDashboard({
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white rounded-[1rem] font-bold hover:from-emerald-600 hover:to-teal-600 hover:shadow-xl hover:-translate-y-0.5 transition-all shadow-lg shadow-emerald-100"
+                  className="flex-1 px-4 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white rounded-[1rem] font-bold hover:from-emerald-600 hover:to-teal-600 transition-all"
                 >
                   Issue Pass
                 </button>
