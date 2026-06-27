@@ -5,8 +5,6 @@ import {
   Search,
   Users,
   Clock,
-  Calendar,
-  ChevronRight,
   X,
   QrCode,
   CheckCircle2,
@@ -20,26 +18,15 @@ import {
   addDoc,
   collection,
   onSnapshot,
-  query,
   doc,
   serverTimestamp,
   updateDoc,
-  getDoc,
   deleteDoc,
 } from "firebase/firestore";
 import { UserProfile, Student, GatePass } from "../types";
 import { handleFirestoreError, OperationType } from "../App";
 import { addAppNotification } from "../utils";
 import { Html5Qrcode } from "html5-qrcode";
-
-// ─── SMS Gateway Config ───────────────────────────────────────────────────────
-// Update this URL every time cloudflared restarts in Termux
-// Or set VITE_SMS_GATEWAY_URL in your .env file so you only change it there
-const SMS_GATEWAY_URL =
-  import.meta.env.VITE_SMS_GATEWAY_URL ||
-  "https://tests-something-gregory-theology.trycloudflare.com";
-const SMS_SECRET = import.meta.env.VITE_SMS_SECRET || "";
-// ─────────────────────────────────────────────────────────────────────────────
 
 export default function GatePassDashboard({
   profile,
@@ -217,7 +204,7 @@ export default function GatePassDashboard({
     }
   };
 
-  // ─── SMS via Android Gateway ──────────────────────────────────────────────
+  // ─── SMS via Vercel API route → Cloudflare tunnel → Android gateway ──────
   const sendSmsNotification = async (
     phone: string,
     studentName: string,
@@ -225,59 +212,51 @@ export default function GatePassDashboard({
     tickedPerson: string,
   ) => {
     const cleanPhone = phone.replace(/[^\d+]/g, "");
-    const message =
-      `[DPS Biratnagar Alert] Gate Pass Confirmed\n` +
-      `👤 Student: ${studentName}\n` +
-      `🕑 Time: ${date}\n` +
-      `🚗 Picked up by: ${tickedPerson}\n` +
-      `✅ Authorized by: ${profile?.displayName || "Admin"}\n` +
-      `⚠️ If unauthorized, contact school immediately.`;
+    // Add +977 prefix if not present
+    const formattedPhone = cleanPhone.startsWith("+")
+      ? cleanPhone
+      : cleanPhone.startsWith("977")
+      ? `+${cleanPhone}`
+      : `+977${cleanPhone}`;
 
-    console.log(`[SMS Gateway] Sending to ${cleanPhone}`);
     setSmsStatus("sending");
 
     try {
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      };
-      if (SMS_SECRET) headers["X-SMS-Secret"] = SMS_SECRET;
-
-      const response = await fetch(`${SMS_GATEWAY_URL}/send-sms`, {
+      const response = await fetch("/api/sms/send", {
         method: "POST",
-        headers,
-        body: JSON.stringify({ to: cleanPhone, message }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone: formattedPhone,
+          variables: {
+            studentName,
+            date,
+            tickedPerson,
+            admin: profile?.displayName || "Admin",
+          },
+        }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        console.error("[SMS Gateway] Error:", data);
+        console.error("[SMS] Error:", data);
         setSmsStatus("failed");
         alert(
           `⚠️ Gate pass created, but SMS failed.\n\n` +
           `Reason: ${data.error || "Unknown error"}\n\n` +
           `Check that:\n` +
-          `1. QR SMS Sender app is open on the phone\n` +
-          `2. Cloudflared is running in Termux\n` +
-          `3. VITE_SMS_GATEWAY_URL in .env matches current tunnel URL`,
+          `1. Gateway phone is on and QR SMS app is open\n` +
+          `2. Cloudflare tunnel is running in Termux\n` +
+          `3. SIM has balance`,
         );
       } else {
-        console.log("[SMS Gateway] Sent successfully:", data);
+        console.log("[SMS] Sent successfully:", data);
         setSmsStatus("sent");
       }
     } catch (err: any) {
-      console.error("[SMS Gateway] Network error:", err);
+      console.error("[SMS] Network error:", err);
       setSmsStatus("failed");
-      alert(
-        `⚠️ Could not reach SMS gateway.\n\n` +
-        `Current URL: ${SMS_GATEWAY_URL}\n\n` +
-        `Fix:\n` +
-        `1. Open Termux on phone\n` +
-        `2. Run: cloudflared --url http://localhost:8080\n` +
-        `3. Copy the new trycloudflare.com URL\n` +
-        `4. Update VITE_SMS_GATEWAY_URL in .env\n` +
-        `5. Restart the dev server`,
-      );
+      alert(`⚠️ Could not reach SMS API.\n\n${err.message}`);
     }
   };
   // ─────────────────────────────────────────────────────────────────────────
