@@ -584,13 +584,13 @@ function AppContent() {
 
         {/* Right Panel */}
         <div className="flex-1 flex flex-col justify-center p-4 sm:p-6 lg:p-12 relative min-h-screen overflow-y-auto">
-          <div className="max-w-[440px] w-full mx-auto py-8">
-            <div className="bg-white/90 md:bg-white/70 backdrop-blur-xl rounded-3xl md:rounded-[2rem] shadow-2xl shadow-gray-200/50 p-6 sm:p-10 border border-white/80">
-              <div className="text-center mb-8">
-                <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-6 md:hidden">
-                  <School className="w-8 h-8 text-emerald-600" />
+          <div className="max-w-[440px] w-full mx-auto py-4 sm:py-8">
+            <div className="bg-white/90 md:bg-white/70 backdrop-blur-xl rounded-2xl sm:rounded-3xl md:rounded-[2rem] shadow-2xl shadow-gray-200/50 p-5 sm:p-10 border border-white/80">
+              <div className="text-center mb-6 sm:mb-8">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-4 sm:mb-6 md:hidden">
+                  <School className="w-6 h-6 sm:w-8 sm:h-8 text-emerald-600" />
                 </div>
-                <h2 className="text-[2rem] font-bold text-gray-900 mb-3 font-sans tracking-tight leading-tight">
+                <h2 className="text-2xl sm:text-[2rem] font-bold text-gray-900 mb-2 sm:mb-3 font-sans tracking-tight leading-tight">
                   Welcome back
                 </h2>
                 <p className="text-sm sm:text-base text-gray-500 font-medium">
@@ -598,7 +598,7 @@ function AppContent() {
                 </p>
               </div>
 
-              <div className="space-y-6">
+              <div className="space-y-4 sm:space-y-6">
                 {loginError && (
                   <div className="bg-red-50 text-red-600 px-4 py-3 rounded-xl text-sm font-medium border border-red-100 flex items-center text-left">
                     <AlertCircle className="w-4 h-4 mr-2 shrink-0" />
@@ -609,7 +609,7 @@ function AppContent() {
                 <button
                   onClick={handleLogin}
                   disabled={isLoggingIn}
-                  className="w-full h-[3.5rem] bg-gradient-to-r from-slate-700 to-slate-900 shadow-lg shadow-slate-900/20 text-white border-none text-white rounded-xl font-semibold hover:from-slate-800 hover:to-slate-950 hover:shadow-xl hover:-translate-y-0.5 hover:shadow-lg hover:shadow-gray-900/20 active:scale-[0.98] transition-all flex items-center justify-center gap-3 text-base outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 disabled:opacity-50"
+                  className="w-full h-12 sm:h-[3.5rem] bg-gradient-to-r from-slate-700 to-slate-900 shadow-lg shadow-slate-900/20 text-white border-none text-white rounded-xl font-semibold hover:from-slate-800 hover:to-slate-950 hover:shadow-xl hover:-translate-y-0.5 hover:shadow-lg hover:shadow-gray-900/20 active:scale-[0.98] transition-all flex items-center justify-center gap-3 text-sm sm:text-base outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 disabled:opacity-50"
                 >
                   <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center shrink-0">
                     <img
@@ -678,7 +678,7 @@ function AppContent() {
                     </div>
                     <button
                       type="submit"
-                      className="w-full h-[3.5rem] bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white rounded-xl font-bold hover:from-emerald-600 hover:to-teal-600 hover:shadow-xl hover:-translate-y-0.5 hover:shadow-lg hover:shadow-emerald-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-base outline-none focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2"
+                      className="w-full h-12 sm:h-[3.5rem] bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white rounded-xl font-bold hover:from-emerald-600 hover:to-teal-600 hover:shadow-xl hover:-translate-y-0.5 hover:shadow-lg hover:shadow-emerald-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-sm sm:text-base outline-none focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2"
                     >
                       Login <span className="font-serif">→</span>
                     </button>
@@ -686,7 +686,7 @@ function AppContent() {
                 </div>
               </div>
 
-              <div className="mt-8 text-center border-t border-white/80 pt-6">
+              <div className="mt-6 sm:mt-8 text-center border-t border-white/80 pt-5 sm:pt-6">
                 <p className="text-sm text-gray-400 font-medium">
                   Need access?{" "}
                   <a
