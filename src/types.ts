@@ -87,10 +87,14 @@ export interface StoreProduct {
   price?: number;
 }
 
+export const STORE_CATEGORIES = ["Store", "Canteen", "Electrical", "Sports"] as const;
+
+export type StoreCategory = (typeof STORE_CATEGORIES)[number];
+
 export interface StorePurchase {
   id: string;
   type: "in" | "out" | "purchase";
-  category: "Store" | "Canteen";
+  category: StoreCategory;
   productName: string;
   quantity: number;
   costPrice?: number;

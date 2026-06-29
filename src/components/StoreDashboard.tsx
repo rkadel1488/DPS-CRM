@@ -28,7 +28,15 @@ import {
 } from "firebase/firestore";
 import NepaliDate from "nepali-date-converter";
 import * as XLSX from "xlsx";
-import { StoreProduct, StorePurchase, StoreUnusedItem, StoreSupplier, UserProfile } from "../types";
+import {
+  STORE_CATEGORIES,
+  StoreCategory,
+  StoreProduct,
+  StorePurchase,
+  StoreUnusedItem,
+  StoreSupplier,
+  UserProfile,
+} from "../types";
 import { handleFirestoreError, OperationType } from "../App";
 
 const UNUSED_DAYS_THRESHOLD = 45;
@@ -73,7 +81,7 @@ export default function StoreDashboard({
     quantity: number;
     costPrice?: number;
     supplier?: string;
-    category: "Store" | "Canteen";
+    category: StoreCategory;
     purchaseDate: string;
   }>({
     productName: "",
@@ -88,7 +96,7 @@ export default function StoreDashboard({
   const [newPurchase, setNewPurchase] = useState<{
     billNumber: string;
     supplier: string;
-    category: "Store" | "Canteen";
+    category: StoreCategory;
     purchaseDate: string;
     items: PurchaseItemRow[];
     vatRate: number;
@@ -1607,13 +1615,16 @@ export default function StoreDashboard({
                     onChange={(e) =>
                       setNewLog({
                         ...newLog,
-                        category: e.target.value as "Store" | "Canteen",
+                        category: e.target.value as StoreCategory,
                       })
                     }
                     className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium cursor-pointer"
                   >
-                    <option value="Store">Store</option>
-                    <option value="Canteen">Canteen</option>
+                    {STORE_CATEGORIES.map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -1793,13 +1804,16 @@ export default function StoreDashboard({
                       onChange={(e) =>
                         setNewPurchase({
                           ...newPurchase,
-                          category: e.target.value as "Store" | "Canteen",
+                          category: e.target.value as StoreCategory,
                         })
                       }
                       className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium cursor-pointer"
                     >
-                      <option value="Store">Store</option>
-                      <option value="Canteen">Canteen</option>
+                      {STORE_CATEGORIES.map((category) => (
+                        <option key={category} value={category}>
+                          {category}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -2136,8 +2150,11 @@ export default function StoreDashboard({
                     className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-medium cursor-pointer"
                   >
                     <option value="All">All Categories</option>
-                    <option value="Store">Store</option>
-                    <option value="Canteen">Canteen</option>
+                    {STORE_CATEGORIES.map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
