@@ -65,6 +65,7 @@ export default function StoreDashboard({
     "inventory" | "purchase" | "invoices" | "in" | "out" | "unused"
   >("inventory");
   const [searchTerm, setSearchTerm] = useState("");
+  const [inventoryCategoryFilter, setInventoryCategoryFilter] = useState("All");
 
   const [isAddingProduct, setIsAddingProduct] = useState(false);
   const [newProduct, setNewProduct] = useState({
@@ -626,11 +627,36 @@ export default function StoreDashboard({
     }
   };
 
-  const filteredProducts = products.filter(
-    (p) =>
-      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.category.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+  const getProductInventoryValue = (product: StoreProduct) => {
+    const purchaseLogs = logs.filter(
+      (l) => l.type === "purchase" && l.productName === product.name,
+    );
+    const quantity = purchaseLogs.reduce((sum, l) => sum + l.quantity, 0);
+    const cost = purchaseLogs.reduce((sum, l) => sum + (l.totalCost || 0), 0);
+    const vat = purchaseLogs.reduce((sum, l) => sum + (l.vatAmount || 0), 0);
+    const rateInclVat =
+      quantity > 0 ? (cost + vat) / quantity : product.price || 0;
+    return product.currentStock * rateInclVat;
+  };
+
+  const getStockBadgeClass = (stock: number) => {
+    if (stock <= 0) return "bg-rose-50 text-rose-700 border-rose-100";
+    if (stock < 10) return "bg-amber-50 text-amber-700 border-amber-100";
+    return "bg-emerald-50 text-emerald-700 border-emerald-100";
+  };
+
+  const inventoryCategories = ["All", ...STORE_CATEGORIES];
+
+  const filteredProducts = products.filter((p) => {
+    const term = searchTerm.toLowerCase();
+    const matchesSearch =
+      p.name.toLowerCase().includes(term) ||
+      p.category.toLowerCase().includes(term);
+    const matchesCategory =
+      inventoryCategoryFilter === "All" ||
+      p.category === inventoryCategoryFilter;
+    return matchesSearch && matchesCategory;
+  });
 
   const getLastOutDate = (productName: string) => {
     const outLogs = logs.filter(
@@ -748,117 +774,209 @@ export default function StoreDashboard({
       </div>
 
       {activeTab === "inventory" && (
-        <div className="space-y-6">
-          <div className="flex flex-col sm:flex-row justify-between gap-4">
-            <div className="relative max-w-md w-full">
-              <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search products..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-11 pr-4 py-3 bg-white border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-medium shadow-sm"
-              />
+        <div className="space-y-4">
+          <div className="bg-white border border-gray-100 rounded-lg shadow-sm">
+            <div className="p-4 border-b border-gray-100 flex flex-col xl:flex-row xl:items-center justify-between gap-3">
+              <div className="flex flex-col sm:flex-row gap-3 flex-1 min-w-0">
+                <div className="relative w-full sm:max-w-md">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search inventory..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2.5 bg-gray-50 border border-transparent rounded-lg focus:ring-2 focus:ring-emerald-500 focus:bg-white outline-none text-sm font-medium"
+                  />
+                </div>
+
+                <div className="flex gap-1.5 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  {inventoryCategories.map((category) => {
+                    const isActive = inventoryCategoryFilter === category;
+                    return (
+                      <button
+                        key={category}
+                        type="button"
+                        onClick={() => setInventoryCategoryFilter(category)}
+                        className={`px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap border transition-colors ${
+                          isActive
+                            ? "bg-slate-900 text-white border-slate-900"
+                            : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                        }`}
+                      >
+                        {category}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {isAdmin && (
+                <div className="flex gap-2 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  <input
+                    type="file"
+                    accept=".csv"
+                    className="hidden"
+                    ref={fileInputRef}
+                    onChange={handleImport}
+                  />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-3 py-2 bg-white text-gray-700 border border-gray-200 rounded-lg font-bold hover:bg-gray-50 transition-all flex items-center justify-center gap-2 whitespace-nowrap text-sm"
+                  >
+                    <Upload className="w-4 h-4" /> Import
+                  </button>
+                  <button
+                    onClick={() => setIsExportModalOpen(true)}
+                    className="px-3 py-2 bg-white text-gray-700 border border-gray-200 rounded-lg font-bold hover:bg-gray-50 transition-all flex items-center justify-center gap-2 whitespace-nowrap text-sm"
+                  >
+                    <Download className="w-4 h-4" /> Export
+                  </button>
+                  <button
+                    onClick={() => setIsAddingProduct(true)}
+                    className="px-3 py-2 bg-emerald-500 text-white rounded-lg font-bold hover:bg-emerald-600 transition-all shadow-md shadow-emerald-500/20 flex items-center justify-center gap-2 whitespace-nowrap text-sm"
+                  >
+                    <Plus className="w-4 h-4" /> Add
+                  </button>
+                </div>
+              )}
             </div>
-            {isAdmin && (
-              <div className="flex flex-col sm:flex-row gap-2">
-                <input 
-                  type="file" 
-                  accept=".csv" 
-                  className="hidden" 
-                  ref={fileInputRef} 
-                  onChange={handleImport} 
-                />
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="px-6 py-3 bg-white text-gray-700 border border-gray-200 rounded-xl font-bold hover:bg-gray-50 transition-all flex items-center justify-center gap-2 whitespace-nowrap"
-                >
-                  <Upload className="w-5 h-5" /> Import CSV
-                </button>
-                <button
-                  onClick={() => setIsExportModalOpen(true)}
-                  className="px-6 py-3 bg-white text-gray-700 border border-gray-200 rounded-xl font-bold hover:bg-gray-50 transition-all flex items-center justify-center gap-2 whitespace-nowrap"
-                >
-                  <Download className="w-5 h-5" /> Export
-                </button>
-                <button
-                  onClick={() => setIsAddingProduct(true)}
-                  className="px-6 py-3 bg-emerald-500 text-white rounded-xl font-bold hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 whitespace-nowrap"
-                >
-                  <Plus className="w-5 h-5" /> Add Product
-                </button>
+
+            <div className="px-4 py-2.5 bg-gray-50/70 border-b border-gray-100 flex flex-wrap items-center gap-3 text-xs font-bold text-gray-500">
+              <span>{filteredProducts.length} shown</span>
+              <span>{products.length} total</span>
+              <span>
+                {products.filter((product) => product.currentStock < 10).length} low stock
+              </span>
+            </div>
+
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-white">
+                    <th className="px-4 py-3 text-[11px] font-bold text-gray-500 uppercase">
+                      Product
+                    </th>
+                    <th className="px-4 py-3 text-[11px] font-bold text-gray-500 uppercase">
+                      Category
+                    </th>
+                    <th className="px-4 py-3 text-[11px] font-bold text-gray-500 uppercase text-right">
+                      Stock
+                    </th>
+                    <th className="px-4 py-3 text-[11px] font-bold text-gray-500 uppercase">
+                      Unit
+                    </th>
+                    <th className="px-4 py-3 text-[11px] font-bold text-gray-500 uppercase text-right">
+                      Price
+                    </th>
+                    <th className="px-4 py-3 text-[11px] font-bold text-gray-500 uppercase text-right">
+                      Value
+                    </th>
+                    {isMainAdmin && (
+                      <th className="px-4 py-3 text-[11px] font-bold text-gray-500 uppercase text-right">
+                        Actions
+                      </th>
+                    )}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {filteredProducts.map((product) => {
+                    const inventoryValue = getProductInventoryValue(product);
+                    return (
+                      <tr
+                        key={product.id}
+                        onClick={() => setSelectedProduct(product)}
+                        className="group cursor-pointer hover:bg-emerald-50/40 transition-colors"
+                      >
+                        <td className="px-4 py-3 min-w-[260px]">
+                          <div className="font-bold text-sm text-gray-900 leading-snug">
+                            {product.name}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="inline-flex px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold">
+                            {product.category || "Uncategorized"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <span
+                            className={`inline-flex justify-end min-w-16 px-2.5 py-1 rounded-lg border text-xs font-bold ${getStockBadgeClass(product.currentStock)}`}
+                          >
+                            {product.currentStock}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-sm font-medium text-gray-500">
+                          {product.unit}
+                        </td>
+                        <td className="px-4 py-3 text-right text-sm font-medium text-gray-600">
+                          ₹{product.price || 0}
+                        </td>
+                        <td className="px-4 py-3 text-right text-sm font-bold text-emerald-700">
+                          {inventoryValue > 0 ? `₹${inventoryValue.toFixed(2)}` : "-"}
+                        </td>
+                        {isMainAdmin && (
+                          <td className="px-4 py-3 text-right">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setProductToDelete(product.id);
+                              }}
+                              className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                              title="Delete product"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="md:hidden divide-y divide-gray-100">
+              {filteredProducts.map((product) => {
+                const inventoryValue = getProductInventoryValue(product);
+                return (
+                  <button
+                    key={product.id}
+                    type="button"
+                    onClick={() => setSelectedProduct(product)}
+                    className="w-full text-left p-4 bg-white hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="font-bold text-sm text-gray-900 leading-snug">
+                          {product.name}
+                        </div>
+                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs font-bold text-gray-500">
+                          <span>{product.category || "Uncategorized"}</span>
+                          <span>{product.unit}</span>
+                          <span>₹{product.price || 0}</span>
+                        </div>
+                      </div>
+                      <span
+                        className={`shrink-0 px-2.5 py-1 rounded-lg border text-xs font-bold ${getStockBadgeClass(product.currentStock)}`}
+                      >
+                        {product.currentStock}
+                      </span>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between text-xs font-bold">
+                      <span className="text-gray-500">Inventory value</span>
+                      <span className="text-emerald-700">
+                        {inventoryValue > 0 ? `₹${inventoryValue.toFixed(2)}` : "-"}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {filteredProducts.length === 0 && (
+              <div className="p-8 text-center text-sm font-medium text-gray-500">
+                No products found
               </div>
             )}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {filteredProducts.map((product) => (
-              <div
-                key={product.id}
-                onClick={() => setSelectedProduct(product)}
-                className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all relative overflow-hidden group cursor-pointer"
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600">
-                    <Package className="w-6 h-6" />
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm font-bold text-gray-500 uppercase tracking-wider">
-                      Stock
-                    </div>
-                    <div
-                      className={`text-2xl font-bold ${product.currentStock < 10 ? "text-orange-500" : "text-slate-900"}`}
-                    >
-                      {product.currentStock}{" "}
-                      <span className="text-base text-gray-500 font-medium">
-                        {product.unit}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <h3 className="font-bold text-lg text-gray-900 mb-1">
-                  {product.name}
-                </h3>
-                <div className="flex justify-between items-center text-sm font-medium text-gray-500">
-                  <span>{product.category || "Uncategorized"}</span>
-                  <span>₹{product.price || 0}</span>
-                </div>
-
-                {(() => {
-                  const purchaseLogs = logs.filter(
-                    (l) => l.type === "purchase" && l.productName === product.name
-                  );
-                  const qty = purchaseLogs.reduce((sum, l) => sum + l.quantity, 0);
-                  const cost = purchaseLogs.reduce((sum, l) => sum + (l.totalCost || 0), 0);
-                  const vat = purchaseLogs.reduce((sum, l) => sum + (l.vatAmount || 0), 0);
-                  const rateInclVat = qty > 0 ? (cost + vat) / qty : product.price || 0;
-                  const totalValue = product.currentStock * rateInclVat;
-                  return totalValue > 0 ? (
-                    <div className="mt-2 pt-2 border-t border-gray-100 flex justify-between items-center text-sm">
-                      <span className="font-bold text-gray-500">
-                        Total Value (incl. VAT)
-                      </span>
-                      <span className="font-bold text-emerald-600">
-                        ₹{totalValue.toFixed(2)}
-                      </span>
-                    </div>
-                  ) : null;
-                })()}
-
-                {isMainAdmin && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setProductToDelete(product.id);
-                    }}
-                    className="absolute top-4 right-4 p-2 text-red-500 bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-red-100"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-            ))}
           </div>
         </div>
       )}
