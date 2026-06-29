@@ -1029,7 +1029,7 @@ function AppContent() {
           </div>
         </header>
 
-        <div className="p-4 md:p-5 md:p-8 overflow-auto">
+        <div className="p-4 sm:p-5 md:p-8 overflow-auto">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
@@ -1204,13 +1204,13 @@ function DashboardOverview({
   };
 
   return (
-    <div className="space-y-8 relative">
+    <div className="space-y-6 sm:space-y-8 relative">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-[2.25rem] font-extrabold tracking-tight text-gray-900">
+          <h2 className="text-2xl sm:text-[2.25rem] font-extrabold tracking-tight text-gray-900">
             Welcome back, {profile?.displayName.split(" ")[0]}!
           </h2>
-          <p className="text-gray-500 mt-1">
+          <p className="text-sm sm:text-base text-gray-500 mt-1">
             Here's what's happening across campus today.
           </p>
         </div>
@@ -1288,7 +1288,7 @@ function DashboardOverview({
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 relative z-10 w-full mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 relative z-10 w-full mb-4">
         {[
           {
             label: "Total Students",
@@ -1328,16 +1328,16 @@ function DashboardOverview({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.1, duration: 0.4, ease: "easeOut" }}
-            className="group relative overflow-hidden bg-white/70 backdrop-blur-2xl p-5 md:p-8 rounded-3xl md:rounded-[2rem] border border-white/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] transition-all hover:-translate-y-1 cursor-default"
+            className="group relative overflow-hidden bg-white/70 backdrop-blur-2xl p-4 sm:p-5 md:p-8 rounded-2xl sm:rounded-3xl md:rounded-[2rem] border border-white/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] transition-all hover:-translate-y-1 cursor-default"
           >
             <div
               className={`absolute -right-4 -top-4 w-32 h-32 bg-gradient-to-br ${stat.color} rounded-full blur-[40px] opacity-20 group-hover:opacity-30 transition-opacity`}
             ></div>
-            <div className="relative z-10 flex items-center justify-between mb-6">
+            <div className="relative z-10 flex items-center justify-between mb-4 sm:mb-6">
               <div
-                className={`bg-gradient-to-br ${stat.color} p-4 rounded-2xl text-white shadow-lg`}
+                className={`bg-gradient-to-br ${stat.color} p-3 sm:p-4 rounded-2xl text-white shadow-lg`}
               >
-                <stat.icon className="w-6 h-6" />
+                <stat.icon className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
               <span
                 className={`text-xs font-bold px-3 py-1.5 rounded-full ${stat.bg} border border-white/60 text-gray-600 shadow-sm`}
@@ -1349,7 +1349,7 @@ function DashboardOverview({
               <p className="text-gray-500 text-xs font-bold mb-1 uppercase tracking-wider">
                 {stat.label}
               </p>
-              <h3 className="text-[2.25rem] font-extrabold tracking-tight text-gray-900 leading-none">
+              <h3 className="text-2xl sm:text-[2.25rem] font-extrabold tracking-tight text-gray-900 leading-none">
                 {stat.value}
               </h3>
             </div>
@@ -1358,8 +1358,8 @@ function DashboardOverview({
       </div>
 
       {/* Visual Dashboards */}
-      <div className="bg-white/70 backdrop-blur-xl p-5 md:p-8 rounded-3xl md:rounded-[2rem] border border-white/60 shadow-2xl shadow-gray-200/50">
-        <h3 className="text-[1.35rem] font-extrabold tracking-tight text-gray-900 mb-6">
+      <div className="bg-white/70 backdrop-blur-xl p-4 sm:p-5 md:p-8 rounded-2xl sm:rounded-3xl md:rounded-[2rem] border border-white/60 shadow-2xl shadow-gray-200/50">
+        <h3 className="text-lg sm:text-[1.35rem] font-extrabold tracking-tight text-gray-900 mb-4 sm:mb-6">
           System Overview
         </h3>
         <div className="h-[300px]">
