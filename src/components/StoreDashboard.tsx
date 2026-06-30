@@ -12,6 +12,7 @@ import {
   Upload,
   PackageX,
   FileText,
+  Pencil,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { db } from "../firebase";
@@ -119,6 +120,23 @@ export default function StoreDashboard({
 
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
   const [logToDelete, setLogToDelete] = useState<StorePurchase | null>(null);
+  const [editingLog, setEditingLog] = useState<StorePurchase | null>(null);
+  const [editLogForm, setEditLogForm] = useState<{
+    productName: string;
+    quantity: number;
+    costPrice?: number;
+    supplier?: string;
+    category: StoreCategory;
+    purchaseDate: string;
+  }>({
+    productName: "",
+    quantity: 0,
+    costPrice: 0,
+    supplier: "",
+    category: "Store",
+    purchaseDate: new Date().toISOString().split("T")[0],
+  });
+  const [billNumberToDelete, setBillNumberToDelete] = useState<string | null>(null);
   const [unusedToDelete, setUnusedToDelete] = useState<StoreUnusedItem | null>(
     null,
   );
@@ -241,7 +259,7 @@ export default function StoreDashboard({
   const handleDeleteLog = async () => {
     if (!logToDelete) return;
     const canDelete =
-      logToDelete.type === "out" ? isAdmin : isMainAdmin;
+      logToDelete.type === "purchase" ? isMainAdmin : isAdmin;
     if (!canDelete) return;
     try {
       await deleteDoc(doc(db, "store_purchases", logToDelete.id));
@@ -258,6 +276,84 @@ export default function StoreDashboard({
       }
 
       setLogToDelete(null);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, "store_purchases");
+    }
+  };
+
+  const handleStartEditLog = (log: StorePurchase) => {
+    setEditLogForm({
+      productName: log.productName,
+      quantity: log.quantity,
+      costPrice: log.costPrice || 0,
+      supplier: log.supplier || "",
+      category: log.category,
+      purchaseDate: new Date(log.purchaseDate).toISOString().split("T")[0],
+    });
+    setEditingLog(log);
+  };
+
+  const handleUpdateLog = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isAdmin || !editingLog) return;
+    try {
+      await updateDoc(doc(db, "store_purchases", editingLog.id), {
+        category: editLogForm.category,
+        productName: editLogForm.productName,
+        quantity: editLogForm.quantity,
+        costPrice: editLogForm.costPrice || 0,
+        totalCost: editLogForm.quantity * (editLogForm.costPrice || 0),
+        supplier: editLogForm.supplier || "",
+        purchaseDate: new Date(editLogForm.purchaseDate).toISOString(),
+      });
+
+      const existingProduct = products.find(
+        (p) => p.name.toLowerCase() === editLogForm.productName.toLowerCase()
+      );
+      if (existingProduct) {
+        const oldDelta =
+          editingLog.type !== "out" ? editingLog.quantity : -editingLog.quantity;
+        const newDelta =
+          editingLog.type !== "out" ? editLogForm.quantity : -editLogForm.quantity;
+        await updateDoc(doc(db, "store_products", existingProduct.id), {
+          currentStock: increment(newDelta - oldDelta),
+        });
+      }
+
+      setEditingLog(null);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, "store_purchases");
+    }
+  };
+
+  const handleDeleteInvoice = async () => {
+    if (!isAdmin || !billNumberToDelete) return;
+    try {
+      const invoiceLogs = logs.filter(
+        (l) => l.type === "purchase" && l.billNumber === billNumberToDelete
+      );
+      await Promise.all(
+        invoiceLogs.map((l) => deleteDoc(doc(db, "store_purchases", l.id)))
+      );
+
+      const stockDeltas = new Map<string, number>();
+      for (const l of invoiceLogs) {
+        const key = l.productName.toLowerCase();
+        stockDeltas.set(key, (stockDeltas.get(key) || 0) + l.quantity);
+      }
+      await Promise.all(
+        Array.from(stockDeltas.entries()).map(([nameLower, qty]) => {
+          const existingProduct = products.find(
+            (p) => p.name.toLowerCase() === nameLower
+          );
+          if (!existingProduct) return Promise.resolve();
+          return updateDoc(doc(db, "store_products", existingProduct.id), {
+            currentStock: increment(-qty),
+          });
+        })
+      );
+
+      setBillNumberToDelete(null);
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, "store_purchases");
     }
@@ -908,10 +1004,10 @@ export default function StoreDashboard({
                           {product.unit}
                         </td>
                         <td className="px-4 py-3 text-right text-sm font-medium text-gray-600">
-                          ₹{product.price || 0}
+                          Rs. {product.price || 0}
                         </td>
                         <td className="px-4 py-3 text-right text-sm font-bold text-emerald-700">
-                          {inventoryValue > 0 ? `₹${inventoryValue.toFixed(2)}` : "-"}
+                          {inventoryValue > 0 ? `Rs. ${inventoryValue.toFixed(2)}` : "-"}
                         </td>
                         {isMainAdmin && (
                           <td className="px-4 py-3 text-right">
@@ -952,7 +1048,7 @@ export default function StoreDashboard({
                         <div className="mt-1 flex flex-wrap items-center gap-2 text-xs font-bold text-gray-500">
                           <span>{product.category || "Uncategorized"}</span>
                           <span>{product.unit}</span>
-                          <span>₹{product.price || 0}</span>
+                          <span>Rs. {product.price || 0}</span>
                         </div>
                       </div>
                       <span
@@ -964,7 +1060,7 @@ export default function StoreDashboard({
                     <div className="mt-2 flex items-center justify-between text-xs font-bold">
                       <span className="text-gray-500">Inventory value</span>
                       <span className="text-emerald-700">
-                        {inventoryValue > 0 ? `₹${inventoryValue.toFixed(2)}` : "-"}
+                        {inventoryValue > 0 ? `Rs. ${inventoryValue.toFixed(2)}` : "-"}
                       </span>
                     </div>
                   </button>
@@ -998,13 +1094,13 @@ export default function StoreDashboard({
             </div>
           )}
 
-          <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
-            <div className="p-6 border-b border-gray-100">
-              <h2 className="text-lg font-bold text-gray-900">
+          <div className="bg-white rounded-2xl sm:rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
+            <div className="p-4 sm:p-6 border-b border-gray-100">
+              <h2 className="text-base sm:text-lg font-bold text-gray-900">
                 {activeTab === "in" ? "Items In History" : "Items Out History"}
               </h2>
             </div>
-            <div className="overflow-x-auto">
+            <div className="hidden lg:block overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-gray-50/50">
@@ -1026,8 +1122,7 @@ export default function StoreDashboard({
                     <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider pr-6">
                       Recorded By
                     </th>
-                    {((activeTab === "in" && isMainAdmin) ||
-                      (activeTab === "out" && isAdmin)) && (
+                    {isAdmin && (
                       <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider pr-6">
                         Actions
                       </th>
@@ -1035,10 +1130,7 @@ export default function StoreDashboard({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {logs.filter(log => log.type === activeTab).map((log) => {
-                    const canDeleteThisLog =
-                      activeTab === "in" ? isMainAdmin : isAdmin;
-                    return (
+                  {logs.filter(log => log.type === activeTab).map((log) => (
                     <tr
                       key={log.id}
                       className="hover:bg-gray-50/50 transition-colors"
@@ -1061,29 +1153,91 @@ export default function StoreDashboard({
                       <td className="p-4 pr-6 text-gray-400 text-sm">
                         {log.recordedBy}
                       </td>
-                      {canDeleteThisLog && (
+                      {isAdmin && (
                         <td className="p-4 pr-6">
-                          <button
-                            onClick={() => setLogToDelete(log)}
-                            className="text-gray-400 hover:text-red-600 transition-colors"
-                            title="Delete entry"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => handleStartEditLog(log)}
+                              className="p-2 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                              title="Edit entry"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => setLogToDelete(log)}
+                              className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                              title="Delete entry"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                       )}
                     </tr>
-                    );
-                  })}
+                  ))}
                   {logs.filter(log => log.type === activeTab).length === 0 && (
                     <tr>
-                      <td colSpan={activeTab === "in" ? (isMainAdmin ? 7 : 6) : (isAdmin ? 7 : 6)} className="p-8 text-center text-gray-500">
+                      <td colSpan={isAdmin ? 7 : 6} className="p-8 text-center text-gray-500">
                         No history found
                       </td>
                     </tr>
                   )}
                 </tbody>
               </table>
+            </div>
+
+            <div className="lg:hidden divide-y divide-gray-100">
+              {logs.filter(log => log.type === activeTab).map((log) => (
+                <div key={log.id} className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="font-bold text-sm text-gray-900 leading-snug">
+                        {log.productName}
+                      </div>
+                      <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium text-gray-500">
+                        <span>{new NepaliDate(new Date(log.purchaseDate)).format("YYYY-MM-DD")}</span>
+                        <span>&middot;</span>
+                        <span>{log.category}</span>
+                      </div>
+                    </div>
+                    <span className="shrink-0 px-2.5 py-1 rounded-lg bg-gray-100 text-gray-700 text-xs font-bold">
+                      Qty {log.quantity}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <div className="text-gray-500">
+                      <span className="font-bold">
+                        {activeTab === "in" ? "Returned by" : "Ordered by"}:
+                      </span>{" "}
+                      {log.supplier || "-"}
+                      <span className="ml-2 text-gray-400">by {log.recordedBy}</span>
+                    </div>
+                    {isAdmin && (
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={() => handleStartEditLog(log)}
+                          className="p-2 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                          title="Edit entry"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setLogToDelete(log)}
+                          className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                          title="Delete entry"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {logs.filter(log => log.type === activeTab).length === 0 && (
+                <div className="p-8 text-center text-sm font-medium text-gray-500">
+                  No history found
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1162,13 +1316,13 @@ export default function StoreDashboard({
                         {log.quantity}
                       </td>
                       <td className="p-4 font-medium text-gray-500">
-                        {log.costPrice ? `₹${log.costPrice}` : "-"}
+                        {log.costPrice ? `Rs. ${log.costPrice}` : "-"}
                       </td>
                       <td className="p-4 font-bold text-emerald-600">
-                        {log.totalCost ? `₹${log.totalCost}` : "-"}
+                        {log.totalCost ? `Rs. ${log.totalCost}` : "-"}
                       </td>
                       <td className="p-4 font-medium text-gray-500">
-                        {log.vatAmount ? `₹${log.vatAmount.toFixed(2)} (${log.vatRate}%)` : "-"}
+                        {log.vatAmount ? `Rs. ${log.vatAmount.toFixed(2)} (${log.vatRate}%)` : "-"}
                       </td>
                       <td className="p-4 font-medium text-gray-500">
                         {log.supplier || "-"}
@@ -1205,9 +1359,9 @@ export default function StoreDashboard({
 
       {activeTab === "invoices" && (
         <div className="space-y-6">
-          <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
-            <div className="p-6 border-b border-gray-100 flex items-center justify-between gap-4">
-              <h2 className="text-lg font-bold text-gray-900">Invoices</h2>
+          <div className="bg-white rounded-2xl sm:rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
+            <div className="p-4 sm:p-6 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-base sm:text-lg font-bold text-gray-900">Invoices</h2>
               <button
                 onClick={() => setIsInvoiceExportModalOpen(true)}
                 className="px-4 py-2 bg-slate-900 text-white rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-slate-800 transition-all"
@@ -1215,7 +1369,7 @@ export default function StoreDashboard({
                 <Download className="w-4 h-4" /> Export
               </button>
             </div>
-            <div className="overflow-x-auto">
+            <div className="hidden lg:block overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-gray-50/50">
@@ -1237,6 +1391,11 @@ export default function StoreDashboard({
                     <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider pr-6">
                       Grand Total
                     </th>
+                    {isAdmin && (
+                      <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider pr-6">
+                        Actions
+                      </th>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -1271,23 +1430,95 @@ export default function StoreDashboard({
                           {items.length}
                         </td>
                         <td className="p-4 font-medium text-gray-500">
-                          {vatTotal > 0 ? `₹${vatTotal.toFixed(2)}` : "-"}
+                          {vatTotal > 0 ? `Rs. ${vatTotal.toFixed(2)}` : "-"}
                         </td>
                         <td className="p-4 pr-6 font-bold text-emerald-600">
-                          ₹{(subtotal + vatTotal).toFixed(2)}
+                          Rs. {(subtotal + vatTotal).toFixed(2)}
                         </td>
+                        {isAdmin && (
+                          <td className="p-4 pr-6">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setBillNumberToDelete(billNumber);
+                              }}
+                              className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                              title="Delete invoice"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     );
                   })}
                   {logs.filter((log) => log.type === "purchase" && log.billNumber).length === 0 && (
                     <tr>
-                      <td colSpan={6} className="p-8 text-center text-gray-500">
+                      <td colSpan={isAdmin ? 7 : 6} className="p-8 text-center text-gray-500">
                         No invoices found
                       </td>
                     </tr>
                   )}
                 </tbody>
               </table>
+            </div>
+
+            <div className="lg:hidden divide-y divide-gray-100">
+              {Object.entries(
+                logs
+                  .filter((log) => log.type === "purchase" && log.billNumber)
+                  .reduce<Record<string, StorePurchase[]>>((acc, log) => {
+                    const key = log.billNumber as string;
+                    acc[key] = acc[key] ? [...acc[key], log] : [log];
+                    return acc;
+                  }, {})
+              ).map(([billNumber, items]) => {
+                const subtotal = items.reduce((sum, l) => sum + (l.totalCost || 0), 0);
+                const vatTotal = items.reduce((sum, l) => sum + (l.vatAmount || 0), 0);
+                const first = items[0];
+                return (
+                  <div
+                    key={billNumber}
+                    onClick={() => setSelectedInvoiceBillNumber(billNumber)}
+                    className="p-4 cursor-pointer hover:bg-gray-50/50 transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="font-bold text-sm text-indigo-600">{billNumber}</div>
+                        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium text-gray-500">
+                          <span>{new NepaliDate(new Date(first.purchaseDate)).format("YYYY-MM-DD")}</span>
+                          <span>&middot;</span>
+                          <span>{first.supplier || "-"}</span>
+                          <span>&middot;</span>
+                          <span>{items.length} items</span>
+                        </div>
+                      </div>
+                      <span className="shrink-0 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-bold">
+                        Rs. {(subtotal + vatTotal).toFixed(2)}
+                      </span>
+                    </div>
+                    {isAdmin && (
+                      <div className="mt-2 flex justify-end">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setBillNumberToDelete(billNumber);
+                          }}
+                          className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                          title="Delete invoice"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {logs.filter((log) => log.type === "purchase" && log.billNumber).length === 0 && (
+                <div className="p-8 text-center text-sm font-medium text-gray-500">
+                  No invoices found
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1481,7 +1712,7 @@ export default function StoreDashboard({
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1">
-                    Selling Price (₹)
+                    Selling Price (Rs.)
                   </label>
                   <input
                     type="number"
@@ -1575,6 +1806,44 @@ export default function StoreDashboard({
                 </button>
                 <button
                   onClick={handleDeleteLog}
+                  className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-all"
+                >
+                  Delete
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Invoice Confirmation Modal */}
+      <AnimatePresence>
+        {billNumberToDelete && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white rounded-2xl sm:rounded-[2rem] p-5 sm:p-8 w-full max-w-sm shadow-2xl text-center"
+            >
+              <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertCircle className="w-8 h-8" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">
+                Delete Invoice {billNumberToDelete}?
+              </h3>
+              <p className="text-gray-500 mb-8">
+                This will remove all line items on this invoice and reverse their stock adjustments. This action cannot be undone.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setBillNumberToDelete(null)}
+                  className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteInvoice}
                   className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-all"
                 >
                   Delete
@@ -1792,7 +2061,7 @@ export default function StoreDashboard({
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-1">
-                      Cost Price (₹/unit) <span className="text-gray-400 font-normal">(Optional)</span>
+                      Cost Price (Rs./unit) <span className="text-gray-400 font-normal">(Optional)</span>
                     </label>
                     <input
                       type="number"
@@ -1852,7 +2121,7 @@ export default function StoreDashboard({
                       Total Amount:
                     </span>
                     <span className="font-bold text-indigo-700 text-xl">
-                      ₹
+                      Rs. 
                       {(newLog.quantity * newLog.costPrice).toFixed(
                         2,
                       )}
@@ -1867,6 +2136,178 @@ export default function StoreDashboard({
                       : "bg-rose-500 hover:bg-rose-600"
                   }`}>
                     <ShoppingCart className="w-5 h-5" /> Record {isAddingLog === "in" ? "Items In" : "Items Out"}
+                  </div>
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+      {/* Edit Log Entry Modal */}
+      <AnimatePresence>
+        {editingLog && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white rounded-2xl sm:rounded-[2rem] p-5 sm:p-8 w-full max-w-md shadow-2xl relative"
+            >
+              <button
+                onClick={() => setEditingLog(null)}
+                className="absolute top-6 right-6 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+
+              <h2 className="text-2xl font-bold text-gray-900 mb-6 font-sans tracking-tight">
+                Edit {editingLog.type === "in" ? "Items In" : editingLog.type === "out" ? "Items Out" : "Purchase"} Entry
+              </h2>
+
+              <form
+                onSubmit={handleUpdateLog}
+                className="space-y-4 text-left"
+              >
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">
+                    Entry Category
+                  </label>
+                  <select
+                    required
+                    value={editLogForm.category}
+                    onChange={(e) =>
+                      setEditLogForm({
+                        ...editLogForm,
+                        category: e.target.value as StoreCategory,
+                      })
+                    }
+                    className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium cursor-pointer"
+                  >
+                    {STORE_CATEGORIES.map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">
+                    Product Name
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editLogForm.productName}
+                    onChange={(e) =>
+                      setEditLogForm({
+                        ...editLogForm,
+                        productName: e.target.value,
+                      })
+                    }
+                    className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium"
+                    placeholder="Enter product name..."
+                    list="edit-product-list"
+                  />
+                  <datalist id="edit-product-list">
+                    {products.map((p) => (
+                      <option key={p.id} value={p.name} />
+                    ))}
+                  </datalist>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">
+                      Quantity
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      required
+                      value={editLogForm.quantity || ""}
+                      onChange={(e) =>
+                        setEditLogForm({
+                          ...editLogForm,
+                          quantity: Number(e.target.value),
+                        })
+                      }
+                      className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-left text-gray-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">
+                      Cost Price (Rs./unit) <span className="text-gray-400 font-normal">(Optional)</span>
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={editLogForm.costPrice || ""}
+                      onChange={(e) =>
+                        setEditLogForm({
+                          ...editLogForm,
+                          costPrice: Number(e.target.value),
+                        })
+                      }
+                      className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-left"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">
+                    Entry Date
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={editLogForm.purchaseDate}
+                    onChange={(e) =>
+                      setEditLogForm({
+                        ...editLogForm,
+                        purchaseDate: e.target.value,
+                      })
+                    }
+                    className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">
+                    {editingLog.type === "in" ? "Returned By" : "Ordered By"} <span className="text-gray-400 font-normal">(Optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={editLogForm.supplier}
+                    onChange={(e) =>
+                      setEditLogForm({
+                        ...editLogForm,
+                        supplier: e.target.value,
+                      })
+                    }
+                    className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium"
+                    placeholder={editingLog.type === "in" ? "e.g. John Doe" : "e.g. Class Teacher"}
+                  />
+                </div>
+
+                {editLogForm.quantity > 0 && editLogForm.costPrice !== undefined && editLogForm.costPrice > 0 && (
+                  <div className="bg-indigo-50 p-4 rounded-xl flex justify-between items-center mt-2">
+                    <span className="font-bold text-indigo-700 text-sm">
+                      Total Amount:
+                    </span>
+                    <span className="font-bold text-indigo-700 text-xl">
+                      Rs. 
+                      {(editLogForm.quantity * editLogForm.costPrice).toFixed(
+                        2,
+                      )}
+                    </span>
+                  </div>
+                )}
+
+                <button type="submit" className="w-full pt-2">
+                  <div className="w-full py-4 text-white rounded-xl font-bold transition-all text-center flex items-center justify-center gap-2 bg-indigo-500 hover:bg-indigo-600">
+                    <Pencil className="w-5 h-5" /> Update Entry
                   </div>
                 </button>
               </form>
@@ -2048,8 +2489,8 @@ export default function StoreDashboard({
                         {itemTotal > 0 && (
                           <div className="text-right text-xs font-bold text-indigo-600">
                             {item.vatEnabled
-                              ? `Total incl. VAT (${newPurchase.vatRate}%): ₹${(itemTotal + itemVat).toFixed(2)}`
-                              : `Total: ₹${itemTotal.toFixed(2)}`}
+                              ? `Total incl. VAT (${newPurchase.vatRate}%): Rs. ${(itemTotal + itemVat).toFixed(2)}`
+                              : `Total: Rs. ${itemTotal.toFixed(2)}`}
                           </div>
                         )}
                       </div>
@@ -2102,20 +2543,20 @@ export default function StoreDashboard({
                     <div className="bg-indigo-50 p-4 rounded-xl space-y-1 mt-2">
                       <div className="flex justify-between items-center">
                         <span className="font-bold text-indigo-700 text-sm">Subtotal:</span>
-                        <span className="font-bold text-indigo-700">₹{subtotal.toFixed(2)}</span>
+                        <span className="font-bold text-indigo-700">Rs. {subtotal.toFixed(2)}</span>
                       </div>
                       {vatAmount > 0 && (
                         <div className="flex justify-between items-center">
                           <span className="font-bold text-indigo-700 text-sm">
                             VAT ({newPurchase.vatRate}%):
                           </span>
-                          <span className="font-bold text-indigo-700">₹{vatAmount.toFixed(2)}</span>
+                          <span className="font-bold text-indigo-700">Rs. {vatAmount.toFixed(2)}</span>
                         </div>
                       )}
                       <div className="flex justify-between items-center">
                         <span className="font-bold text-indigo-700 text-sm">Grand Total:</span>
                         <span className="font-bold text-indigo-700 text-xl">
-                          ₹{grandTotal.toFixed(2)}
+                          Rs. {grandTotal.toFixed(2)}
                         </span>
                       </div>
                     </div>
@@ -2163,7 +2604,7 @@ export default function StoreDashboard({
                     <span>•</span>
                     <span>Current Stock: <strong className="text-gray-900">{selectedProduct.currentStock} {selectedProduct.unit}</strong></span>
                     <span>•</span>
-                    <span>Price: <strong className="text-gray-900">₹{selectedProduct.price || 0}</strong></span>
+                    <span>Price: <strong className="text-gray-900">Rs. {selectedProduct.price || 0}</strong></span>
                   </div>
                 </div>
               </div>
@@ -2425,21 +2866,21 @@ export default function StoreDashboard({
                             <tr key={item.id}>
                               <td className="p-3 font-medium text-gray-900">{item.productName}</td>
                               <td className="p-3 text-gray-500">{item.quantity}</td>
-                              <td className="p-3 text-gray-500">{item.costPrice ? `₹${item.costPrice}` : "-"}</td>
-                              <td className="p-3 font-bold text-emerald-600">{item.totalCost ? `₹${item.totalCost}` : "-"}</td>
-                              <td className="p-3 text-gray-500">{item.vatAmount ? `₹${item.vatAmount.toFixed(2)}` : "-"}</td>
+                              <td className="p-3 text-gray-500">{item.costPrice ? `Rs. ${item.costPrice}` : "-"}</td>
+                              <td className="p-3 font-bold text-emerald-600">{item.totalCost ? `Rs. ${item.totalCost}` : "-"}</td>
+                              <td className="p-3 text-gray-500">{item.vatAmount ? `Rs. ${item.vatAmount.toFixed(2)}` : "-"}</td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
                     <div className="mt-6 space-y-1 text-right">
-                      <p className="text-gray-500 font-medium">Subtotal: ₹{subtotal.toFixed(2)}</p>
+                      <p className="text-gray-500 font-medium">Subtotal: Rs. {subtotal.toFixed(2)}</p>
                       {vatTotal > 0 && (
-                        <p className="text-gray-500 font-medium">VAT: ₹{vatTotal.toFixed(2)}</p>
+                        <p className="text-gray-500 font-medium">VAT: Rs. {vatTotal.toFixed(2)}</p>
                       )}
                       <p className="text-gray-900 font-bold text-lg">
-                        Grand Total: ₹{(subtotal + vatTotal).toFixed(2)}
+                        Grand Total: Rs. {(subtotal + vatTotal).toFixed(2)}
                       </p>
                     </div>
                   </>
