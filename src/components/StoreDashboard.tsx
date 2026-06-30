@@ -1004,10 +1004,10 @@ export default function StoreDashboard({
                           {product.unit}
                         </td>
                         <td className="px-4 py-3 text-right text-sm font-medium text-gray-600">
-                          ₹{product.price || 0}
+                          Rs. {product.price || 0}
                         </td>
                         <td className="px-4 py-3 text-right text-sm font-bold text-emerald-700">
-                          {inventoryValue > 0 ? `₹${inventoryValue.toFixed(2)}` : "-"}
+                          {inventoryValue > 0 ? `Rs. ${inventoryValue.toFixed(2)}` : "-"}
                         </td>
                         {isMainAdmin && (
                           <td className="px-4 py-3 text-right">
@@ -1048,7 +1048,7 @@ export default function StoreDashboard({
                         <div className="mt-1 flex flex-wrap items-center gap-2 text-xs font-bold text-gray-500">
                           <span>{product.category || "Uncategorized"}</span>
                           <span>{product.unit}</span>
-                          <span>₹{product.price || 0}</span>
+                          <span>Rs. {product.price || 0}</span>
                         </div>
                       </div>
                       <span
@@ -1060,7 +1060,7 @@ export default function StoreDashboard({
                     <div className="mt-2 flex items-center justify-between text-xs font-bold">
                       <span className="text-gray-500">Inventory value</span>
                       <span className="text-emerald-700">
-                        {inventoryValue > 0 ? `₹${inventoryValue.toFixed(2)}` : "-"}
+                        {inventoryValue > 0 ? `Rs. ${inventoryValue.toFixed(2)}` : "-"}
                       </span>
                     </div>
                   </button>
@@ -1316,13 +1316,13 @@ export default function StoreDashboard({
                         {log.quantity}
                       </td>
                       <td className="p-4 font-medium text-gray-500">
-                        {log.costPrice ? `₹${log.costPrice}` : "-"}
+                        {log.costPrice ? `Rs. ${log.costPrice}` : "-"}
                       </td>
                       <td className="p-4 font-bold text-emerald-600">
-                        {log.totalCost ? `₹${log.totalCost}` : "-"}
+                        {log.totalCost ? `Rs. ${log.totalCost}` : "-"}
                       </td>
                       <td className="p-4 font-medium text-gray-500">
-                        {log.vatAmount ? `₹${log.vatAmount.toFixed(2)} (${log.vatRate}%)` : "-"}
+                        {log.vatAmount ? `Rs. ${log.vatAmount.toFixed(2)} (${log.vatRate}%)` : "-"}
                       </td>
                       <td className="p-4 font-medium text-gray-500">
                         {log.supplier || "-"}
@@ -1430,10 +1430,10 @@ export default function StoreDashboard({
                           {items.length}
                         </td>
                         <td className="p-4 font-medium text-gray-500">
-                          {vatTotal > 0 ? `₹${vatTotal.toFixed(2)}` : "-"}
+                          {vatTotal > 0 ? `Rs. ${vatTotal.toFixed(2)}` : "-"}
                         </td>
                         <td className="p-4 pr-6 font-bold text-emerald-600">
-                          ₹{(subtotal + vatTotal).toFixed(2)}
+                          Rs. {(subtotal + vatTotal).toFixed(2)}
                         </td>
                         {isAdmin && (
                           <td className="p-4 pr-6">
@@ -1494,7 +1494,7 @@ export default function StoreDashboard({
                         </div>
                       </div>
                       <span className="shrink-0 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-bold">
-                        ₹{(subtotal + vatTotal).toFixed(2)}
+                        Rs. {(subtotal + vatTotal).toFixed(2)}
                       </span>
                     </div>
                     {isAdmin && (
@@ -1712,7 +1712,7 @@ export default function StoreDashboard({
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1">
-                    Selling Price (₹)
+                    Selling Price (Rs.)
                   </label>
                   <input
                     type="number"
@@ -2061,7 +2061,7 @@ export default function StoreDashboard({
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-1">
-                      Cost Price (₹/unit) <span className="text-gray-400 font-normal">(Optional)</span>
+                      Cost Price (Rs./unit) <span className="text-gray-400 font-normal">(Optional)</span>
                     </label>
                     <input
                       type="number"
@@ -2121,7 +2121,7 @@ export default function StoreDashboard({
                       Total Amount:
                     </span>
                     <span className="font-bold text-indigo-700 text-xl">
-                      ₹
+                      Rs. 
                       {(newLog.quantity * newLog.costPrice).toFixed(
                         2,
                       )}
@@ -2237,7 +2237,7 @@ export default function StoreDashboard({
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-1">
-                      Cost Price (₹/unit) <span className="text-gray-400 font-normal">(Optional)</span>
+                      Cost Price (Rs./unit) <span className="text-gray-400 font-normal">(Optional)</span>
                     </label>
                     <input
                       type="number"
@@ -2297,7 +2297,7 @@ export default function StoreDashboard({
                       Total Amount:
                     </span>
                     <span className="font-bold text-indigo-700 text-xl">
-                      ₹
+                      Rs. 
                       {(editLogForm.quantity * editLogForm.costPrice).toFixed(
                         2,
                       )}
@@ -2489,8 +2489,8 @@ export default function StoreDashboard({
                         {itemTotal > 0 && (
                           <div className="text-right text-xs font-bold text-indigo-600">
                             {item.vatEnabled
-                              ? `Total incl. VAT (${newPurchase.vatRate}%): ₹${(itemTotal + itemVat).toFixed(2)}`
-                              : `Total: ₹${itemTotal.toFixed(2)}`}
+                              ? `Total incl. VAT (${newPurchase.vatRate}%): Rs. ${(itemTotal + itemVat).toFixed(2)}`
+                              : `Total: Rs. ${itemTotal.toFixed(2)}`}
                           </div>
                         )}
                       </div>
@@ -2543,20 +2543,20 @@ export default function StoreDashboard({
                     <div className="bg-indigo-50 p-4 rounded-xl space-y-1 mt-2">
                       <div className="flex justify-between items-center">
                         <span className="font-bold text-indigo-700 text-sm">Subtotal:</span>
-                        <span className="font-bold text-indigo-700">₹{subtotal.toFixed(2)}</span>
+                        <span className="font-bold text-indigo-700">Rs. {subtotal.toFixed(2)}</span>
                       </div>
                       {vatAmount > 0 && (
                         <div className="flex justify-between items-center">
                           <span className="font-bold text-indigo-700 text-sm">
                             VAT ({newPurchase.vatRate}%):
                           </span>
-                          <span className="font-bold text-indigo-700">₹{vatAmount.toFixed(2)}</span>
+                          <span className="font-bold text-indigo-700">Rs. {vatAmount.toFixed(2)}</span>
                         </div>
                       )}
                       <div className="flex justify-between items-center">
                         <span className="font-bold text-indigo-700 text-sm">Grand Total:</span>
                         <span className="font-bold text-indigo-700 text-xl">
-                          ₹{grandTotal.toFixed(2)}
+                          Rs. {grandTotal.toFixed(2)}
                         </span>
                       </div>
                     </div>
@@ -2604,7 +2604,7 @@ export default function StoreDashboard({
                     <span>•</span>
                     <span>Current Stock: <strong className="text-gray-900">{selectedProduct.currentStock} {selectedProduct.unit}</strong></span>
                     <span>•</span>
-                    <span>Price: <strong className="text-gray-900">₹{selectedProduct.price || 0}</strong></span>
+                    <span>Price: <strong className="text-gray-900">Rs. {selectedProduct.price || 0}</strong></span>
                   </div>
                 </div>
               </div>
@@ -2866,21 +2866,21 @@ export default function StoreDashboard({
                             <tr key={item.id}>
                               <td className="p-3 font-medium text-gray-900">{item.productName}</td>
                               <td className="p-3 text-gray-500">{item.quantity}</td>
-                              <td className="p-3 text-gray-500">{item.costPrice ? `₹${item.costPrice}` : "-"}</td>
-                              <td className="p-3 font-bold text-emerald-600">{item.totalCost ? `₹${item.totalCost}` : "-"}</td>
-                              <td className="p-3 text-gray-500">{item.vatAmount ? `₹${item.vatAmount.toFixed(2)}` : "-"}</td>
+                              <td className="p-3 text-gray-500">{item.costPrice ? `Rs. ${item.costPrice}` : "-"}</td>
+                              <td className="p-3 font-bold text-emerald-600">{item.totalCost ? `Rs. ${item.totalCost}` : "-"}</td>
+                              <td className="p-3 text-gray-500">{item.vatAmount ? `Rs. ${item.vatAmount.toFixed(2)}` : "-"}</td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
                     <div className="mt-6 space-y-1 text-right">
-                      <p className="text-gray-500 font-medium">Subtotal: ₹{subtotal.toFixed(2)}</p>
+                      <p className="text-gray-500 font-medium">Subtotal: Rs. {subtotal.toFixed(2)}</p>
                       {vatTotal > 0 && (
-                        <p className="text-gray-500 font-medium">VAT: ₹{vatTotal.toFixed(2)}</p>
+                        <p className="text-gray-500 font-medium">VAT: Rs. {vatTotal.toFixed(2)}</p>
                       )}
                       <p className="text-gray-900 font-bold text-lg">
-                        Grand Total: ₹{(subtotal + vatTotal).toFixed(2)}
+                        Grand Total: Rs. {(subtotal + vatTotal).toFixed(2)}
                       </p>
                     </div>
                   </>
