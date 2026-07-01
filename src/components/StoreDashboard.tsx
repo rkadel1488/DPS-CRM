@@ -615,14 +615,14 @@ export default function StoreDashboard({
       }
 
       setIsAddingLog(false);
-      setNewLog({
+      setNewLog((prev) => ({
         productName: "",
         quantity: 0,
         costPrice: 0,
         supplier: "",
-        category: "Store",
-        purchaseDate: new Date().toISOString().split("T")[0],
-      });
+        category: prev.category,
+        purchaseDate: prev.purchaseDate,
+      }));
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, "store_purchases");
     }
@@ -710,14 +710,14 @@ export default function StoreDashboard({
       }
 
       setIsAddingPurchase(false);
-      setNewPurchase({
+      setNewPurchase((prev) => ({
         billNumber: "",
         supplier: "",
-        category: "Store",
-        purchaseDate: new Date().toISOString().split("T")[0],
+        category: prev.category,
+        purchaseDate: prev.purchaseDate,
         items: [{ productName: "", quantity: 0, costPrice: 0, vatEnabled: false }],
-        vatRate: 13,
-      });
+        vatRate: prev.vatRate,
+      }));
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, "store_purchases");
     }
