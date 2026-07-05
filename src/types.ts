@@ -93,7 +93,7 @@ export type StoreCategory = (typeof STORE_CATEGORIES)[number];
 
 export interface StorePurchase {
   id: string;
-  type: "in" | "out" | "purchase";
+  type: "in" | "out" | "purchase" | "transfer";
   category: StoreCategory;
   productName: string;
   quantity: number;
@@ -105,6 +105,7 @@ export interface StorePurchase {
   vatAmount?: number;
   purchaseDate: any;
   recordedBy: string;
+  toCategory?: StoreCategory;
 }
 
 export interface StoreUnusedItem {
