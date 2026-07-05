@@ -13,6 +13,7 @@ import {
   PackageX,
   FileText,
   Pencil,
+  ArrowLeftRight,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { db } from "../firebase";
@@ -147,6 +148,11 @@ export default function StoreDashboard({
     category: "",
     unit: "pcs",
     price: 0,
+  });
+  const [transferProduct, setTransferProduct] = useState<StoreProduct | null>(null);
+  const [transferForm, setTransferForm] = useState<{ toCategory: StoreCategory; quantity: number }>({
+    toCategory: "Canteen",
+    quantity: 1,
   });
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [exportCategory, setExportCategory] = useState("All");
@@ -284,6 +290,54 @@ export default function StoreDashboard({
         price: editProductForm.price,
       });
       setEditingProduct(null);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, "store_products");
+    }
+  };
+
+  const handleTransfer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isAdmin || !transferProduct) return;
+    const { toCategory, quantity } = transferForm;
+    if (quantity <= 0 || quantity > transferProduct.currentStock) return;
+    try {
+      // Decrease source stock
+      await updateDoc(doc(db, "store_products", transferProduct.id), {
+        currentStock: increment(-quantity),
+      });
+
+      // Find or create destination product (same name, different category)
+      const destProduct = products.find(
+        (p) =>
+          p.name.toLowerCase() === transferProduct.name.toLowerCase() &&
+          p.category === toCategory
+      );
+      if (destProduct) {
+        await updateDoc(doc(db, "store_products", destProduct.id), {
+          currentStock: increment(quantity),
+        });
+      } else {
+        await addDoc(collection(db, "store_products"), {
+          name: transferProduct.name,
+          category: toCategory,
+          unit: transferProduct.unit,
+          price: transferProduct.price,
+          currentStock: quantity,
+        });
+      }
+
+      // Log the transfer
+      await addDoc(collection(db, "store_purchases"), {
+        type: "transfer",
+        category: transferProduct.category as StoreCategory,
+        toCategory,
+        productName: transferProduct.name,
+        quantity,
+        purchaseDate: new Date().toISOString(),
+        recordedBy: profile?.displayName || "Admin",
+      });
+
+      setTransferProduct(null);
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, "store_products");
     }
@@ -1055,6 +1109,20 @@ export default function StoreDashboard({
                               >
                                 <Pencil className="w-4 h-4" />
                               </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setTransferProduct(product);
+                                  setTransferForm({
+                                    toCategory: STORE_CATEGORIES.find((c) => c !== product.category) || "Canteen",
+                                    quantity: 1,
+                                  });
+                                }}
+                                className="p-2 rounded-lg text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
+                                title="Transfer stock"
+                              >
+                                <ArrowLeftRight className="w-4 h-4" />
+                              </button>
                               {isMainAdmin && (
                                 <button
                                   onClick={(e) => {
@@ -1112,12 +1180,24 @@ export default function StoreDashboard({
                       </div>
                     </button>
                     {isAdmin && (
-                      <div className="mt-3 flex items-center gap-2">
+                      <div className="mt-3 flex items-center gap-2 flex-wrap">
                         <button
                           onClick={() => handleStartEditProduct(product)}
                           className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors"
                         >
                           <Pencil className="w-3.5 h-3.5" /> Edit
+                        </button>
+                        <button
+                          onClick={() => {
+                            setTransferProduct(product);
+                            setTransferForm({
+                              toCategory: STORE_CATEGORIES.find((c) => c !== product.category) || "Canteen",
+                              quantity: 1,
+                            });
+                          }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-emerald-600 bg-emerald-50 rounded-lg hover:bg-emerald-100 transition-colors"
+                        >
+                          <ArrowLeftRight className="w-3.5 h-3.5" /> Transfer
                         </button>
                         {isMainAdmin && (
                           <button
@@ -2039,6 +2119,107 @@ export default function StoreDashboard({
                   Remove
                 </button>
               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Transfer Stock Modal */}
+      <AnimatePresence>
+        {transferProduct && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white rounded-2xl sm:rounded-[2rem] p-5 sm:p-8 w-full max-w-md shadow-2xl relative"
+            >
+              <button
+                onClick={() => setTransferProduct(null)}
+                className="absolute top-6 right-6 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
+                  <ArrowLeftRight className="w-5 h-5 text-emerald-600" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900 font-sans tracking-tight">
+                  Transfer Stock
+                </h2>
+              </div>
+
+              <div className="bg-gray-50 rounded-xl p-4 mb-5 text-sm">
+                <div className="font-bold text-gray-900">{transferProduct.name}</div>
+                <div className="text-gray-500 mt-0.5">
+                  From: <span className="font-bold text-gray-700">{transferProduct.category}</span>
+                  &nbsp;·&nbsp;Available: <span className="font-bold text-gray-700">{transferProduct.currentStock} {transferProduct.unit}</span>
+                </div>
+              </div>
+
+              <form onSubmit={handleTransfer} className="space-y-4 text-left">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">
+                    To Category
+                  </label>
+                  <select
+                    required
+                    value={transferForm.toCategory}
+                    onChange={(e) =>
+                      setTransferForm({ ...transferForm, toCategory: e.target.value as StoreCategory })
+                    }
+                    className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-medium cursor-pointer"
+                  >
+                    {STORE_CATEGORIES.filter((c) => c !== transferProduct.category).map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">
+                    Quantity to Transfer
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max={transferProduct.currentStock}
+                    required
+                    value={transferForm.quantity || ""}
+                    onChange={(e) =>
+                      setTransferForm({ ...transferForm, quantity: Number(e.target.value) })
+                    }
+                    className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-medium text-gray-900"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">Max: {transferProduct.currentStock} {transferProduct.unit}</p>
+                </div>
+
+                {transferForm.quantity > 0 && (
+                  <div className="bg-emerald-50 p-4 rounded-xl text-sm">
+                    <div className="flex justify-between text-gray-600">
+                      <span>{transferProduct.category} stock after:</span>
+                      <span className="font-bold text-gray-900">{transferProduct.currentStock - transferForm.quantity} {transferProduct.unit}</span>
+                    </div>
+                    <div className="flex justify-between text-gray-600 mt-1">
+                      <span>{transferForm.toCategory} stock after:</span>
+                      <span className="font-bold text-emerald-700">
+                        {(products.find((p) => p.name.toLowerCase() === transferProduct.name.toLowerCase() && p.category === transferForm.toCategory)?.currentStock || 0) + transferForm.quantity} {transferProduct.unit}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={transferForm.quantity <= 0 || transferForm.quantity > transferProduct.currentStock}
+                  className="w-full pt-2"
+                >
+                  <div className="w-full py-4 bg-emerald-500 text-white rounded-xl font-bold hover:bg-emerald-600 transition-all text-center flex items-center justify-center gap-2 disabled:opacity-50">
+                    <ArrowLeftRight className="w-5 h-5" /> Transfer Stock
+                  </div>
+                </button>
+              </form>
             </motion.div>
           </div>
         )}
