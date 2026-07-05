@@ -141,6 +141,13 @@ export default function StoreDashboard({
     null,
   );
   const [selectedProduct, setSelectedProduct] = useState<StoreProduct | null>(null);
+  const [editingProduct, setEditingProduct] = useState<StoreProduct | null>(null);
+  const [editProductForm, setEditProductForm] = useState({
+    name: "",
+    category: "",
+    unit: "pcs",
+    price: 0,
+  });
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [exportCategory, setExportCategory] = useState("All");
   const [exportDateFrom, setExportDateFrom] = useState(() => {
@@ -253,6 +260,32 @@ export default function StoreDashboard({
       setProductToDelete(null);
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, "store_products");
+    }
+  };
+
+  const handleStartEditProduct = (product: StoreProduct) => {
+    setEditProductForm({
+      name: product.name,
+      category: product.category || "",
+      unit: product.unit || "pcs",
+      price: product.price || 0,
+    });
+    setEditingProduct(product);
+  };
+
+  const handleUpdateProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isAdmin || !editingProduct) return;
+    try {
+      await updateDoc(doc(db, "store_products", editingProduct.id), {
+        name: editProductForm.name,
+        category: editProductForm.category,
+        unit: editProductForm.unit,
+        price: editProductForm.price,
+      });
+      setEditingProduct(null);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, "store_products");
     }
   };
 
@@ -967,7 +1000,7 @@ export default function StoreDashboard({
                     <th className="px-4 py-3 text-[11px] font-bold text-gray-500 uppercase text-right">
                       Value
                     </th>
-                    {isMainAdmin && (
+                    {isAdmin && (
                       <th className="px-4 py-3 text-[11px] font-bold text-gray-500 uppercase text-right">
                         Actions
                       </th>
@@ -1009,18 +1042,32 @@ export default function StoreDashboard({
                         <td className="px-4 py-3 text-right text-sm font-bold text-emerald-700">
                           {inventoryValue > 0 ? `Rs. ${inventoryValue.toFixed(2)}` : "-"}
                         </td>
-                        {isMainAdmin && (
+                        {isAdmin && (
                           <td className="px-4 py-3 text-right">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setProductToDelete(product.id);
-                              }}
-                              className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                              title="Delete product"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            <div className="flex items-center justify-end gap-1">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleStartEditProduct(product);
+                                }}
+                                className="p-2 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                                title="Edit product"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                              {isMainAdmin && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setProductToDelete(product.id);
+                                  }}
+                                  className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                                  title="Delete product"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
                           </td>
                         )}
                       </tr>
@@ -1034,36 +1081,55 @@ export default function StoreDashboard({
               {filteredProducts.map((product) => {
                 const inventoryValue = getProductInventoryValue(product);
                 return (
-                  <button
-                    key={product.id}
-                    type="button"
-                    onClick={() => setSelectedProduct(product)}
-                    className="w-full text-left p-4 bg-white hover:bg-gray-50 transition-colors"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="font-bold text-sm text-gray-900 leading-snug">
-                          {product.name}
+                  <div key={product.id} className="p-4 bg-white">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedProduct(product)}
+                      className="w-full text-left"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="font-bold text-sm text-gray-900 leading-snug">
+                            {product.name}
+                          </div>
+                          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs font-bold text-gray-500">
+                            <span>{product.category || "Uncategorized"}</span>
+                            <span>{product.unit}</span>
+                            <span>Rs. {product.price || 0}</span>
+                          </div>
                         </div>
-                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs font-bold text-gray-500">
-                          <span>{product.category || "Uncategorized"}</span>
-                          <span>{product.unit}</span>
-                          <span>Rs. {product.price || 0}</span>
-                        </div>
+                        <span
+                          className={`shrink-0 px-2.5 py-1 rounded-lg border text-xs font-bold ${getStockBadgeClass(product.currentStock)}`}
+                        >
+                          {product.currentStock}
+                        </span>
                       </div>
-                      <span
-                        className={`shrink-0 px-2.5 py-1 rounded-lg border text-xs font-bold ${getStockBadgeClass(product.currentStock)}`}
-                      >
-                        {product.currentStock}
-                      </span>
-                    </div>
-                    <div className="mt-2 flex items-center justify-between text-xs font-bold">
-                      <span className="text-gray-500">Inventory value</span>
-                      <span className="text-emerald-700">
-                        {inventoryValue > 0 ? `Rs. ${inventoryValue.toFixed(2)}` : "-"}
-                      </span>
-                    </div>
-                  </button>
+                      <div className="mt-2 flex items-center justify-between text-xs font-bold">
+                        <span className="text-gray-500">Inventory value</span>
+                        <span className="text-emerald-700">
+                          {inventoryValue > 0 ? `Rs. ${inventoryValue.toFixed(2)}` : "-"}
+                        </span>
+                      </div>
+                    </button>
+                    {isAdmin && (
+                      <div className="mt-3 flex items-center gap-2">
+                        <button
+                          onClick={() => handleStartEditProduct(product)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors"
+                        >
+                          <Pencil className="w-3.5 h-3.5" /> Edit
+                        </button>
+                        {isMainAdmin && (
+                          <button
+                            onClick={() => setProductToDelete(product.id)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" /> Delete
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>
@@ -1293,7 +1359,7 @@ export default function StoreDashboard({
                     <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider pr-6">
                       Recorded By
                     </th>
-                    {isMainAdmin && (
+                    {isAdmin && (
                       <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider pr-6">
                         Actions
                       </th>
@@ -1330,22 +1396,33 @@ export default function StoreDashboard({
                       <td className="p-4 pr-6 text-gray-400 text-sm">
                         {log.recordedBy}
                       </td>
-                      {isMainAdmin && (
+                      {isAdmin && (
                         <td className="p-4 pr-6">
-                          <button
-                            onClick={() => setLogToDelete(log)}
-                            className="text-gray-400 hover:text-red-600 transition-colors"
-                            title="Delete entry"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => handleStartEditLog(log)}
+                              className="p-2 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                              title="Edit entry"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                            {isMainAdmin && (
+                              <button
+                                onClick={() => setLogToDelete(log)}
+                                className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                                title="Delete entry"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
                         </td>
                       )}
                     </tr>
                   ))}
                   {logs.filter((log) => log.type === "purchase").length === 0 && (
                     <tr>
-                      <td colSpan={isMainAdmin ? 9 : 8} className="p-8 text-center text-gray-500">
+                      <td colSpan={isAdmin ? 10 : 9} className="p-8 text-center text-gray-500">
                         No purchase entries found
                       </td>
                     </tr>
@@ -1962,6 +2039,105 @@ export default function StoreDashboard({
                   Remove
                 </button>
               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Edit Product Modal */}
+      <AnimatePresence>
+        {editingProduct && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white rounded-2xl sm:rounded-[2rem] p-5 sm:p-8 w-full max-w-md shadow-2xl relative"
+            >
+              <button
+                onClick={() => setEditingProduct(null)}
+                className="absolute top-6 right-6 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+
+              <h2 className="text-2xl font-bold text-gray-900 mb-6 font-sans tracking-tight">
+                Edit Product
+              </h2>
+
+              <form onSubmit={handleUpdateProduct} className="space-y-4 text-left">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">
+                    Product Name
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editProductForm.name}
+                    onChange={(e) =>
+                      setEditProductForm({ ...editProductForm, name: e.target.value })
+                    }
+                    className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-medium"
+                    placeholder="e.g. Notebook, Pen, etc."
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">
+                    Category
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editProductForm.category}
+                    onChange={(e) =>
+                      setEditProductForm({ ...editProductForm, category: e.target.value })
+                    }
+                    className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-medium"
+                    placeholder="e.g. Stationery, Uniform"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">
+                      Unit
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={editProductForm.unit}
+                      onChange={(e) =>
+                        setEditProductForm({ ...editProductForm, unit: e.target.value })
+                      }
+                      className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-medium"
+                      placeholder="e.g. pcs, boxes"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">
+                      Selling Price (Rs.)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      required
+                      value={editProductForm.price}
+                      onChange={(e) =>
+                        setEditProductForm({
+                          ...editProductForm,
+                          price: Number(e.target.value),
+                        })
+                      }
+                      className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-medium text-left text-gray-900"
+                    />
+                  </div>
+                </div>
+
+                <button type="submit" className="w-full pt-2">
+                  <div className="w-full py-4 bg-emerald-500 text-white rounded-xl font-bold hover:bg-emerald-600 transition-all text-center flex items-center justify-center gap-2">
+                    <Pencil className="w-5 h-5" /> Save Changes
+                  </div>
+                </button>
+              </form>
             </motion.div>
           </div>
         )}
