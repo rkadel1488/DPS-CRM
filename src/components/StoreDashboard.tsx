@@ -2964,8 +2964,18 @@ export default function StoreDashboard({
             })
             .sort((a, b) => new Date(a.purchaseDate).getTime() - new Date(b.purchaseDate).getTime());
 
-          // Build running balance
-          let running = 0;
+          // Compute opening stock: currentStock minus all logged movements
+          const totalDelta = ledgerEntries.reduce((sum, l) => {
+            const isTransferIn = l.type === "transfer" && l.toCategory === selectedProduct.category;
+            const isTransferOut = l.type === "transfer" && l.category === selectedProduct.category;
+            if (l.type === "in" || l.type === "purchase" || isTransferIn) return sum + l.quantity;
+            if (l.type === "out" || isTransferOut) return sum - l.quantity;
+            return sum;
+          }, 0);
+          const openingStock = selectedProduct.currentStock - totalDelta;
+
+          // Build running balance starting from opening stock
+          let running = openingStock;
           const ledgerRows = ledgerEntries.map((l) => {
             const isTransferIn = l.type === "transfer" && l.toCategory === selectedProduct.category;
             const isTransferOut = l.type === "transfer" && l.category === selectedProduct.category;
@@ -2985,7 +2995,8 @@ export default function StoreDashboard({
           });
 
           const handleLedgerExport = () => {
-            const rows = filteredForExport.map((r) => ({
+            const openingRow = { Date: "—", Type: "OPENING STOCK", Qty: "", Balance: openingStock, Remarks: "", "Recorded By": "" };
+            const dataRows = filteredForExport.map((r) => ({
               Date: new NepaliDate(new Date(r.purchaseDate)).format("YYYY-MM-DD"),
               Type: r.type.toUpperCase() + (r.type === "transfer" ? (r.toCategory === selectedProduct.category ? " IN" : " OUT") : ""),
               Qty: r.delta > 0 ? `+${r.delta}` : String(r.delta),
@@ -2993,7 +3004,7 @@ export default function StoreDashboard({
               Remarks: r.supplier || "",
               "Recorded By": r.recordedBy,
             }));
-            const ws = XLSX.utils.json_to_sheet(rows);
+            const ws = XLSX.utils.json_to_sheet([openingRow, ...dataRows]);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Ledger");
             XLSX.writeFile(wb, `${selectedProduct.name}_ledger.xlsx`);
@@ -3086,9 +3097,20 @@ export default function StoreDashboard({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
+                      {/* Opening stock row */}
+                      <tr className="bg-amber-50/60">
+                        <td className="p-3 pl-4 text-gray-400 text-xs font-medium">—</td>
+                        <td className="p-3">
+                          <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700">OPENING STOCK</span>
+                        </td>
+                        <td className="p-3 text-right text-gray-400">—</td>
+                        <td className="p-3 font-bold text-right text-gray-900">{openingStock}</td>
+                        <td className="p-3 text-gray-400 hidden sm:table-cell">—</td>
+                        <td className="p-3 text-gray-400 hidden md:table-cell">—</td>
+                      </tr>
                       {ledgerRows.length === 0 && (
                         <tr>
-                          <td colSpan={6} className="p-6 text-center text-gray-500">No history found</td>
+                          <td colSpan={6} className="p-6 text-center text-gray-500">No movement history</td>
                         </tr>
                       )}
                       {ledgerRows.map((row) => (
