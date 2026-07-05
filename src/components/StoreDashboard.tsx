@@ -150,10 +150,13 @@ export default function StoreDashboard({
     price: 0,
   });
   const [transferProduct, setTransferProduct] = useState<StoreProduct | null>(null);
-  const [transferForm, setTransferForm] = useState<{ toCategory: StoreCategory; quantity: number }>({
-    toCategory: "Canteen",
+  const [transferForm, setTransferForm] = useState<{ destProductId: string; quantity: number; remarks: string }>({
+    destProductId: "",
     quantity: 1,
+    remarks: "",
   });
+  const [ledgerDateFrom, setLedgerDateFrom] = useState("");
+  const [ledgerDateTo, setLedgerDateTo] = useState("");
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [exportCategory, setExportCategory] = useState("All");
   const [exportDateFrom, setExportDateFrom] = useState(() => {
@@ -298,45 +301,31 @@ export default function StoreDashboard({
   const handleTransfer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAdmin || !transferProduct) return;
-    const { toCategory, quantity } = transferForm;
-    if (quantity <= 0 || quantity > transferProduct.currentStock) return;
+    const { destProductId, quantity, remarks } = transferForm;
+    if (quantity <= 0) return;
+    if (quantity > transferProduct.currentStock) {
+      alert(`Cannot transfer ${quantity} units — only ${transferProduct.currentStock} in stock. Stock cannot go negative.`);
+      return;
+    }
+    const destProduct = products.find((p) => p.id === destProductId);
+    if (!destProduct) return;
     try {
-      // Decrease source stock
       await updateDoc(doc(db, "store_products", transferProduct.id), {
         currentStock: increment(-quantity),
       });
-
-      // Find or create destination product (same name, different category)
-      const destProduct = products.find(
-        (p) =>
-          p.name.toLowerCase() === transferProduct.name.toLowerCase() &&
-          p.category === toCategory
-      );
-      if (destProduct) {
-        await updateDoc(doc(db, "store_products", destProduct.id), {
-          currentStock: increment(quantity),
-        });
-      } else {
-        await addDoc(collection(db, "store_products"), {
-          name: transferProduct.name,
-          category: toCategory,
-          unit: transferProduct.unit,
-          price: transferProduct.price,
-          currentStock: quantity,
-        });
-      }
-
-      // Log the transfer
+      await updateDoc(doc(db, "store_products", destProduct.id), {
+        currentStock: increment(quantity),
+      });
       await addDoc(collection(db, "store_purchases"), {
         type: "transfer",
         category: transferProduct.category as StoreCategory,
-        toCategory,
+        toCategory: destProduct.category,
         productName: transferProduct.name,
         quantity,
+        supplier: remarks,
         purchaseDate: new Date().toISOString(),
         recordedBy: profile?.displayName || "Admin",
       });
-
       setTransferProduct(null);
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, "store_products");
@@ -675,11 +664,16 @@ export default function StoreDashboard({
         recordedBy: profile?.displayName || "Admin",
       };
 
-      await addDoc(collection(db, "store_purchases"), logData);
-
       const existingProduct = products.find(
-        (p) => p.name.toLowerCase() === newLog.productName.toLowerCase()
+        (p) => p.name.toLowerCase() === newLog.productName.toLowerCase() && p.category === newLog.category
       );
+
+      if (isAddingLog === "out" && existingProduct && newLog.quantity > existingProduct.currentStock) {
+        alert(`Cannot log ${newLog.quantity} out — only ${existingProduct.currentStock} in stock. Stock cannot go negative.`);
+        return;
+      }
+
+      await addDoc(collection(db, "store_purchases"), logData);
 
       const quantityDelta = isAddingLog === "in" ? newLog.quantity : -newLog.quantity;
 
@@ -830,16 +824,18 @@ export default function StoreDashboard({
 
   const inventoryCategories = ["All", ...STORE_CATEGORIES];
 
-  const filteredProducts = products.filter((p) => {
-    const term = searchTerm.toLowerCase();
-    const matchesSearch =
-      p.name.toLowerCase().includes(term) ||
-      p.category.toLowerCase().includes(term);
-    const matchesCategory =
-      inventoryCategoryFilter === "All" ||
-      p.category === inventoryCategoryFilter;
-    return matchesSearch && matchesCategory;
-  });
+  const filteredProducts = products
+    .filter((p) => {
+      const term = searchTerm.toLowerCase();
+      const matchesSearch =
+        p.name.toLowerCase().includes(term) ||
+        p.category.toLowerCase().includes(term);
+      const matchesCategory =
+        inventoryCategoryFilter === "All" ||
+        p.category === inventoryCategoryFilter;
+      return matchesSearch && matchesCategory;
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   const getLastOutDate = (productName: string) => {
     const outLogs = logs.filter(
@@ -1113,10 +1109,8 @@ export default function StoreDashboard({
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setTransferProduct(product);
-                                  setTransferForm({
-                                    toCategory: STORE_CATEGORIES.find((c) => c !== product.category) || "Canteen",
-                                    quantity: 1,
-                                  });
+                                  const firstOther = products.find((p) => p.id !== product.id);
+                                  setTransferForm({ destProductId: firstOther?.id || "", quantity: 1, remarks: "" });
                                 }}
                                 className="p-2 rounded-lg text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
                                 title="Transfer stock"
@@ -1190,10 +1184,8 @@ export default function StoreDashboard({
                         <button
                           onClick={() => {
                             setTransferProduct(product);
-                            setTransferForm({
-                              toCategory: STORE_CATEGORIES.find((c) => c !== product.category) || "Canteen",
-                              quantity: 1,
-                            });
+                            const firstOther = products.find((p) => p.id !== product.id);
+                            setTransferForm({ destProductId: firstOther?.id || "", quantity: 1, remarks: "" });
                           }}
                           className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-emerald-600 bg-emerald-50 rounded-lg hover:bg-emerald-100 transition-colors"
                         >
@@ -2161,19 +2153,23 @@ export default function StoreDashboard({
               <form onSubmit={handleTransfer} className="space-y-4 text-left">
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1">
-                    To Category
+                    Destination Product
                   </label>
                   <select
                     required
-                    value={transferForm.toCategory}
-                    onChange={(e) =>
-                      setTransferForm({ ...transferForm, toCategory: e.target.value as StoreCategory })
-                    }
+                    value={transferForm.destProductId}
+                    onChange={(e) => setTransferForm({ ...transferForm, destProductId: e.target.value })}
                     className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-medium cursor-pointer"
                   >
-                    {STORE_CATEGORIES.filter((c) => c !== transferProduct.category).map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
+                    <option value="">Select destination product…</option>
+                    {products
+                      .filter((p) => p.id !== transferProduct.id)
+                      .sort((a, b) => a.name.localeCompare(b.name))
+                      .map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name} ({p.category})
+                        </option>
+                      ))}
                   </select>
                 </div>
 
@@ -2187,32 +2183,55 @@ export default function StoreDashboard({
                     max={transferProduct.currentStock}
                     required
                     value={transferForm.quantity || ""}
-                    onChange={(e) =>
-                      setTransferForm({ ...transferForm, quantity: Number(e.target.value) })
-                    }
+                    onChange={(e) => setTransferForm({ ...transferForm, quantity: Number(e.target.value) })}
                     className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-medium text-gray-900"
                   />
                   <p className="text-xs text-gray-400 mt-1">Max: {transferProduct.currentStock} {transferProduct.unit}</p>
                 </div>
 
-                {transferForm.quantity > 0 && (
-                  <div className="bg-emerald-50 p-4 rounded-xl text-sm">
-                    <div className="flex justify-between text-gray-600">
-                      <span>{transferProduct.category} stock after:</span>
-                      <span className="font-bold text-gray-900">{transferProduct.currentStock - transferForm.quantity} {transferProduct.unit}</span>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">
+                    Remarks <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Reason for transfer…"
+                    value={transferForm.remarks}
+                    onChange={(e) => setTransferForm({ ...transferForm, remarks: e.target.value })}
+                    className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-medium text-gray-900"
+                  />
+                </div>
+
+                {transferForm.quantity > 0 && transferForm.destProductId && (() => {
+                  const dest = products.find((p) => p.id === transferForm.destProductId);
+                  if (!dest) return null;
+                  return (
+                    <div className="bg-emerald-50 p-4 rounded-xl text-sm space-y-1">
+                      <div className="flex justify-between text-gray-600">
+                        <span>{transferProduct.name} ({transferProduct.category}) after:</span>
+                        <span className={`font-bold ${transferProduct.currentStock - transferForm.quantity < 0 ? "text-rose-600" : "text-gray-900"}`}>
+                          {transferProduct.currentStock - transferForm.quantity} {transferProduct.unit}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-gray-600">
+                        <span>{dest.name} ({dest.category}) after:</span>
+                        <span className="font-bold text-emerald-700">
+                          {dest.currentStock + transferForm.quantity} {dest.unit}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex justify-between text-gray-600 mt-1">
-                      <span>{transferForm.toCategory} stock after:</span>
-                      <span className="font-bold text-emerald-700">
-                        {(products.find((p) => p.name.toLowerCase() === transferProduct.name.toLowerCase() && p.category === transferForm.toCategory)?.currentStock || 0) + transferForm.quantity} {transferProduct.unit}
-                      </span>
-                    </div>
-                  </div>
-                )}
+                  );
+                })()}
 
                 <button
                   type="submit"
-                  disabled={transferForm.quantity <= 0 || transferForm.quantity > transferProduct.currentStock}
+                  disabled={
+                    !transferForm.destProductId ||
+                    transferForm.quantity <= 0 ||
+                    transferForm.quantity > transferProduct.currentStock ||
+                    !transferForm.remarks.trim()
+                  }
                   className="w-full pt-2"
                 >
                   <div className="w-full py-4 bg-emerald-500 text-white rounded-xl font-bold hover:bg-emerald-600 transition-all text-center flex items-center justify-center gap-2 disabled:opacity-50">
@@ -2931,87 +2950,168 @@ export default function StoreDashboard({
         )}
       </AnimatePresence>
 
-      {/* Product Detail Modal */}
+      {/* Product Ledger Modal */}
       <AnimatePresence>
-        {selectedProduct && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white rounded-2xl sm:rounded-[2rem] p-5 sm:p-8 w-full max-w-2xl shadow-2xl relative max-h-[90vh] overflow-y-auto"
-            >
-              <button
-                onClick={() => setSelectedProduct(null)}
-                className="absolute top-6 right-6 text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
+        {selectedProduct && (() => {
+          // All entries for this specific product (name + category), sorted oldest→newest
+          const ledgerEntries = logs
+            .filter((l) => {
+              const nameMatch = l.productName === selectedProduct.name;
+              const catMatch =
+                l.category === selectedProduct.category ||
+                (l.type === "transfer" && l.toCategory === selectedProduct.category);
+              return nameMatch && catMatch;
+            })
+            .sort((a, b) => new Date(a.purchaseDate).getTime() - new Date(b.purchaseDate).getTime());
 
-              <div className="flex items-start gap-4 mb-8">
-                <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 shrink-0">
-                  <Package className="w-8 h-8" />
-                </div>
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 font-sans tracking-tight">
-                    {selectedProduct.name}
-                  </h2>
-                  <div className="flex items-center gap-4 text-sm mt-1 text-gray-500 font-medium">
-                    <span>{selectedProduct.category || "Uncategorized"}</span>
-                    <span>•</span>
-                    <span>Current Stock: <strong className="text-gray-900">{selectedProduct.currentStock} {selectedProduct.unit}</strong></span>
-                    <span>•</span>
-                    <span>Price: <strong className="text-gray-900">Rs. {selectedProduct.price || 0}</strong></span>
+          // Build running balance
+          let running = 0;
+          const ledgerRows = ledgerEntries.map((l) => {
+            const isTransferIn = l.type === "transfer" && l.toCategory === selectedProduct.category;
+            const isTransferOut = l.type === "transfer" && l.category === selectedProduct.category;
+            let delta = 0;
+            if (l.type === "in" || l.type === "purchase" || isTransferIn) delta = l.quantity;
+            else if (l.type === "out" || isTransferOut) delta = -l.quantity;
+            running += delta;
+            return { ...l, delta, balance: running };
+          });
+
+          // Date range filter for export
+          const filteredForExport = ledgerRows.filter((r) => {
+            const d = new Date(r.purchaseDate).getTime();
+            const from = ledgerDateFrom ? new Date(ledgerDateFrom).getTime() : -Infinity;
+            const to = ledgerDateTo ? new Date(ledgerDateTo + "T23:59:59").getTime() : Infinity;
+            return d >= from && d <= to;
+          });
+
+          const handleLedgerExport = () => {
+            const rows = filteredForExport.map((r) => ({
+              Date: new NepaliDate(new Date(r.purchaseDate)).format("YYYY-MM-DD"),
+              Type: r.type.toUpperCase() + (r.type === "transfer" ? (r.toCategory === selectedProduct.category ? " IN" : " OUT") : ""),
+              Qty: r.delta > 0 ? `+${r.delta}` : String(r.delta),
+              Balance: r.balance,
+              Remarks: r.supplier || "",
+              "Recorded By": r.recordedBy,
+            }));
+            const ws = XLSX.utils.json_to_sheet(rows);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Ledger");
+            XLSX.writeFile(wb, `${selectedProduct.name}_ledger.xlsx`);
+          };
+
+          const typeBadge = (row: typeof ledgerRows[0]) => {
+            if (row.type === "transfer") {
+              return row.toCategory === selectedProduct.category
+                ? <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700">TRANSFER IN</span>
+                : <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-orange-100 text-orange-700">TRANSFER OUT</span>;
+            }
+            if (row.type === "purchase") return <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-100 text-indigo-700">PURCHASE</span>;
+            if (row.type === "in") return <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">IN</span>;
+            return <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-700">OUT</span>;
+          };
+
+          return (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="bg-white rounded-2xl sm:rounded-[2rem] p-5 sm:p-8 w-full max-w-3xl shadow-2xl relative max-h-[92vh] flex flex-col"
+              >
+                <button
+                  onClick={() => setSelectedProduct(null)}
+                  className="absolute top-6 right-6 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+
+                <div className="flex items-start gap-4 mb-5 shrink-0">
+                  <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 shrink-0">
+                    <Package className="w-7 h-7" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900 font-sans tracking-tight">{selectedProduct.name}</h2>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm mt-1 text-gray-500 font-medium">
+                      <span>{selectedProduct.category || "Uncategorized"}</span>
+                      <span>•</span>
+                      <span>Current Stock: <strong className="text-gray-900">{selectedProduct.currentStock} {selectedProduct.unit}</strong></span>
+                      <span>•</span>
+                      <span>Price: <strong className="text-gray-900">Rs. {selectedProduct.price || 0}</strong></span>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <h3 className="font-bold text-lg mb-4 text-gray-900">Recent History</h3>
-              <div className="border border-gray-100 rounded-2xl overflow-hidden bg-gray-50/50">
-                <table className="w-full text-left border-collapse text-sm">
-                  <thead>
-                    <tr className="bg-white border-b border-gray-100">
-                      <th className="p-3 font-bold text-gray-500 uppercase tracking-wider pl-4">Date</th>
-                      <th className="p-3 font-bold text-gray-500 uppercase tracking-wider">Type</th>
-                      <th className="p-3 font-bold text-gray-500 uppercase tracking-wider">Quantity</th>
-                      <th className="p-3 font-bold text-gray-500 uppercase tracking-wider">Recorded By</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {logs
-                      .filter((l) => l.productName === selectedProduct.name)
-                      .slice(0, 10)
-                      .map((log) => (
-                        <tr key={log.id} className="hover:bg-white transition-colors">
+                {/* Export controls */}
+                <div className="flex flex-wrap items-end gap-3 mb-4 shrink-0">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">From</label>
+                    <input
+                      type="date"
+                      value={ledgerDateFrom}
+                      onChange={(e) => setLedgerDateFrom(e.target.value)}
+                      className="px-3 py-2 bg-gray-50 rounded-xl text-sm border-none outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">To</label>
+                    <input
+                      type="date"
+                      value={ledgerDateTo}
+                      onChange={(e) => setLedgerDateTo(e.target.value)}
+                      className="px-3 py-2 bg-gray-50 rounded-xl text-sm border-none outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                  <button
+                    onClick={handleLedgerExport}
+                    className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-xl text-sm font-bold hover:bg-emerald-600 transition-colors"
+                  >
+                    <Download className="w-4 h-4" /> Export XLSX
+                  </button>
+                </div>
+
+                <h3 className="font-bold text-base mb-3 text-gray-900 shrink-0">
+                  Stock Ledger <span className="text-gray-400 font-normal text-sm">({ledgerRows.length} entries)</span>
+                </h3>
+
+                <div className="border border-gray-100 rounded-2xl overflow-hidden bg-gray-50/50 overflow-y-auto flex-1">
+                  <table className="w-full text-left border-collapse text-sm">
+                    <thead className="sticky top-0 z-10">
+                      <tr className="bg-white border-b border-gray-100">
+                        <th className="p-3 font-bold text-gray-500 uppercase tracking-wider pl-4">Date</th>
+                        <th className="p-3 font-bold text-gray-500 uppercase tracking-wider">Type</th>
+                        <th className="p-3 font-bold text-gray-500 uppercase tracking-wider text-right">Qty</th>
+                        <th className="p-3 font-bold text-gray-500 uppercase tracking-wider text-right">Balance</th>
+                        <th className="p-3 font-bold text-gray-500 uppercase tracking-wider hidden sm:table-cell">Remarks</th>
+                        <th className="p-3 font-bold text-gray-500 uppercase tracking-wider hidden md:table-cell">By</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {ledgerRows.length === 0 && (
+                        <tr>
+                          <td colSpan={6} className="p-6 text-center text-gray-500">No history found</td>
+                        </tr>
+                      )}
+                      {ledgerRows.map((row) => (
+                        <tr key={row.id} className="hover:bg-white transition-colors">
                           <td className="p-3 pl-4 text-gray-900 font-medium whitespace-nowrap">
-                            {new NepaliDate(new Date(log.purchaseDate)).format("YYYY-MM-DD")}
+                            {new NepaliDate(new Date(row.purchaseDate)).format("YYYY-MM-DD")}
                           </td>
-                          <td className="p-3">
-                            <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
-                              log.type === "purchase"
-                                ? "bg-indigo-100 text-indigo-700"
-                                : log.type === "in"
-                                  ? "bg-emerald-100 text-emerald-700"
-                                  : "bg-rose-100 text-rose-700"
-                            }`}>
-                              {log.type === "purchase" ? "PURCHASE" : log.type === "in" ? "IN" : "OUT"}
-                            </span>
+                          <td className="p-3">{typeBadge(row)}</td>
+                          <td className={`p-3 font-bold text-right ${row.delta > 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                            {row.delta > 0 ? `+${row.delta}` : row.delta}
                           </td>
-                          <td className="p-3 text-gray-900 font-medium">{log.quantity}</td>
-                          <td className="p-3 text-gray-500">{log.recordedBy}</td>
+                          <td className="p-3 font-bold text-right text-gray-900">{row.balance}</td>
+                          <td className="p-3 text-gray-500 hidden sm:table-cell">{row.supplier || "—"}</td>
+                          <td className="p-3 text-gray-500 hidden md:table-cell">{row.recordedBy}</td>
                         </tr>
                       ))}
-                    {logs.filter(l => l.productName === selectedProduct.name).length === 0 && (
-                      <tr>
-                        <td colSpan={4} className="p-6 text-center text-gray-500">No recent history</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </motion.div>
-          </div>
-        )}
+                    </tbody>
+                  </table>
+                </div>
+              </motion.div>
+            </div>
+          );
+        })()}
       </AnimatePresence>
 
       {/* Export Modal */}
