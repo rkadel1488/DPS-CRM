@@ -317,7 +317,24 @@ function AppContent() {
       if (firebaseUser) {
         try {
           const docRef = doc(db, "users", firebaseUser.uid);
-          const docSnap = await getDoc(docRef);
+          // Retry transient network failures before giving up
+          let docSnap;
+          let lastError: any = null;
+          for (let attempt = 0; attempt < 3; attempt++) {
+            try {
+              docSnap = await getDoc(docRef);
+              lastError = null;
+              break;
+            } catch (err: any) {
+              lastError = err;
+              const transient =
+                err.code === "unavailable" ||
+                err.message?.includes("client is offline");
+              if (!transient || attempt === 2) throw err;
+              await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+            }
+          }
+          if (!docSnap) throw lastError;
 
           if (docSnap.exists()) {
             let data = docSnap.data() as UserProfile;
@@ -376,7 +393,7 @@ function AppContent() {
             error.code === "unavailable"
           ) {
             error.message =
-              "Could not connect to Firestore. Please ensure the database 'ai-studio-991b43cf-8da1-495f-b24f-89722babf104' exists in your Firebase project 'gen-lang-client-0945475485' and that you have accepted the Firebase terms in the setup UI.";
+              "Could not connect to the server. Please check your internet connection and click Reload. If the problem continues, your network or firewall may be blocking the connection.";
           }
           handleFirestoreError(
             error,
