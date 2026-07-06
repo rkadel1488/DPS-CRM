@@ -156,6 +156,7 @@ export default function StoreDashboard({
     remarks: "",
   });
   const [ledgerDateFrom, setLedgerDateFrom] = useState("");
+  const [editingOpeningStock, setEditingOpeningStock] = useState<string | null>(null);
   const [ledgerDateTo, setLedgerDateTo] = useState("");
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [exportCategory, setExportCategory] = useState("All");
@@ -2974,6 +2975,35 @@ export default function StoreDashboard({
           }, 0);
           const openingStock = selectedProduct.currentStock - totalDelta;
 
+          // Editing opening stock adjusts currentStock by the difference,
+          // since opening stock is derived (currentStock − all movements)
+          const handleSaveOpeningStock = async () => {
+            if (!isAdmin || editingOpeningStock === null) return;
+            const newOpening = Number(editingOpeningStock);
+            if (isNaN(newOpening) || newOpening < 0) {
+              alert("Opening stock must be a number of 0 or more.");
+              return;
+            }
+            const diff = newOpening - openingStock;
+            if (diff !== 0) {
+              const newCurrent = selectedProduct.currentStock + diff;
+              if (newCurrent < 0) {
+                alert(`Cannot set opening stock to ${newOpening} — current stock would become ${newCurrent}. Stock cannot go negative.`);
+                return;
+              }
+              try {
+                await updateDoc(doc(db, "store_products", selectedProduct.id), {
+                  currentStock: increment(diff),
+                });
+                setSelectedProduct({ ...selectedProduct, currentStock: newCurrent });
+              } catch (error) {
+                handleFirestoreError(error, OperationType.UPDATE, "store_products");
+                return;
+              }
+            }
+            setEditingOpeningStock(null);
+          };
+
           // Build running balance starting from opening stock
           let running = openingStock;
           const ledgerRows = ledgerEntries.map((l) => {
@@ -3030,7 +3060,7 @@ export default function StoreDashboard({
                 className="bg-white rounded-2xl sm:rounded-[2rem] p-5 sm:p-8 w-full max-w-3xl shadow-2xl relative max-h-[92vh] flex flex-col"
               >
                 <button
-                  onClick={() => setSelectedProduct(null)}
+                  onClick={() => { setSelectedProduct(null); setEditingOpeningStock(null); }}
                   className="absolute top-6 right-6 text-gray-400 hover:text-gray-600 transition-colors"
                 >
                   <X className="w-6 h-6" />
@@ -3104,7 +3134,49 @@ export default function StoreDashboard({
                           <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700">OPENING STOCK</span>
                         </td>
                         <td className="p-3 text-right text-gray-400">—</td>
-                        <td className="p-3 font-bold text-right text-gray-900">{openingStock}</td>
+                        <td className="p-3 font-bold text-right text-gray-900">
+                          {editingOpeningStock !== null ? (
+                            <span className="inline-flex items-center gap-1">
+                              <input
+                                type="number"
+                                min="0"
+                                autoFocus
+                                value={editingOpeningStock}
+                                onChange={(e) => setEditingOpeningStock(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") handleSaveOpeningStock();
+                                  if (e.key === "Escape") setEditingOpeningStock(null);
+                                }}
+                                className="w-20 px-2 py-1 bg-white border border-amber-300 rounded-lg text-right text-sm font-bold outline-none focus:ring-2 focus:ring-amber-400"
+                              />
+                              <button
+                                onClick={handleSaveOpeningStock}
+                                className="px-2 py-1 bg-emerald-500 text-white rounded-lg text-xs font-bold hover:bg-emerald-600"
+                              >
+                                Save
+                              </button>
+                              <button
+                                onClick={() => setEditingOpeningStock(null)}
+                                className="px-2 py-1 bg-gray-200 text-gray-600 rounded-lg text-xs font-bold hover:bg-gray-300"
+                              >
+                                Cancel
+                              </button>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-2">
+                              {openingStock}
+                              {isAdmin && (
+                                <button
+                                  onClick={() => setEditingOpeningStock(String(openingStock))}
+                                  className="text-amber-600 hover:text-amber-800 transition-colors"
+                                  title="Edit opening stock"
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </span>
+                          )}
+                        </td>
                         <td className="p-3 text-gray-400 hidden sm:table-cell">—</td>
                         <td className="p-3 text-gray-400 hidden md:table-cell">—</td>
                       </tr>
