@@ -257,6 +257,7 @@ function AppContent() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
   const [loading, setLoading] = useState(true);
+  const [loadingStuck, setLoadingStuck] = useState(false);
 
   const [phoneNumber, setPhoneNumber] = useState("");
   const [selectedCountryCode, setSelectedCountryCode] = useState(
@@ -322,7 +323,18 @@ function AppContent() {
           let lastError: any = null;
           for (let attempt = 0; attempt < 3; attempt++) {
             try {
-              docSnap = await getDoc(docRef);
+              // Guard against getDoc hanging forever (e.g. broken IndexedDB
+              // or a stalled connection on some machines)
+              docSnap = await Promise.race([
+                getDoc(docRef),
+                new Promise<never>((_, reject) =>
+                  setTimeout(() => {
+                    const e: any = new Error("client is offline (timeout)");
+                    e.code = "unavailable";
+                    reject(e);
+                  }, 10000),
+                ),
+              ]);
               lastError = null;
               break;
             } catch (err: any) {
@@ -409,6 +421,17 @@ function AppContent() {
 
     return () => unsubscribe();
   }, []);
+
+  // Offer a recovery option if the loading screen doesn't finish in 15s
+  useEffect(() => {
+    const stillLoading = loading || (!!user && !profile);
+    if (!stillLoading) {
+      setLoadingStuck(false);
+      return;
+    }
+    const timer = setTimeout(() => setLoadingStuck(true), 15000);
+    return () => clearTimeout(timer);
+  }, [loading, user, profile]);
 
   const handleLogin = async () => {
     if (isLoggingIn) return;
@@ -542,12 +565,42 @@ function AppContent() {
 
   if (loading || (user && !profile)) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+      <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center gap-6 p-4">
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
           className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full"
         />
+        {loadingStuck && (
+          <div className="text-center max-w-sm">
+            <p className="text-gray-500 text-sm mb-4">
+              This is taking longer than usual. Your connection may be slow, or
+              old data stored in the browser may be causing a problem.
+            </p>
+            <button
+              onClick={async () => {
+                try {
+                  const dbs = await (indexedDB.databases?.() ?? Promise.resolve([]));
+                  dbs.forEach((d) => d.name && indexedDB.deleteDatabase(d.name));
+                  if ("serviceWorker" in navigator) {
+                    const regs = await navigator.serviceWorker.getRegistrations();
+                    await Promise.all(regs.map((r) => r.unregister()));
+                  }
+                  if ("caches" in window) {
+                    const keys = await caches.keys();
+                    await Promise.all(keys.map((k) => caches.delete(k)));
+                  }
+                } catch {
+                  /* ignore */
+                }
+                window.location.reload();
+              }}
+              className="px-6 py-3 bg-gradient-to-r from-slate-700 to-slate-900 text-white rounded-xl font-bold shadow-lg hover:from-slate-800 hover:to-slate-950 transition-all"
+            >
+              Clear cached data & Reload
+            </button>
+          </div>
+        )}
       </div>
     );
   }
