@@ -85,6 +85,7 @@ export interface StoreProduct {
   currentStock: number;
   unit: string;
   price?: number;
+  bookPageNo?: string;
 }
 
 export const STORE_CATEGORIES = ["Store", "Canteen", "Electrical", "Sports"] as const;

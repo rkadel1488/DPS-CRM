@@ -76,20 +76,17 @@ export default function StoreDashboard({
     unit: "pcs",
     currentStock: 0,
     price: 0,
+    bookPageNo: "",
   });
 
   const [isAddingLog, setIsAddingLog] = useState<"in" | "out" | false>(false);
   const [newLog, setNewLog] = useState<{
-    productName: string;
-    quantity: number;
-    costPrice?: number;
+    items: { productName: string; quantity: number; costPrice: number }[];
     supplier?: string;
     category: StoreCategory;
     purchaseDate: string;
   }>({
-    productName: "",
-    quantity: 0,
-    costPrice: 0,
+    items: [{ productName: "", quantity: 0, costPrice: 0 }],
     supplier: "",
     category: "Store",
     purchaseDate: new Date().toISOString().split("T")[0],
@@ -148,6 +145,7 @@ export default function StoreDashboard({
     category: "",
     unit: "pcs",
     price: 0,
+    bookPageNo: "",
   });
   const [transferProduct, setTransferProduct] = useState<StoreProduct | null>(null);
   const [transferForm, setTransferForm] = useState<{ destProductId: string; quantity: number; remarks: string }>({
@@ -257,6 +255,7 @@ export default function StoreDashboard({
         unit: "pcs",
         currentStock: 0,
         price: 0,
+        bookPageNo: "",
       });
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, "store_products");
@@ -279,6 +278,7 @@ export default function StoreDashboard({
       category: product.category || "",
       unit: product.unit || "pcs",
       price: product.price || 0,
+      bookPageNo: product.bookPageNo || "",
     });
     setEditingProduct(product);
   };
@@ -292,6 +292,7 @@ export default function StoreDashboard({
         category: editProductForm.category,
         unit: editProductForm.unit,
         price: editProductForm.price,
+        bookPageNo: editProductForm.bookPageNo,
       });
       setEditingProduct(null);
     } catch (error) {
@@ -652,55 +653,68 @@ export default function StoreDashboard({
     e.preventDefault();
     if (!isAdmin || !isAddingLog) return;
 
+    const validItems = newLog.items.filter(
+      (it) => it.productName.trim() && it.quantity > 0
+    );
+    if (validItems.length === 0) return;
+
+    // Validate all "out" items against stock before writing anything
+    if (isAddingLog === "out") {
+      for (const it of validItems) {
+        const existing = products.find(
+          (p) => p.name.toLowerCase() === it.productName.toLowerCase() && p.category === newLog.category
+        );
+        if (existing && it.quantity > existing.currentStock) {
+          alert(`Cannot log ${it.quantity} of "${it.productName}" out — only ${existing.currentStock} in stock. Stock cannot go negative.`);
+          return;
+        }
+      }
+    }
+
     try {
-      const logData: Omit<StorePurchase, "id"> = {
-        type: isAddingLog,
-        category: newLog.category,
-        productName: newLog.productName,
-        quantity: newLog.quantity,
-        costPrice: newLog.costPrice || 0,
-        totalCost: newLog.quantity * (newLog.costPrice || 0),
-        supplier: newLog.supplier || "",
-        purchaseDate: new Date(newLog.purchaseDate).toISOString(),
-        recordedBy: profile?.displayName || "Admin",
-      };
-
-      const existingProduct = products.find(
-        (p) => p.name.toLowerCase() === newLog.productName.toLowerCase() && p.category === newLog.category
-      );
-
-      if (isAddingLog === "out" && existingProduct && newLog.quantity > existingProduct.currentStock) {
-        alert(`Cannot log ${newLog.quantity} out — only ${existingProduct.currentStock} in stock. Stock cannot go negative.`);
-        return;
-      }
-
-      await addDoc(collection(db, "store_purchases"), logData);
-
-      const quantityDelta = isAddingLog === "in" ? newLog.quantity : -newLog.quantity;
-
-      if (existingProduct) {
-        await updateDoc(doc(db, "store_products", existingProduct.id), {
-          currentStock: increment(quantityDelta),
-        });
-      } else if (isAddingLog === "in") {
-        await addDoc(collection(db, "store_products"), {
-          name: newLog.productName,
+      for (const it of validItems) {
+        const logData: Omit<StorePurchase, "id"> = {
+          type: isAddingLog,
           category: newLog.category,
-          unit: "pcs",
-          currentStock: newLog.quantity,
-          price: 0,
-        });
-      }
+          productName: it.productName,
+          quantity: it.quantity,
+          costPrice: it.costPrice || 0,
+          totalCost: it.quantity * (it.costPrice || 0),
+          supplier: newLog.supplier || "",
+          purchaseDate: new Date(newLog.purchaseDate).toISOString(),
+          recordedBy: profile?.displayName || "Admin",
+        };
 
-      if (isAddingLog === "out") {
-        await removeMatchingUnusedItems(newLog.productName);
+        const existingProduct = products.find(
+          (p) => p.name.toLowerCase() === it.productName.toLowerCase() && p.category === newLog.category
+        );
+
+        await addDoc(collection(db, "store_purchases"), logData);
+
+        const quantityDelta = isAddingLog === "in" ? it.quantity : -it.quantity;
+
+        if (existingProduct) {
+          await updateDoc(doc(db, "store_products", existingProduct.id), {
+            currentStock: increment(quantityDelta),
+          });
+        } else if (isAddingLog === "in") {
+          await addDoc(collection(db, "store_products"), {
+            name: it.productName,
+            category: newLog.category,
+            unit: "pcs",
+            currentStock: it.quantity,
+            price: 0,
+          });
+        }
+
+        if (isAddingLog === "out") {
+          await removeMatchingUnusedItems(it.productName);
+        }
       }
 
       setIsAddingLog(false);
       setNewLog((prev) => ({
-        productName: "",
-        quantity: 0,
-        costPrice: 0,
+        items: [{ productName: "", quantity: 0, costPrice: 0 }],
         supplier: "",
         category: prev.category,
         purchaseDate: prev.purchaseDate,
@@ -708,6 +722,16 @@ export default function StoreDashboard({
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, "store_purchases");
     }
+  };
+
+  const updateLogItemRow = (
+    index: number,
+    patch: Partial<{ productName: string; quantity: number; costPrice: number }>,
+  ) => {
+    setNewLog((prev) => ({
+      ...prev,
+      items: prev.items.map((row, i) => (i === index ? { ...row, ...patch } : row)),
+    }));
   };
 
   const addPurchaseItemRow = () => {
@@ -1878,6 +1902,20 @@ export default function StoreDashboard({
                     className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-medium text-left text-gray-900"
                   />
                 </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">
+                    Book Page No <span className="text-gray-400 font-normal">(Optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={newProduct.bookPageNo}
+                    onChange={(e) =>
+                      setNewProduct({ ...newProduct, bookPageNo: e.target.value })
+                    }
+                    className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-medium"
+                    placeholder="e.g. 42"
+                  />
+                </div>
 
                 <button type="submit" className="w-full pt-2">
                   <div className="w-full py-4 bg-emerald-500 text-white rounded-xl font-bold hover:bg-emerald-600 transition-all text-center">
@@ -2333,6 +2371,21 @@ export default function StoreDashboard({
                   </div>
                 </div>
 
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">
+                    Book Page No <span className="text-gray-400 font-normal">(Optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={editProductForm.bookPageNo}
+                    onChange={(e) =>
+                      setEditProductForm({ ...editProductForm, bookPageNo: e.target.value })
+                    }
+                    className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-medium"
+                    placeholder="e.g. 42"
+                  />
+                </div>
+
                 <button type="submit" className="w-full pt-2">
                   <div className="w-full py-4 bg-emerald-500 text-white rounded-xl font-bold hover:bg-emerald-600 transition-all text-center flex items-center justify-center gap-2">
                     <Pencil className="w-5 h-5" /> Save Changes
@@ -2392,68 +2445,103 @@ export default function StoreDashboard({
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">
-                    Product Name
+                <div className="space-y-3">
+                  <label className="block text-sm font-bold text-gray-700">
+                    Items
                   </label>
-                  <input
-                    type="text"
-                    required
-                    value={newLog.productName}
-                    onChange={(e) =>
-                      setNewLog({
-                        ...newLog,
-                        productName: e.target.value,
-                      })
-                    }
-                    className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium"
-                    placeholder="Enter product name..."
-                    list="product-list"
-                  />
+                  {newLog.items.map((item, index) => {
+                    const matched = products.find(
+                      (p) =>
+                        p.name.toLowerCase() === item.productName.toLowerCase() &&
+                        p.category === newLog.category
+                    );
+                    return (
+                      <div key={index} className="bg-gray-50 rounded-xl p-3 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            required
+                            value={item.productName}
+                            onChange={(e) => updateLogItemRow(index, { productName: e.target.value })}
+                            className="flex-1 px-3 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-sm"
+                            placeholder="Product name..."
+                            list="product-list"
+                          />
+                          {newLog.items.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setNewLog((prev) => ({
+                                  ...prev,
+                                  items: prev.items.filter((_, i) => i !== index),
+                                }))
+                              }
+                              className="text-gray-400 hover:text-rose-500 transition-colors shrink-0"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            type="number"
+                            min="1"
+                            required
+                            value={item.quantity || ""}
+                            onChange={(e) => updateLogItemRow(index, { quantity: Number(e.target.value) })}
+                            className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-sm text-gray-900"
+                            placeholder="Quantity"
+                          />
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={item.costPrice || ""}
+                            onChange={(e) => updateLogItemRow(index, { costPrice: Number(e.target.value) })}
+                            className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-sm"
+                            placeholder="Cost/unit (optional)"
+                          />
+                        </div>
+                        {matched && (
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-medium text-gray-500">
+                            <span>
+                              Current Stock:{" "}
+                              <strong className={matched.currentStock > 0 ? "text-emerald-600" : "text-rose-600"}>
+                                {matched.currentStock} {matched.unit}
+                              </strong>
+                            </span>
+                            {matched.bookPageNo && (
+                              <span>
+                                Book Page No: <strong className="text-gray-800">{matched.bookPageNo}</strong>
+                              </span>
+                            )}
+                            {isAddingLog === "out" && item.quantity > matched.currentStock && (
+                              <span className="text-rose-600 font-bold">Not enough stock!</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                   <datalist id="product-list">
-                    {products.map((p) => (
-                      <option key={p.id} value={p.name} />
-                    ))}
+                    {products
+                      .filter((p) => p.category === newLog.category)
+                      .map((p) => (
+                        <option key={p.id} value={p.name} />
+                      ))}
                   </datalist>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">
-                      Quantity
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      required
-                      value={newLog.quantity || ""}
-                      onChange={(e) =>
-                        setNewLog({
-                          ...newLog,
-                          quantity: Number(e.target.value),
-                        })
-                      }
-                      className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-left text-gray-900"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">
-                      Cost Price (Rs./unit) <span className="text-gray-400 font-normal">(Optional)</span>
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={newLog.costPrice || ""}
-                      onChange={(e) =>
-                        setNewLog({
-                          ...newLog,
-                          costPrice: Number(e.target.value),
-                        })
-                      }
-                      className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-left"
-                    />
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setNewLog((prev) => ({
+                        ...prev,
+                        items: [...prev.items, { productName: "", quantity: 0, costPrice: 0 }],
+                      }))
+                    }
+                    className="w-full py-2.5 border-2 border-dashed border-indigo-200 text-indigo-500 rounded-xl text-sm font-bold hover:bg-indigo-50 transition-colors flex items-center justify-center gap-1.5"
+                  >
+                    <Plus className="w-4 h-4" /> Add Another Item
+                  </button>
                 </div>
 
                 <div>
@@ -2492,16 +2580,16 @@ export default function StoreDashboard({
                   />
                 </div>
 
-                {newLog.quantity > 0 && newLog.costPrice !== undefined && newLog.costPrice > 0 && (
+                {newLog.items.some((it) => it.quantity > 0 && it.costPrice > 0) && (
                   <div className="bg-indigo-50 p-4 rounded-xl flex justify-between items-center mt-2">
                     <span className="font-bold text-indigo-700 text-sm">
                       Total Amount:
                     </span>
                     <span className="font-bold text-indigo-700 text-xl">
-                      Rs. 
-                      {(newLog.quantity * newLog.costPrice).toFixed(
-                        2,
-                      )}
+                      Rs.
+                      {newLog.items
+                        .reduce((sum, it) => sum + it.quantity * (it.costPrice || 0), 0)
+                        .toFixed(2)}
                     </span>
                   </div>
                 )}
