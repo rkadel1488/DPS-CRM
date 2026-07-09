@@ -110,6 +110,14 @@ export default function StoreDashboard({
   });
   const [selectedInvoiceBillNumber, setSelectedInvoiceBillNumber] = useState<string | null>(null);
 
+  const [logDateFilter, setLogDateFilter] = useState<"all" | "today" | "yesterday" | "custom">("all");
+  const [logCustomDate, setLogCustomDate] = useState("");
+  const [logCategoryFilter, setLogCategoryFilter] = useState<"All" | StoreCategory>("All");
+
+  const [purchaseDateFilter, setPurchaseDateFilter] = useState<"all" | "today" | "yesterday" | "custom">("all");
+  const [purchaseCustomDate, setPurchaseCustomDate] = useState("");
+  const [purchaseCategoryFilter, setPurchaseCategoryFilter] = useState<"All" | StoreCategory>("All");
+
   const [isAddingUnused, setIsAddingUnused] = useState(false);
   const [newUnusedItem, setNewUnusedItem] = useState({
     productName: "",
@@ -862,6 +870,38 @@ export default function StoreDashboard({
     })
     .sort((a, b) => a.name.localeCompare(b.name));
 
+  const matchesDateFilter = (
+    dateVal: any,
+    filter: "all" | "today" | "yesterday" | "custom",
+    customDate: string,
+  ) => {
+    if (filter === "all") return true;
+    const d = new Date(dateVal);
+    const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
+    if (filter === "today") return sameDay(d, new Date());
+    if (filter === "yesterday") {
+      const y = new Date();
+      y.setDate(y.getDate() - 1);
+      return sameDay(d, y);
+    }
+    if (filter === "custom") return customDate ? sameDay(d, new Date(customDate)) : true;
+    return true;
+  };
+
+  const visibleLogs = logs.filter(
+    (l) =>
+      l.type === activeTab &&
+      (logCategoryFilter === "All" || l.category === logCategoryFilter) &&
+      matchesDateFilter(l.purchaseDate, logDateFilter, logCustomDate),
+  );
+
+  const visiblePurchases = logs.filter(
+    (l) =>
+      l.type === "purchase" &&
+      (purchaseCategoryFilter === "All" || l.category === purchaseCategoryFilter) &&
+      matchesDateFilter(l.purchaseDate, purchaseDateFilter, purchaseCustomDate),
+  );
+
   const getLastOutDate = (productName: string) => {
     const outLogs = logs.filter(
       (l) =>
@@ -1258,10 +1298,40 @@ export default function StoreDashboard({
           )}
 
           <div className="bg-white rounded-2xl sm:rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
-            <div className="p-4 sm:p-6 border-b border-gray-100">
+            <div className="p-4 sm:p-6 border-b border-gray-100 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
               <h2 className="text-base sm:text-lg font-bold text-gray-900">
                 {activeTab === "in" ? "Items In History" : "Items Out History"}
               </h2>
+              <div className="flex flex-wrap items-center gap-2">
+                <select
+                  value={logDateFilter}
+                  onChange={(e) => setLogDateFilter(e.target.value as typeof logDateFilter)}
+                  className="px-3 py-2 bg-gray-50 rounded-xl text-sm font-medium border-none outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                >
+                  <option value="all">All Dates</option>
+                  <option value="today">Today</option>
+                  <option value="yesterday">Yesterday</option>
+                  <option value="custom">Pick Date…</option>
+                </select>
+                {logDateFilter === "custom" && (
+                  <input
+                    type="date"
+                    value={logCustomDate}
+                    onChange={(e) => setLogCustomDate(e.target.value)}
+                    className="px-3 py-2 bg-gray-50 rounded-xl text-sm font-medium border-none outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                )}
+                <select
+                  value={logCategoryFilter}
+                  onChange={(e) => setLogCategoryFilter(e.target.value as typeof logCategoryFilter)}
+                  className="px-3 py-2 bg-gray-50 rounded-xl text-sm font-medium border-none outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                >
+                  <option value="All">All Categories</option>
+                  {STORE_CATEGORIES.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
             </div>
             <div className="hidden lg:block overflow-x-auto">
               <table className="w-full text-left border-collapse">
@@ -1293,7 +1363,7 @@ export default function StoreDashboard({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {logs.filter(log => log.type === activeTab).map((log) => (
+                  {visibleLogs.map((log) => (
                     <tr
                       key={log.id}
                       className="hover:bg-gray-50/50 transition-colors"
@@ -1338,7 +1408,7 @@ export default function StoreDashboard({
                       )}
                     </tr>
                   ))}
-                  {logs.filter(log => log.type === activeTab).length === 0 && (
+                  {visibleLogs.length === 0 && (
                     <tr>
                       <td colSpan={isAdmin ? 7 : 6} className="p-8 text-center text-gray-500">
                         No history found
@@ -1350,7 +1420,7 @@ export default function StoreDashboard({
             </div>
 
             <div className="lg:hidden divide-y divide-gray-100">
-              {logs.filter(log => log.type === activeTab).map((log) => (
+              {visibleLogs.map((log) => (
                 <div key={log.id} className="p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -1396,7 +1466,7 @@ export default function StoreDashboard({
                   </div>
                 </div>
               ))}
-              {logs.filter(log => log.type === activeTab).length === 0 && (
+              {visibleLogs.length === 0 && (
                 <div className="p-8 text-center text-sm font-medium text-gray-500">
                   No history found
                 </div>
@@ -1420,10 +1490,40 @@ export default function StoreDashboard({
           )}
 
           <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
-            <div className="p-6 border-b border-gray-100">
+            <div className="p-4 sm:p-6 border-b border-gray-100 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
               <h2 className="text-lg font-bold text-gray-900">
                 Purchase Entry History
               </h2>
+              <div className="flex flex-wrap items-center gap-2">
+                <select
+                  value={purchaseDateFilter}
+                  onChange={(e) => setPurchaseDateFilter(e.target.value as typeof purchaseDateFilter)}
+                  className="px-3 py-2 bg-gray-50 rounded-xl text-sm font-medium border-none outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                >
+                  <option value="all">All Dates</option>
+                  <option value="today">Today</option>
+                  <option value="yesterday">Yesterday</option>
+                  <option value="custom">Pick Date…</option>
+                </select>
+                {purchaseDateFilter === "custom" && (
+                  <input
+                    type="date"
+                    value={purchaseCustomDate}
+                    onChange={(e) => setPurchaseCustomDate(e.target.value)}
+                    className="px-3 py-2 bg-gray-50 rounded-xl text-sm font-medium border-none outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                )}
+                <select
+                  value={purchaseCategoryFilter}
+                  onChange={(e) => setPurchaseCategoryFilter(e.target.value as typeof purchaseCategoryFilter)}
+                  className="px-3 py-2 bg-gray-50 rounded-xl text-sm font-medium border-none outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                >
+                  <option value="All">All Categories</option>
+                  {STORE_CATEGORIES.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
@@ -1464,7 +1564,7 @@ export default function StoreDashboard({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {logs.filter((log) => log.type === "purchase").map((log) => (
+                  {visiblePurchases.map((log) => (
                     <tr key={log.id} className="hover:bg-gray-50/50 transition-colors">
                       <td className="p-4 pl-6 font-medium text-gray-900 whitespace-nowrap">
                         {new NepaliDate(new Date(log.purchaseDate)).format("YYYY-MM-DD")}
@@ -1517,7 +1617,7 @@ export default function StoreDashboard({
                       )}
                     </tr>
                   ))}
-                  {logs.filter((log) => log.type === "purchase").length === 0 && (
+                  {visiblePurchases.length === 0 && (
                     <tr>
                       <td colSpan={isAdmin ? 10 : 9} className="p-8 text-center text-gray-500">
                         No purchase entries found
