@@ -64,7 +64,7 @@ export default function StoreDashboard({
   const [unusedItems, setUnusedItems] = useState<StoreUnusedItem[]>([]);
   const [suppliers, setSuppliers] = useState<StoreSupplier[]>([]);
   const [activeTab, setActiveTab] = useState<
-    "inventory" | "purchase" | "invoices" | "in" | "out" | "unused"
+    "inventory" | "purchase" | "invoices" | "in" | "out" | "unused" | "order"
   >("inventory");
   const [searchTerm, setSearchTerm] = useState("");
   const [inventoryCategoryFilter, setInventoryCategoryFilter] = useState("All");
@@ -117,6 +117,8 @@ export default function StoreDashboard({
   const [purchaseDateFilter, setPurchaseDateFilter] = useState<"all" | "today" | "yesterday" | "custom">("all");
   const [purchaseCustomDate, setPurchaseCustomDate] = useState("");
   const [purchaseCategoryFilter, setPurchaseCategoryFilter] = useState<"All" | StoreCategory>("All");
+
+  const [orderCategoryFilter, setOrderCategoryFilter] = useState<"All" | StoreCategory>("All");
 
   const [isAddingUnused, setIsAddingUnused] = useState(false);
   const [newUnusedItem, setNewUnusedItem] = useState({
@@ -902,6 +904,28 @@ export default function StoreDashboard({
       matchesDateFilter(l.purchaseDate, purchaseDateFilter, purchaseCustomDate),
   );
 
+  // Fast-moving = 3 or more Items Out entries in the last 30 days.
+  // Fast movers need reordering at stock <= 2; normal items at stock 0.
+  const FAST_MOVING_OUT_ENTRIES = 3;
+  const isFastMoving = (productName: string) => {
+    const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    return (
+      logs.filter(
+        (l) =>
+          l.type === "out" &&
+          l.productName.toLowerCase() === productName.toLowerCase() &&
+          new Date(l.purchaseDate).getTime() >= cutoff,
+      ).length >= FAST_MOVING_OUT_ENTRIES
+    );
+  };
+
+  const reorderProducts = products
+    .filter((p) => {
+      if (orderCategoryFilter !== "All" && p.category !== orderCategoryFilter) return false;
+      return isFastMoving(p.name) ? p.currentStock <= 2 : p.currentStock <= 0;
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
+
   const getLastOutDate = (productName: string) => {
     const outLogs = logs.filter(
       (l) =>
@@ -1013,6 +1037,17 @@ export default function StoreDashboard({
           >
             <PackageX className="w-4 h-4 inline-block mr-2" />
             Unused Items
+          </button>
+          <button
+            onClick={() => setActiveTab("order")}
+            className={`px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all ${
+              activeTab === "order"
+                ? "bg-slate-900 text-white shadow-lg shadow-slate-900/20"
+                : "bg-white text-gray-600 hover:bg-gray-50"
+            }`}
+          >
+            <AlertCircle className="w-4 h-4 inline-block mr-2" />
+            Purchase Order
           </button>
         </div>
       </div>
@@ -1887,6 +1922,93 @@ export default function StoreDashboard({
                     <tr>
                       <td colSpan={isAdmin ? 5 : 4} className="p-8 text-center text-gray-500">
                         No unused items found
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "order" && (
+        <div className="space-y-6">
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 text-sm text-blue-800 font-medium">
+            Reminder list for reordering. Normal items appear when their stock
+            hits 0. Fast-moving items (3+ Items Out entries in the last 30
+            days) appear as soon as stock drops to 2 or less.
+          </div>
+
+          <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
+            <div className="p-4 sm:p-6 border-b border-gray-100 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+              <h2 className="text-lg font-bold text-gray-900">
+                Purchase Order — Low Stock Items
+              </h2>
+              <div className="flex flex-wrap items-center gap-2">
+                {(["All", ...STORE_CATEGORIES] as const).map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setOrderCategoryFilter(c)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      orderCategoryFilter === c
+                        ? "bg-slate-900 text-white shadow"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-gray-50/50">
+                    <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider pl-6">
+                      Product
+                    </th>
+                    <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
+                      Category
+                    </th>
+                    <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
+                      Current Stock
+                    </th>
+                    <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider pr-6">
+                      Movement
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {reorderProducts.map((p) => {
+                    const fast = isFastMoving(p.name);
+                    return (
+                      <tr key={p.id} className="hover:bg-gray-50/50 transition-colors">
+                        <td className="p-4 pl-6 font-medium text-gray-900">{p.name}</td>
+                        <td className="p-4 font-medium text-gray-500">{p.category || "-"}</td>
+                        <td className="p-4">
+                          <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                            p.currentStock <= 0
+                              ? "bg-rose-100 text-rose-700"
+                              : "bg-amber-100 text-amber-700"
+                          }`}>
+                            {p.currentStock} {p.unit}
+                          </span>
+                        </td>
+                        <td className="p-4 pr-6">
+                          <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                            fast ? "bg-indigo-100 text-indigo-700" : "bg-gray-100 text-gray-600"
+                          }`}>
+                            {fast ? "FAST MOVING" : "NORMAL"}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {reorderProducts.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="p-8 text-center text-gray-500">
+                        Nothing needs reordering right now
                       </td>
                     </tr>
                   )}
