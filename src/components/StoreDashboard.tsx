@@ -2405,7 +2405,7 @@ export default function StoreDashboard({
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white rounded-2xl sm:rounded-[2rem] p-5 sm:p-8 w-full max-w-md shadow-2xl relative"
+              className="bg-white rounded-2xl sm:rounded-[2rem] p-5 sm:p-8 w-full max-w-md shadow-2xl relative max-h-[90vh] overflow-y-auto"
             >
               <button
                 onClick={() => setIsAddingLog(false)}
@@ -2449,6 +2449,7 @@ export default function StoreDashboard({
                   <label className="block text-sm font-bold text-gray-700">
                     Items
                   </label>
+                  <div className="space-y-3 max-h-[38vh] overflow-y-auto pr-1 -mr-1">
                   {newLog.items.map((item, index) => {
                     const matched = products.find(
                       (p) =>
@@ -2523,6 +2524,7 @@ export default function StoreDashboard({
                       </div>
                     );
                   })}
+                  </div>
                   <datalist id="product-list">
                     {products
                       .filter((p) => p.category === newLog.category)
