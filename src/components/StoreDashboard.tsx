@@ -926,6 +926,13 @@ export default function StoreDashboard({
     })
     .sort((a, b) => a.name.localeCompare(b.name));
 
+  const getBookPageNo = (productName: string, category: string) =>
+    products.find(
+      (p) =>
+        p.name.toLowerCase() === productName.toLowerCase() &&
+        p.category === category,
+    )?.bookPageNo || "";
+
   const getLastOutDate = (productName: string) => {
     const outLogs = logs.filter(
       (l) =>
@@ -1145,6 +1152,9 @@ export default function StoreDashboard({
                       Unit
                     </th>
                     <th className="px-4 py-3 text-[11px] font-bold text-gray-500 uppercase text-right">
+                      Page No
+                    </th>
+                    <th className="px-4 py-3 text-[11px] font-bold text-gray-500 uppercase text-right">
                       Price
                     </th>
                     <th className="px-4 py-3 text-[11px] font-bold text-gray-500 uppercase text-right">
@@ -1185,6 +1195,9 @@ export default function StoreDashboard({
                         </td>
                         <td className="px-4 py-3 text-sm font-medium text-gray-500">
                           {product.unit}
+                        </td>
+                        <td className="px-4 py-3 text-right text-sm font-medium text-gray-600">
+                          {product.bookPageNo || "-"}
                         </td>
                         <td className="px-4 py-3 text-right text-sm font-medium text-gray-600">
                           Rs. {product.price || 0}
@@ -1258,6 +1271,7 @@ export default function StoreDashboard({
                             <span>{product.category || "Uncategorized"}</span>
                             <span>{product.unit}</span>
                             <span>Rs. {product.price || 0}</span>
+                            {product.bookPageNo && <span>Page {product.bookPageNo}</span>}
                           </div>
                         </div>
                         <span
@@ -1382,6 +1396,9 @@ export default function StoreDashboard({
                       Category
                     </th>
                     <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
+                      Page No
+                    </th>
+                    <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
                       Quantity
                     </th>
                     <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
@@ -1411,6 +1428,9 @@ export default function StoreDashboard({
                       </td>
                       <td className="p-4 font-medium text-gray-500">
                         {log.category}
+                      </td>
+                      <td className="p-4 font-medium text-gray-500">
+                        {getBookPageNo(log.productName, log.category) || "-"}
                       </td>
                       <td className="p-4 font-medium text-gray-500">
                         {log.quantity}
@@ -1445,7 +1465,7 @@ export default function StoreDashboard({
                   ))}
                   {visibleLogs.length === 0 && (
                     <tr>
-                      <td colSpan={isAdmin ? 7 : 6} className="p-8 text-center text-gray-500">
+                      <td colSpan={isAdmin ? 8 : 7} className="p-8 text-center text-gray-500">
                         No history found
                       </td>
                     </tr>
@@ -1466,6 +1486,12 @@ export default function StoreDashboard({
                         <span>{new NepaliDate(new Date(log.purchaseDate)).format("YYYY-MM-DD")}</span>
                         <span>&middot;</span>
                         <span>{log.category}</span>
+                        {getBookPageNo(log.productName, log.category) && (
+                          <>
+                            <span>&middot;</span>
+                            <span>Page {getBookPageNo(log.productName, log.category)}</span>
+                          </>
+                        )}
                       </div>
                     </div>
                     <span className="shrink-0 px-2.5 py-1 rounded-lg bg-gray-100 text-gray-700 text-xs font-bold">
@@ -3390,6 +3416,12 @@ export default function StoreDashboard({
                       <span>Current Stock: <strong className="text-gray-900">{selectedProduct.currentStock} {selectedProduct.unit}</strong></span>
                       <span>•</span>
                       <span>Price: <strong className="text-gray-900">Rs. {selectedProduct.price || 0}</strong></span>
+                      {selectedProduct.bookPageNo && (
+                        <>
+                          <span>•</span>
+                          <span>Book Page No: <strong className="text-gray-900">{selectedProduct.bookPageNo}</strong></span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
