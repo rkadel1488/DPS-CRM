@@ -1600,6 +1600,9 @@ export default function StoreDashboard({
                       Product
                     </th>
                     <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
+                      Page No
+                    </th>
+                    <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
                       Quantity
                     </th>
                     <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
@@ -1635,6 +1638,9 @@ export default function StoreDashboard({
                       </td>
                       <td className="p-4 font-medium text-gray-900">
                         {log.productName}
+                      </td>
+                      <td className="p-4 font-medium text-gray-500">
+                        {getBookPageNo(log.productName, log.category) || "-"}
                       </td>
                       <td className="p-4 font-medium text-gray-500">
                         {log.quantity}
@@ -1680,7 +1686,7 @@ export default function StoreDashboard({
                   ))}
                   {visiblePurchases.length === 0 && (
                     <tr>
-                      <td colSpan={isAdmin ? 10 : 9} className="p-8 text-center text-gray-500">
+                      <td colSpan={isAdmin ? 11 : 10} className="p-8 text-center text-gray-500">
                         No purchase entries found
                       </td>
                     </tr>
