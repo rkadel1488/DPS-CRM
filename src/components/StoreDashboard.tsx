@@ -926,12 +926,20 @@ export default function StoreDashboard({
     })
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  const getBookPageNo = (productName: string, category: string) =>
-    products.find(
+  const getBookPageNo = (productName: string, category: string) => {
+    // Prefer the exact name+category match, but fall back to name-only so
+    // older entries with a mismatched or missing category still show it
+    const exact = products.find(
       (p) =>
         p.name.toLowerCase() === productName.toLowerCase() &&
         p.category === category,
-    )?.bookPageNo || "";
+    );
+    if (exact?.bookPageNo) return exact.bookPageNo;
+    const byName = products.find(
+      (p) => p.name.toLowerCase() === productName.toLowerCase() && p.bookPageNo,
+    );
+    return byName?.bookPageNo || "";
+  };
 
   const getLastOutDate = (productName: string) => {
     const outLogs = logs.filter(
