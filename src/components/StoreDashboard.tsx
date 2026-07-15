@@ -928,15 +928,16 @@ export default function StoreDashboard({
 
   const getBookPageNo = (productName: string, category: string) => {
     // Prefer the exact name+category match, but fall back to name-only so
-    // older entries with a mismatched or missing category still show it
+    // older entries with a mismatched or missing category still show it.
+    // Names are compared trimmed/case-insensitively to survive typos.
+    const norm = (s: string) => s.trim().toLowerCase();
+    const target = norm(productName);
     const exact = products.find(
-      (p) =>
-        p.name.toLowerCase() === productName.toLowerCase() &&
-        p.category === category,
+      (p) => norm(p.name) === target && p.category === category,
     );
     if (exact?.bookPageNo) return exact.bookPageNo;
     const byName = products.find(
-      (p) => p.name.toLowerCase() === productName.toLowerCase() && p.bookPageNo,
+      (p) => norm(p.name) === target && p.bookPageNo,
     );
     return byName?.bookPageNo || "";
   };
