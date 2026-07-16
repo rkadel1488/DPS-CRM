@@ -892,19 +892,55 @@ export default function StoreDashboard({
     return true;
   };
 
-  const visibleLogs = logs.filter(
-    (l) =>
-      l.type === activeTab &&
-      (logCategoryFilter === "All" || l.category === logCategoryFilter) &&
-      matchesDateFilter(l.purchaseDate, logDateFilter, logCustomDate),
-  );
+  const getBookPageNo = (productName: string, category: string) => {
+    // Prefer the exact name+category match, but fall back to name-only so
+    // older entries with a mismatched or missing category still show it.
+    // Names are compared trimmed/case-insensitively to survive typos.
+    const norm = (s: string) => s.trim().toLowerCase();
+    const target = norm(productName);
+    const exact = products.find(
+      (p) => norm(p.name) === target && p.category === category,
+    );
+    if (exact?.bookPageNo) return exact.bookPageNo;
+    const byName = products.find(
+      (p) => norm(p.name) === target && p.bookPageNo,
+    );
+    return byName?.bookPageNo || "";
+  };
 
-  const visiblePurchases = logs.filter(
-    (l) =>
-      l.type === "purchase" &&
-      (purchaseCategoryFilter === "All" || l.category === purchaseCategoryFilter) &&
-      matchesDateFilter(l.purchaseDate, purchaseDateFilter, purchaseCustomDate),
-  );
+  // Newest date first; entries on the same date ordered by book page number
+  // ascending (entries without a page number go last)
+  const compareByDateThenPage = (a: StorePurchase, b: StorePurchase) => {
+    const dayA = new Date(a.purchaseDate).toDateString();
+    const dayB = new Date(b.purchaseDate).toDateString();
+    if (dayA !== dayB) {
+      return new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime();
+    }
+    const pageA = parseInt(getBookPageNo(a.productName, a.category), 10);
+    const pageB = parseInt(getBookPageNo(b.productName, b.category), 10);
+    if (isNaN(pageA) && isNaN(pageB)) return 0;
+    if (isNaN(pageA)) return 1;
+    if (isNaN(pageB)) return -1;
+    return pageA - pageB;
+  };
+
+  const visibleLogs = logs
+    .filter(
+      (l) =>
+        l.type === activeTab &&
+        (logCategoryFilter === "All" || l.category === logCategoryFilter) &&
+        matchesDateFilter(l.purchaseDate, logDateFilter, logCustomDate),
+    )
+    .sort(compareByDateThenPage);
+
+  const visiblePurchases = logs
+    .filter(
+      (l) =>
+        l.type === "purchase" &&
+        (purchaseCategoryFilter === "All" || l.category === purchaseCategoryFilter) &&
+        matchesDateFilter(l.purchaseDate, purchaseDateFilter, purchaseCustomDate),
+    )
+    .sort(compareByDateThenPage);
 
   // Fast-moving = 3 or more Items Out entries in the last 30 days.
   // Fast movers need reordering at stock <= 2; normal items at stock 0.
@@ -927,22 +963,6 @@ export default function StoreDashboard({
       return isFastMoving(p.name) ? p.currentStock <= 2 : p.currentStock <= 0;
     })
     .sort((a, b) => a.name.localeCompare(b.name));
-
-  const getBookPageNo = (productName: string, category: string) => {
-    // Prefer the exact name+category match, but fall back to name-only so
-    // older entries with a mismatched or missing category still show it.
-    // Names are compared trimmed/case-insensitively to survive typos.
-    const norm = (s: string) => s.trim().toLowerCase();
-    const target = norm(productName);
-    const exact = products.find(
-      (p) => norm(p.name) === target && p.category === category,
-    );
-    if (exact?.bookPageNo) return exact.bookPageNo;
-    const byName = products.find(
-      (p) => norm(p.name) === target && p.bookPageNo,
-    );
-    return byName?.bookPageNo || "";
-  };
 
   const getLastOutDate = (productName: string) => {
     const outLogs = logs.filter(
