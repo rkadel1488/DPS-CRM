@@ -48,6 +48,7 @@ interface PurchaseItemRow {
   quantity: number;
   costPrice?: number;
   vatEnabled?: boolean;
+  category?: StoreCategory;
 }
 
 export default function StoreDashboard({
@@ -780,9 +781,10 @@ export default function StoreDashboard({
         const vatAmount = item.vatEnabled
           ? itemTotal * (newPurchase.vatRate / 100)
           : 0;
+        const itemCategory = item.category || newPurchase.category;
         const logData: Omit<StorePurchase, "id"> = {
           type: "purchase",
-          category: newPurchase.category,
+          category: itemCategory,
           productName: item.productName,
           quantity: item.quantity,
           costPrice: item.costPrice || 0,
@@ -809,7 +811,7 @@ export default function StoreDashboard({
         } else {
           await addDoc(collection(db, "store_products"), {
             name: item.productName,
-            category: newPurchase.category,
+            category: itemCategory,
             unit: "pcs",
             currentStock: item.quantity,
             price: 0,
@@ -1606,6 +1608,9 @@ export default function StoreDashboard({
                       Bill No.
                     </th>
                     <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
+                      Category
+                    </th>
+                    <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
                       Product
                     </th>
                     <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
@@ -1644,6 +1649,11 @@ export default function StoreDashboard({
                       </td>
                       <td className="p-4 font-medium text-gray-500">
                         {log.billNumber || "-"}
+                      </td>
+                      <td className="p-4">
+                        <span className="inline-flex px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold">
+                          {log.category || "-"}
+                        </span>
                       </td>
                       <td className="p-4 font-medium text-gray-900">
                         {log.productName}
@@ -1695,7 +1705,7 @@ export default function StoreDashboard({
                   ))}
                   {visiblePurchases.length === 0 && (
                     <tr>
-                      <td colSpan={isAdmin ? 11 : 10} className="p-8 text-center text-gray-500">
+                      <td colSpan={isAdmin ? 12 : 11} className="p-8 text-center text-gray-500">
                         No purchase entries found
                       </td>
                     </tr>
@@ -3168,6 +3178,20 @@ export default function StoreDashboard({
                               placeholder="Product name"
                               list="product-list-purchase"
                             />
+                          </div>
+                          <div className="w-28">
+                            <select
+                              value={item.category ?? newPurchase.category}
+                              onChange={(e) =>
+                                updatePurchaseItemRow(index, { category: e.target.value as StoreCategory })
+                              }
+                              className="w-full px-2 py-2 bg-white border-none rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-sm cursor-pointer"
+                              title="Category for this item"
+                            >
+                              {STORE_CATEGORIES.map((c) => (
+                                <option key={c} value={c}>{c}</option>
+                              ))}
+                            </select>
                           </div>
                           <div className="w-20">
                             <input
