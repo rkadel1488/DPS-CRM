@@ -942,6 +942,25 @@ export default function StoreDashboard({
     )
     .sort(compareByDateThenPage);
 
+  // Serial numbers restart at 1 for each date (lists are sorted by date)
+  const dailySerials = (list: StorePurchase[]) => {
+    const serials = new Map<string, number>();
+    let day = "";
+    let n = 0;
+    for (const l of list) {
+      const d = new Date(l.purchaseDate).toDateString();
+      if (d !== day) {
+        day = d;
+        n = 0;
+      }
+      n++;
+      serials.set(l.id, n);
+    }
+    return serials;
+  };
+  const logSerials = dailySerials(visibleLogs);
+  const purchaseSerials = dailySerials(visiblePurchases);
+
   // Fast-moving = 3 or more Items Out entries in the last 30 days.
   // Fast movers need reordering at stock <= 2; normal items at stock 0.
   const FAST_MOVING_OUT_ENTRIES = 3;
@@ -1418,6 +1437,9 @@ export default function StoreDashboard({
                 <thead>
                   <tr className="bg-gray-50/50">
                     <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider pl-6">
+                      S.No
+                    </th>
+                    <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
                       Date
                     </th>
                     <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
@@ -1451,7 +1473,10 @@ export default function StoreDashboard({
                       key={log.id}
                       className="hover:bg-gray-50/50 transition-colors"
                     >
-                      <td className="p-4 pl-6 font-medium text-gray-900 whitespace-nowrap">
+                      <td className="p-4 pl-6 font-medium text-gray-500">
+                        {logSerials.get(log.id)}
+                      </td>
+                      <td className="p-4 font-medium text-gray-900 whitespace-nowrap">
                         {new NepaliDate(new Date(log.purchaseDate)).format("YYYY-MM-DD")}
                       </td>
                       <td className="p-4 font-medium text-gray-900">
@@ -1496,7 +1521,7 @@ export default function StoreDashboard({
                   ))}
                   {visibleLogs.length === 0 && (
                     <tr>
-                      <td colSpan={isAdmin ? 8 : 7} className="p-8 text-center text-gray-500">
+                      <td colSpan={isAdmin ? 9 : 8} className="p-8 text-center text-gray-500">
                         No history found
                       </td>
                     </tr>
@@ -1511,6 +1536,7 @@ export default function StoreDashboard({
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="font-bold text-sm text-gray-900 leading-snug">
+                        <span className="text-gray-400 mr-1">#{logSerials.get(log.id)}</span>
                         {log.productName}
                       </div>
                       <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium text-gray-500">
@@ -1622,6 +1648,9 @@ export default function StoreDashboard({
                 <thead>
                   <tr className="bg-gray-50/50">
                     <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider pl-6">
+                      S.No
+                    </th>
+                    <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
                       Date
                     </th>
                     <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
@@ -1664,7 +1693,10 @@ export default function StoreDashboard({
                 <tbody className="divide-y divide-gray-100">
                   {visiblePurchases.map((log) => (
                     <tr key={log.id} className="hover:bg-gray-50/50 transition-colors">
-                      <td className="p-4 pl-6 font-medium text-gray-900 whitespace-nowrap">
+                      <td className="p-4 pl-6 font-medium text-gray-500">
+                        {purchaseSerials.get(log.id)}
+                      </td>
+                      <td className="p-4 font-medium text-gray-900 whitespace-nowrap">
                         {new NepaliDate(new Date(log.purchaseDate)).format("YYYY-MM-DD")}
                       </td>
                       <td className="p-4 font-medium text-gray-500">
@@ -1725,7 +1757,7 @@ export default function StoreDashboard({
                   ))}
                   {visiblePurchases.length === 0 && (
                     <tr>
-                      <td colSpan={isAdmin ? 12 : 11} className="p-8 text-center text-gray-500">
+                      <td colSpan={isAdmin ? 13 : 12} className="p-8 text-center text-gray-500">
                         No purchase entries found
                       </td>
                     </tr>
