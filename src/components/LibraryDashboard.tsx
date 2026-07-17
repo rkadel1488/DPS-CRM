@@ -68,6 +68,7 @@ export default function LibraryDashboard({
     issuedToName: "",
     issuedToId: "",
     issuedToType: "student" as "student" | "teacher",
+    issueDate: new Date().toISOString().split("T")[0],
   });
 
   const [notifications, setNotifications] = useState<BookIssue[]>([]);
@@ -345,8 +346,10 @@ export default function LibraryDashboard({
     }
 
     try {
-      const issueDate = new Date();
-      const dueDate = new Date();
+      const issueDate = newIssue.issueDate
+        ? new Date(newIssue.issueDate)
+        : new Date();
+      const dueDate = new Date(issueDate);
       dueDate.setDate(dueDate.getDate() + 7);
 
       await addDoc(collection(db, "book_issues"), {
@@ -372,6 +375,7 @@ export default function LibraryDashboard({
         issuedToName: "",
         issuedToId: "",
         issuedToType: "student",
+        issueDate: new Date().toISOString().split("T")[0],
       });
       setSelectedBook(null);
     } catch (error) {
@@ -1329,6 +1333,25 @@ export default function LibraryDashboard({
                     className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border border-white/60 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none"
                     placeholder={`e.g. ${newIssue.issuedToType === "student" ? "John Doe" : "Mr. Smith"}`}
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Issue Date *
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    max={new Date().toISOString().split("T")[0]}
+                    value={newIssue.issueDate}
+                    onChange={(e) =>
+                      setNewIssue({ ...newIssue, issueDate: e.target.value })
+                    }
+                    className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border border-white/60 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">
+                    Due date will be 7 days from the issue date
+                  </p>
                 </div>
 
                 <div className="pt-4 flex gap-3">
