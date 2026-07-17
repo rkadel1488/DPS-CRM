@@ -26,6 +26,7 @@ import {
   AlertCircle,
   Trash2,
   User,
+  Pencil,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import * as XLSX from "xlsx";
@@ -55,6 +56,16 @@ export default function LibraryDashboard({
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
 
   const [newBook, setNewBook] = useState({
+    bookCode: "",
+    title: "",
+    author: "",
+    category: "",
+    totalCopies: 1,
+    bookClass: "",
+    price: "",
+  });
+  const [editingBook, setEditingBook] = useState<Book | null>(null);
+  const [editBookForm, setEditBookForm] = useState({
     bookCode: "",
     title: "",
     author: "",
@@ -212,6 +223,48 @@ export default function LibraryDashboard({
       });
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, "books");
+    }
+  };
+
+  const handleStartEditBook = (book: Book) => {
+    setEditBookForm({
+      bookCode: book.bookCode || "",
+      title: book.title || "",
+      author: book.author || "",
+      category: book.category || "",
+      totalCopies: book.totalCopies || 1,
+      bookClass: book.bookClass || "",
+      price: book.price != null ? String(book.price) : "",
+    });
+    setEditingBook(book);
+  };
+
+  const handleUpdateBook = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingBook) return;
+    // Changing total copies adjusts available copies by the same amount
+    const copiesDelta = editBookForm.totalCopies - editingBook.totalCopies;
+    const newAvailable = editingBook.availableCopies + copiesDelta;
+    if (newAvailable < 0) {
+      alert(
+        `Cannot reduce total copies to ${editBookForm.totalCopies} — ${editingBook.totalCopies - editingBook.availableCopies} copies are currently issued.`,
+      );
+      return;
+    }
+    try {
+      await updateDoc(doc(db, "books", editingBook.id), {
+        bookCode: editBookForm.bookCode.trim() || editingBook.bookCode,
+        title: editBookForm.title,
+        author: editBookForm.author,
+        category: editBookForm.category,
+        bookClass: editBookForm.bookClass,
+        price: editBookForm.price ? Number(editBookForm.price) : null,
+        totalCopies: editBookForm.totalCopies,
+        availableCopies: newAvailable,
+      });
+      setEditingBook(null);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, "books");
     }
   };
 
@@ -937,13 +990,22 @@ export default function LibraryDashboard({
                                 Issue Book
                               </button>
                               {isAdmin && (
-                                <button
-                                  onClick={() => handleDeleteBook(book)}
-                                  className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                  title="Delete Book"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
+                                <>
+                                  <button
+                                    onClick={() => handleStartEditBook(book)}
+                                    className="p-1.5 text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors"
+                                    title="Edit Book"
+                                  >
+                                    <Pencil className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteBook(book)}
+                                    className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                    title="Delete Book"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </>
                               )}
                             </div>
                           </td>
@@ -983,12 +1045,20 @@ export default function LibraryDashboard({
                           )}
                         </div>
                         {isAdmin && (
-                          <button
-                            onClick={() => handleDeleteBook(book)}
-                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
+                          <div className="flex items-center">
+                            <button
+                              onClick={() => handleStartEditBook(book)}
+                              className="p-2 text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors"
+                            >
+                              <Pencil className="w-5 h-5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteBook(book)}
+                              className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          </div>
                         )}
                       </div>
 
@@ -1233,6 +1303,155 @@ export default function LibraryDashboard({
                     className="flex-1 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white rounded-xl font-medium hover:from-emerald-600 hover:to-teal-600 hover:shadow-xl hover:-translate-y-0.5 transition-colors"
                   >
                     Add Book
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Edit Book Modal */}
+      <AnimatePresence>
+        {editingBook && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white/70 backdrop-blur-xl rounded-3xl md:rounded-[2rem] shadow-2xl shadow-gray-200/40 w-full max-w-md overflow-hidden"
+            >
+              <div className="p-6 border-b border-white/60 flex justify-between items-center">
+                <h2 className="text-[1.35rem] font-extrabold tracking-tight text-gray-900">
+                  Edit Book
+                </h2>
+                <button
+                  onClick={() => setEditingBook(null)}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+              <form onSubmit={handleUpdateBook} className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Book Code
+                  </label>
+                  <input
+                    type="text"
+                    value={editBookForm.bookCode}
+                    onChange={(e) =>
+                      setEditBookForm({ ...editBookForm, bookCode: e.target.value })
+                    }
+                    className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border border-white/60 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Title *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editBookForm.title}
+                    onChange={(e) =>
+                      setEditBookForm({ ...editBookForm, title: e.target.value })
+                    }
+                    className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border border-white/60 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Author
+                  </label>
+                  <input
+                    type="text"
+                    value={editBookForm.author}
+                    onChange={(e) =>
+                      setEditBookForm({ ...editBookForm, author: e.target.value })
+                    }
+                    className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border border-white/60 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Class
+                    </label>
+                    <input
+                      type="text"
+                      value={editBookForm.bookClass}
+                      onChange={(e) =>
+                        setEditBookForm({ ...editBookForm, bookClass: e.target.value })
+                      }
+                      className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border border-white/60 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Price
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={editBookForm.price}
+                      onChange={(e) =>
+                        setEditBookForm({ ...editBookForm, price: e.target.value })
+                      }
+                      className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border border-white/60 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Category
+                    </label>
+                    <input
+                      type="text"
+                      value={editBookForm.category}
+                      onChange={(e) =>
+                        setEditBookForm({ ...editBookForm, category: e.target.value })
+                      }
+                      className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border border-white/60 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Total Copies *
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min="1"
+                      value={editBookForm.totalCopies}
+                      onChange={(e) =>
+                        setEditBookForm({
+                          ...editBookForm,
+                          totalCopies: parseInt(e.target.value),
+                        })
+                      }
+                      className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border border-white/60 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                    />
+                    <p className="text-xs text-gray-400 mt-1">
+                      Available: {editingBook.availableCopies} / {editingBook.totalCopies}
+                    </p>
+                  </div>
+                </div>
+                <div className="pt-4 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setEditingBook(null)}
+                    className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white rounded-xl font-medium hover:from-emerald-600 hover:to-teal-600 hover:shadow-xl hover:-translate-y-0.5 transition-colors"
+                  >
+                    Save Changes
                   </button>
                 </div>
               </form>
