@@ -82,6 +82,9 @@ export default function LibraryDashboard({
     issueDate: new Date().toISOString().split("T")[0],
   });
 
+  const [returningIssue, setReturningIssue] = useState<BookIssue | null>(null);
+  const [returnDate, setReturnDate] = useState(new Date().toISOString().split("T")[0]);
+
   const [notifications, setNotifications] = useState<BookIssue[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
 
@@ -436,11 +439,11 @@ export default function LibraryDashboard({
     }
   };
 
-  const handleReturnBook = async (issue: BookIssue) => {
+  const handleReturnBook = async (issue: BookIssue, dateStr?: string) => {
     try {
       await updateDoc(doc(db, "book_issues", issue.id), {
         status: "returned",
-        returnDate: new Date().toISOString(),
+        returnDate: (dateStr ? new Date(dateStr) : new Date()).toISOString(),
       });
 
       const book = books.find((b) => b.id === issue.bookId);
@@ -664,7 +667,10 @@ export default function LibraryDashboard({
                       <div className="flex items-center justify-end gap-2">
                         {issue.status === "issued" && (
                           <button
-                            onClick={() => handleReturnBook(issue)}
+                            onClick={() => {
+                              setReturnDate(new Date().toISOString().split("T")[0]);
+                              setReturningIssue(issue);
+                            }}
                             className="px-3 py-1.5 bg-emerald-50 text-emerald-700 text-sm font-medium rounded-lg hover:bg-emerald-100 transition-colors"
                           >
                             Mark Returned
@@ -788,7 +794,10 @@ export default function LibraryDashboard({
 
                 {issue.status === "issued" && (
                   <button
-                    onClick={() => handleReturnBook(issue)}
+                    onClick={() => {
+                      setReturnDate(new Date().toISOString().split("T")[0]);
+                      setReturningIssue(issue);
+                    }}
                     className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white text-sm font-bold rounded-xl hover:from-emerald-600 hover:to-teal-600 hover:shadow-xl hover:-translate-y-0.5 transition-colors shadow-2xl shadow-gray-200/50 shadow-emerald-100"
                   >
                     Mark as Returned
@@ -1452,6 +1461,77 @@ export default function LibraryDashboard({
                     className="flex-1 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white rounded-xl font-medium hover:from-emerald-600 hover:to-teal-600 hover:shadow-xl hover:-translate-y-0.5 transition-colors"
                   >
                     Save Changes
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Mark Returned Modal */}
+      <AnimatePresence>
+        {returningIssue && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white/70 backdrop-blur-xl rounded-3xl md:rounded-[2rem] shadow-2xl shadow-gray-200/40 w-full max-w-sm overflow-hidden"
+            >
+              <div className="p-6 border-b border-white/60 flex justify-between items-center">
+                <h2 className="text-[1.35rem] font-extrabold tracking-tight text-gray-900">
+                  Mark Returned
+                </h2>
+                <button
+                  onClick={() => setReturningIssue(null)}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  await handleReturnBook(returningIssue, returnDate);
+                  setReturningIssue(null);
+                }}
+                className="p-6 space-y-4"
+              >
+                <div className="text-sm text-gray-600">
+                  <div className="font-bold text-gray-900">{returningIssue.bookTitle}</div>
+                  <div className="mt-0.5">
+                    Issued to {returningIssue.issuedToName} on{" "}
+                    {new Date(returningIssue.issueDate).toLocaleDateString()}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Return Date *
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    min={new Date(returningIssue.issueDate).toISOString().split("T")[0]}
+                    max={new Date().toISOString().split("T")[0]}
+                    value={returnDate}
+                    onChange={(e) => setReturnDate(e.target.value)}
+                    className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border border-white/60 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                  />
+                </div>
+                <div className="pt-2 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setReturningIssue(null)}
+                    className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 border-none text-white rounded-xl font-medium hover:from-emerald-600 hover:to-teal-600 hover:shadow-xl hover:-translate-y-0.5 transition-colors"
+                  >
+                    Confirm Return
                   </button>
                 </div>
               </form>
