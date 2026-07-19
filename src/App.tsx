@@ -1577,6 +1577,39 @@ function SettingsView({
   const [smsRouteId, setSmsRouteId] = useState(""); // Stores Route ID
   const [isSaving, setIsSaving] = useState(false);
   const [isCleaningStoreData, setIsCleaningStoreData] = useState(false);
+  const [isDeletingBooks, setIsDeletingBooks] = useState(false);
+
+  const handleDeleteAllBooks = async () => {
+    if (!isAdmin) return;
+    const typed = window.prompt(
+      'This will permanently delete ALL books from the library. Issue history records are kept. This cannot be undone.\n\nType "DELETE" to confirm:',
+    );
+    if (typed !== "DELETE") return;
+
+    setIsDeletingBooks(true);
+    try {
+      const snap = await getDocs(collection(db, "books"));
+      if (snap.empty) {
+        alert("There are no books to delete.");
+        return;
+      }
+      const BATCH_SIZE = 400;
+      const docsArr = snap.docs;
+      for (let i = 0; i < docsArr.length; i += BATCH_SIZE) {
+        const batch = writeBatch(db);
+        docsArr
+          .slice(i, i + BATCH_SIZE)
+          .forEach((d) => batch.delete(doc(db, "books", d.id)));
+        await batch.commit();
+      }
+      alert(`Deleted ${docsArr.length} books.`);
+    } catch (e) {
+      console.error("Failed to delete all books:", e);
+      alert("Failed to delete all books.");
+    } finally {
+      setIsDeletingBooks(false);
+    }
+  };
 
   const handleCleanupStoreData = async () => {
     if (!isAdmin) return;
@@ -1815,6 +1848,32 @@ function SettingsView({
                 {isCleaningStoreData
                   ? "Cleaning..."
                   : "Delete Entries Older Than 6 Months"}
+              </button>
+            </div>
+          </div>
+        )}
+        {isAdmin && (
+          <div className="p-6">
+            <h3 className="font-bold text-gray-900 mb-1 flex items-center gap-2">
+              Library Data
+            </h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Permanently delete every book in the library. Issue history
+              records are kept. Use this only when starting the catalogue
+              over from scratch.
+            </p>
+            <div className="bg-rose-50 p-4 rounded-[1rem] border border-rose-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <p className="text-xs text-rose-900 font-medium">
+                This action is permanent and cannot be undone. You will be
+                asked to type DELETE to confirm.
+              </p>
+              <button
+                onClick={handleDeleteAllBooks}
+                disabled={isDeletingBooks}
+                className="shrink-0 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                {isDeletingBooks ? "Deleting..." : "Delete All Books"}
               </button>
             </div>
           </div>
