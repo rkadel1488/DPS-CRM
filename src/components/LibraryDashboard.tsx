@@ -1204,6 +1204,29 @@ export default function LibraryDashboard({
                     className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border border-white/60 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none"
                     placeholder="e.g. BK-001 (Leave empty to auto-generate)"
                   />
+                  {newBook.bookCode.trim() && (() => {
+                    const term = newBook.bookCode.trim().toLowerCase();
+                    const matches = books
+                      .filter((b) => b.bookCode.toLowerCase().includes(term))
+                      .slice(0, 5);
+                    if (matches.length === 0) return null;
+                    return (
+                      <div className="mt-2 bg-amber-50 border border-amber-200 rounded-xl p-2 text-xs space-y-1">
+                        <div className="font-bold text-amber-700">
+                          Existing books with similar code:
+                        </div>
+                        {matches.map((b) => (
+                          <div key={b.id} className="flex justify-between gap-2 text-gray-700">
+                            <span className="font-mono">{b.bookCode}</span>
+                            <span className="truncate flex-1">{b.title}</span>
+                            <span className="text-gray-500 shrink-0">
+                              {b.availableCopies}/{b.totalCopies}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1219,6 +1242,29 @@ export default function LibraryDashboard({
                     className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border border-white/60 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none"
                     placeholder="Book Title"
                   />
+                  {newBook.title.trim().length >= 2 && (() => {
+                    const term = newBook.title.trim().toLowerCase();
+                    const matches = books
+                      .filter((b) => b.title.toLowerCase().includes(term))
+                      .slice(0, 5);
+                    if (matches.length === 0) return null;
+                    return (
+                      <div className="mt-2 bg-amber-50 border border-amber-200 rounded-xl p-2 text-xs space-y-1">
+                        <div className="font-bold text-amber-700">
+                          Existing books with similar name:
+                        </div>
+                        {matches.map((b) => (
+                          <div key={b.id} className="flex justify-between gap-2 text-gray-700">
+                            <span className="font-mono">{b.bookCode}</span>
+                            <span className="truncate flex-1">{b.title}</span>
+                            <span className="text-gray-500 shrink-0">
+                              {b.availableCopies}/{b.totalCopies}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
