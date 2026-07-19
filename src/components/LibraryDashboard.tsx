@@ -29,6 +29,7 @@ import {
   Pencil,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import NepaliDatePicker from "./NepaliDatePicker";
 import * as XLSX from "xlsx";
 import { handleFirestoreError, OperationType } from "../App";
 
@@ -1509,14 +1510,10 @@ export default function LibraryDashboard({
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Return Date *
                   </label>
-                  <input
-                    type="date"
-                    required
-                    min={new Date(returningIssue.issueDate).toISOString().split("T")[0]}
-                    max={new Date().toISOString().split("T")[0]}
+                  <NepaliDatePicker
                     value={returnDate}
-                    onChange={(e) => setReturnDate(e.target.value)}
-                    className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border border-white/60 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                    onChange={setReturnDate}
+                    className="px-3 py-2 bg-white/60 backdrop-blur-md border border-white/60 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none font-medium cursor-pointer"
                   />
                 </div>
                 <div className="pt-2 flex gap-3">
@@ -1638,15 +1635,10 @@ export default function LibraryDashboard({
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Issue Date *
                   </label>
-                  <input
-                    type="date"
-                    required
-                    max={new Date().toISOString().split("T")[0]}
+                  <NepaliDatePicker
                     value={newIssue.issueDate}
-                    onChange={(e) =>
-                      setNewIssue({ ...newIssue, issueDate: e.target.value })
-                    }
-                    className="w-full px-4 py-2 bg-white/60 backdrop-blur-md border border-white/60 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                    onChange={(d) => setNewIssue({ ...newIssue, issueDate: d })}
+                    className="px-3 py-2 bg-white/60 backdrop-blur-md border border-white/60 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none font-medium cursor-pointer"
                   />
                   <p className="text-xs text-gray-400 mt-1">
                     Due date will be 7 days from the issue date

@@ -29,6 +29,7 @@ import {
   increment,
 } from "firebase/firestore";
 import NepaliDate from "nepali-date-converter";
+import NepaliDatePicker from "./NepaliDatePicker";
 import * as XLSX from "xlsx";
 import {
   STORE_CATEGORIES,
@@ -2875,17 +2876,9 @@ export default function StoreDashboard({
                   <label className="block text-sm font-bold text-gray-700 mb-1">
                     Entry Date
                   </label>
-                  <input
-                    type="date"
-                    required
+                  <NepaliDatePicker
                     value={newLog.purchaseDate}
-                    onChange={(e) =>
-                      setNewLog({
-                        ...newLog,
-                        purchaseDate: e.target.value,
-                      })
-                    }
-                    className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium"
+                    onChange={(d) => setNewLog({ ...newLog, purchaseDate: d })}
                   />
                 </div>
 
@@ -3051,17 +3044,9 @@ export default function StoreDashboard({
                   <label className="block text-sm font-bold text-gray-700 mb-1">
                     Entry Date
                   </label>
-                  <input
-                    type="date"
-                    required
+                  <NepaliDatePicker
                     value={editLogForm.purchaseDate}
-                    onChange={(e) =>
-                      setEditLogForm({
-                        ...editLogForm,
-                        purchaseDate: e.target.value,
-                      })
-                    }
-                    className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium"
+                    onChange={(d) => setEditLogForm({ ...editLogForm, purchaseDate: d })}
                   />
                 </div>
 
@@ -3194,14 +3179,9 @@ export default function StoreDashboard({
                     <label className="block text-sm font-bold text-gray-700 mb-1">
                       Entry Date
                     </label>
-                    <input
-                      type="date"
-                      required
+                    <NepaliDatePicker
                       value={newPurchase.purchaseDate}
-                      onChange={(e) =>
-                        setNewPurchase({ ...newPurchase, purchaseDate: e.target.value })
-                      }
-                      className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium"
+                      onChange={(d) => setNewPurchase({ ...newPurchase, purchaseDate: d })}
                     />
                   </div>
                 </div>
