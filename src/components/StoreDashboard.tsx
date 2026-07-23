@@ -909,6 +909,16 @@ export default function StoreDashboard({
     return byName?.bookPageNo || "";
   };
 
+  const getCurrentStockFor = (productName: string, category: string) => {
+    const norm = (s: string) => s.trim().toLowerCase();
+    const target = norm(productName);
+    const exact = products.find(
+      (p) => norm(p.name) === target && p.category === category,
+    );
+    if (exact) return exact;
+    return products.find((p) => norm(p.name) === target);
+  };
+
   // Newest date first; entries on the same date ordered by book page number
   // ascending (entries without a page number go last)
   const compareByDateThenPage = (a: StorePurchase, b: StorePurchase) => {
@@ -1456,6 +1466,9 @@ export default function StoreDashboard({
                       Quantity
                     </th>
                     <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
+                      Current Stock
+                    </th>
+                    <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
                       {activeTab === "in" ? "Returned By" : "Ordered By"}
                     </th>
                     <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider pr-6">
@@ -1492,6 +1505,17 @@ export default function StoreDashboard({
                       <td className="p-4 font-medium text-gray-500">
                         {log.quantity}
                       </td>
+                      <td className="p-4 font-medium">
+                        {(() => {
+                          const p = getCurrentStockFor(log.productName, log.category);
+                          if (!p) return <span className="text-gray-400">-</span>;
+                          return (
+                            <span className={p.currentStock > 0 ? "text-emerald-600" : "text-rose-600"}>
+                              {p.currentStock} {p.unit}
+                            </span>
+                          );
+                        })()}
+                      </td>
                       <td className="p-4 font-medium text-gray-500">
                         {log.supplier || "-"}
                       </td>
@@ -1522,7 +1546,7 @@ export default function StoreDashboard({
                   ))}
                   {visibleLogs.length === 0 && (
                     <tr>
-                      <td colSpan={isAdmin ? 9 : 8} className="p-8 text-center text-gray-500">
+                      <td colSpan={isAdmin ? 10 : 9} className="p-8 text-center text-gray-500">
                         No history found
                       </td>
                     </tr>
@@ -1552,9 +1576,20 @@ export default function StoreDashboard({
                         )}
                       </div>
                     </div>
-                    <span className="shrink-0 px-2.5 py-1 rounded-lg bg-gray-100 text-gray-700 text-xs font-bold">
-                      Qty {log.quantity}
-                    </span>
+                    <div className="shrink-0 flex flex-col items-end gap-1">
+                      <span className="px-2.5 py-1 rounded-lg bg-gray-100 text-gray-700 text-xs font-bold">
+                        Qty {log.quantity}
+                      </span>
+                      {(() => {
+                        const p = getCurrentStockFor(log.productName, log.category);
+                        if (!p) return null;
+                        return (
+                          <span className={`text-[11px] font-bold ${p.currentStock > 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                            Stock: {p.currentStock} {p.unit}
+                          </span>
+                        );
+                      })()}
+                    </div>
                   </div>
                   <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
                     <div className="text-gray-500">
@@ -1670,6 +1705,9 @@ export default function StoreDashboard({
                       Quantity
                     </th>
                     <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
+                      Current Stock
+                    </th>
+                    <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
                       Rate
                     </th>
                     <th className="p-4 font-bold text-sm text-gray-500 uppercase tracking-wider">
@@ -1717,6 +1755,17 @@ export default function StoreDashboard({
                       <td className="p-4 font-medium text-gray-500">
                         {log.quantity}
                       </td>
+                      <td className="p-4 font-medium">
+                        {(() => {
+                          const p = getCurrentStockFor(log.productName, log.category);
+                          if (!p) return <span className="text-gray-400">-</span>;
+                          return (
+                            <span className={p.currentStock > 0 ? "text-emerald-600" : "text-rose-600"}>
+                              {p.currentStock} {p.unit}
+                            </span>
+                          );
+                        })()}
+                      </td>
                       <td className="p-4 font-medium text-gray-500">
                         {log.costPrice ? `Rs. ${log.costPrice}` : "-"}
                       </td>
@@ -1758,7 +1807,7 @@ export default function StoreDashboard({
                   ))}
                   {visiblePurchases.length === 0 && (
                     <tr>
-                      <td colSpan={isAdmin ? 13 : 12} className="p-8 text-center text-gray-500">
+                      <td colSpan={isAdmin ? 14 : 13} className="p-8 text-center text-gray-500">
                         No purchase entries found
                       </td>
                     </tr>
