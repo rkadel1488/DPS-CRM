@@ -3195,6 +3195,12 @@ export default function StoreDashboard({
                     const itemVat = item.vatEnabled
                       ? itemTotal * (newPurchase.vatRate / 100)
                       : 0;
+                    const itemCategory = item.category ?? newPurchase.category;
+                    const matchedProduct = products.find(
+                      (p) =>
+                        p.name.trim().toLowerCase() === item.productName.trim().toLowerCase() &&
+                        p.category === itemCategory,
+                    );
                     return (
                       <div key={index} className="bg-gray-50 p-3 rounded-xl space-y-2">
                         <div className="flex gap-2 items-end">
@@ -3272,6 +3278,21 @@ export default function StoreDashboard({
                             </button>
                           )}
                         </div>
+                        {matchedProduct && (
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-medium text-gray-500">
+                            <span>
+                              Current Stock:{" "}
+                              <strong className={matchedProduct.currentStock > 0 ? "text-emerald-600" : "text-rose-600"}>
+                                {matchedProduct.currentStock} {matchedProduct.unit}
+                              </strong>
+                            </span>
+                            {matchedProduct.bookPageNo && (
+                              <span>
+                                Book Page No: <strong className="text-gray-800">{matchedProduct.bookPageNo}</strong>
+                              </span>
+                            )}
+                          </div>
+                        )}
                         {itemTotal > 0 && (
                           <div className="text-right text-xs font-bold text-indigo-600">
                             {item.vatEnabled
