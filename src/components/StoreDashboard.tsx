@@ -829,6 +829,68 @@ export default function StoreDashboard({
     return `NA${maxN + 1}`;
   };
 
+  const isPendingBillNumber = (billNumber: string) =>
+    isPendingBillNumber(billNumber) || /^n\/?a$/i.test(billNumber.trim());
+
+  // One-time cleanup: entries that were saved with a literal "N/A"/"NA" bill
+  // number (before pending invoices got their own numbers) all got merged
+  // into a single invoice. This splits them back apart — one invoice per
+  // distinct supplier + purchase date — and assigns each its own NA# number.
+  const legacyNaBillNumbers = Array.from(
+    new Set(
+      logs
+        .filter(
+          (l) => l.type === "purchase" && /^n\/?a$/i.test((l.billNumber || "").trim()),
+        )
+        .map((l) => l.billNumber as string),
+    ),
+  );
+
+  const handleSplitLegacyNaInvoices = async () => {
+    if (!isAdmin || legacyNaBillNumbers.length === 0) return;
+    const legacyLogs = logs.filter(
+      (l) => l.type === "purchase" && legacyNaBillNumbers.includes(l.billNumber || ""),
+    );
+    if (
+      !window.confirm(
+        `This will split ${legacyLogs.length} item(s) currently compiled under "${legacyNaBillNumbers.join('", "')}" into separate invoices, grouped by supplier and date. Continue?`,
+      )
+    )
+      return;
+
+    try {
+      const groups = new Map<string, StorePurchase[]>();
+      for (const l of legacyLogs) {
+        const supplierKey = (l.supplier || "Unknown").trim().toLowerCase();
+        const dayKey = new Date(l.purchaseDate).toDateString();
+        const key = `${supplierKey}|${dayKey}`;
+        groups.set(key, [...(groups.get(key) || []), l]);
+      }
+
+      let nextN =
+        Math.max(
+          0,
+          ...logs.map((l) => {
+            const m = /^NA(\d+)$/.exec(l.billNumber || "");
+            return m ? parseInt(m[1], 10) : 0;
+          }),
+        ) + 1;
+
+      const batch = writeBatch(db);
+      for (const group of groups.values()) {
+        const newBillNumber = `NA${nextN}`;
+        nextN++;
+        group.forEach((l) => {
+          batch.update(doc(db, "store_purchases", l.id), { billNumber: newBillNumber });
+        });
+      }
+      await batch.commit();
+      alert(`Split into ${groups.size} separate invoice(s).`);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, "store_purchases");
+    }
+  };
+
   const handleAddPurchase = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAdmin) return;
@@ -1883,6 +1945,22 @@ export default function StoreDashboard({
 
       {activeTab === "invoices" && (
         <div className="space-y-6">
+          {isAdmin && legacyNaBillNumbers.length > 0 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <p className="text-sm text-amber-800 font-medium">
+                {legacyNaBillNumbers.length === 1
+                  ? `Invoice "${legacyNaBillNumbers[0]}" has items from different suppliers/dates compiled together.`
+                  : `Invoices "${legacyNaBillNumbers.join('", "')}" have items from different suppliers/dates compiled together.`}{" "}
+                Split them into separate invoices by supplier and date.
+              </p>
+              <button
+                onClick={handleSplitLegacyNaInvoices}
+                className="shrink-0 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-sm font-bold transition-colors"
+              >
+                Split Into Separate Invoices
+              </button>
+            </div>
+          )}
           <div className="bg-white rounded-2xl sm:rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
             <div className="p-4 sm:p-6 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-base sm:text-lg font-bold text-gray-900">Invoices</h2>
@@ -1943,7 +2021,7 @@ export default function StoreDashboard({
                       >
                         <td className="p-4 pl-6">
                           <span className="font-bold text-indigo-600">{billNumber}</span>
-                          {/^NA\d+$/.test(billNumber) && (
+                          {isPendingBillNumber(billNumber) && (
                             <span className="ml-2 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold uppercase align-middle">
                               Pending
                             </span>
@@ -2027,7 +2105,7 @@ export default function StoreDashboard({
                       <div className="min-w-0">
                         <div className="font-bold text-sm text-indigo-600">
                           {billNumber}
-                          {/^NA\d+$/.test(billNumber) && (
+                          {isPendingBillNumber(billNumber) && (
                             <span className="ml-2 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold uppercase align-middle">
                               Pending
                             </span>
@@ -2534,7 +2612,7 @@ export default function StoreDashboard({
                 Edit Invoice
               </h2>
               <p className="text-sm text-gray-500 mb-6">
-                {/^NA\d+$/.test(editingInvoiceBillNumber)
+                {isPendingBillNumber(editingInvoiceBillNumber)
                   ? "This invoice is pending — enter the real invoice details now that you have it in hand."
                   : "Update the invoice number or supplier for all items on this invoice."}
               </p>
