@@ -128,6 +128,27 @@ export function handleFirestoreError(
   throw new Error(JSON.stringify(errInfo));
 }
 
+// Clears IndexedDB, service workers, and the PWA cache before reloading, so
+// a stale cached bundle can't keep re-serving a bug that was already fixed
+// and deployed.
+async function clearCachesAndReload() {
+  try {
+    const dbs = await (indexedDB.databases?.() ?? Promise.resolve([]));
+    dbs.forEach((d) => d.name && indexedDB.deleteDatabase(d.name));
+    if ("serviceWorker" in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map((r) => r.unregister()));
+    }
+    if ("caches" in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+    }
+  } catch {
+    /* ignore */
+  }
+  window.location.reload();
+}
+
 // Error Boundary Component
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -200,7 +221,7 @@ class ErrorBoundary extends React.Component<
             </h2>
             <p className="text-gray-500 mb-6">{errorMessage}</p>
             <button
-              onClick={() => window.location.reload()}
+              onClick={clearCachesAndReload}
               className="w-full py-3 bg-gradient-to-r from-slate-700 to-slate-900 shadow-lg shadow-slate-900/20 text-white border-none text-white rounded-xl font-bold hover:from-slate-800 hover:to-slate-950 hover:shadow-xl hover:-translate-y-0.5 transition-all"
             >
               Reload Application
@@ -578,23 +599,7 @@ function AppContent() {
               old data stored in the browser may be causing a problem.
             </p>
             <button
-              onClick={async () => {
-                try {
-                  const dbs = await (indexedDB.databases?.() ?? Promise.resolve([]));
-                  dbs.forEach((d) => d.name && indexedDB.deleteDatabase(d.name));
-                  if ("serviceWorker" in navigator) {
-                    const regs = await navigator.serviceWorker.getRegistrations();
-                    await Promise.all(regs.map((r) => r.unregister()));
-                  }
-                  if ("caches" in window) {
-                    const keys = await caches.keys();
-                    await Promise.all(keys.map((k) => caches.delete(k)));
-                  }
-                } catch {
-                  /* ignore */
-                }
-                window.location.reload();
-              }}
+              onClick={clearCachesAndReload}
               className="px-6 py-3 bg-gradient-to-r from-slate-700 to-slate-900 text-white rounded-xl font-bold shadow-lg hover:from-slate-800 hover:to-slate-950 transition-all"
             >
               Clear cached data & Reload

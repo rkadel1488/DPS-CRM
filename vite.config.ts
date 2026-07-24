@@ -13,7 +13,13 @@ export default defineConfig(({mode}) => {
       VitePWA({
         registerType: 'autoUpdate',
         workbox: {
-          maximumFileSizeToCacheInBytes: 5000000
+          maximumFileSizeToCacheInBytes: 5000000,
+          // Activate a newly deployed service worker immediately instead of
+          // waiting for every open tab to close, so users get the latest
+          // build (and bug fixes) on their next reload, not several visits
+          // later.
+          skipWaiting: true,
+          clientsClaim: true,
         },
         manifest: {
           name: 'Campus App',
