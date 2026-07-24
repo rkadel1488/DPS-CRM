@@ -27,7 +27,6 @@ import {
   deleteDoc,
   updateDoc,
   increment,
-  writeBatch,
 } from "firebase/firestore";
 import NepaliDate from "nepali-date-converter";
 import NepaliDatePicker from "./NepaliDatePicker";
@@ -112,8 +111,6 @@ export default function StoreDashboard({
     vatRate: 13,
   });
   const [selectedInvoiceBillNumber, setSelectedInvoiceBillNumber] = useState<string | null>(null);
-  const [editingInvoiceBillNumber, setEditingInvoiceBillNumber] = useState<string | null>(null);
-  const [editInvoiceForm, setEditInvoiceForm] = useState({ billNumber: "", supplier: "" });
 
   const [logDateFilter, setLogDateFilter] = useState<"all" | "today" | "yesterday" | "custom">("all");
   const [logCustomDate, setLogCustomDate] = useState("");
@@ -141,6 +138,7 @@ export default function StoreDashboard({
     supplier?: string;
     category: StoreCategory;
     purchaseDate: string;
+    billNumber?: string;
   }>({
     productName: "",
     quantity: 0,
@@ -148,6 +146,7 @@ export default function StoreDashboard({
     supplier: "",
     category: "Store",
     purchaseDate: new Date().toISOString().split("T")[0],
+    billNumber: "",
   });
   const [billNumberToDelete, setBillNumberToDelete] = useState<string | null>(null);
   const [unusedToDelete, setUnusedToDelete] = useState<StoreUnusedItem | null>(
@@ -382,6 +381,7 @@ export default function StoreDashboard({
       supplier: log.supplier || "",
       category: log.category,
       purchaseDate: new Date(log.purchaseDate).toISOString().split("T")[0],
+      billNumber: log.billNumber || "",
     });
     setEditingLog(log);
   };
@@ -398,6 +398,9 @@ export default function StoreDashboard({
         totalCost: editLogForm.quantity * (editLogForm.costPrice || 0),
         supplier: editLogForm.supplier || "",
         purchaseDate: new Date(editLogForm.purchaseDate).toISOString(),
+        ...(editingLog.type === "purchase"
+          ? { billNumber: editLogForm.billNumber || "" }
+          : {}),
       });
 
       const existingProduct = products.find(
@@ -449,54 +452,6 @@ export default function StoreDashboard({
       setBillNumberToDelete(null);
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, "store_purchases");
-    }
-  };
-
-  const handleStartEditInvoice = (billNumber: string) => {
-    const invoiceLogs = logs.filter(
-      (l) => l.type === "purchase" && l.billNumber === billNumber,
-    );
-    setEditInvoiceForm({
-      billNumber,
-      supplier: invoiceLogs[0]?.supplier || "",
-    });
-    setEditingInvoiceBillNumber(billNumber);
-  };
-
-  const handleUpdateInvoice = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!isAdmin || !editingInvoiceBillNumber) return;
-    const newBillNumber = editInvoiceForm.billNumber.trim();
-    if (!newBillNumber) return;
-
-    if (
-      newBillNumber !== editingInvoiceBillNumber &&
-      logs.some(
-        (l) =>
-          l.type === "purchase" &&
-          l.billNumber === newBillNumber &&
-          l.billNumber !== editingInvoiceBillNumber,
-      )
-    ) {
-      alert(`Invoice number "${newBillNumber}" is already in use by another invoice.`);
-      return;
-    }
-
-    try {
-      const invoiceLogs = logs.filter(
-        (l) => l.type === "purchase" && l.billNumber === editingInvoiceBillNumber,
-      );
-      const batch = writeBatch(db);
-      invoiceLogs.forEach((l) => {
-        batch.update(doc(db, "store_purchases", l.id), {
-          billNumber: newBillNumber,
-          supplier: editInvoiceForm.supplier || "",
-        });
-      });
-      await batch.commit();
-      setEditingInvoiceBillNumber(null);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, "store_purchases");
     }
   };
 
@@ -819,7 +774,9 @@ export default function StoreDashboard({
   };
 
   // Purchases without a physical invoice yet get a unique NA1, NA2, ... number
-  // instead of merging into one invoice under a literal "N/A" bill number
+  // instead of merging into one invoice under a shared literal "N/A"/"NA"
+  // bill number. Triggered when the field is left blank or literally typed
+  // as "na"/"n/a".
   const generateNaBillNumber = () => {
     let maxN = 0;
     logs.forEach((l) => {
@@ -827,68 +784,6 @@ export default function StoreDashboard({
       if (m) maxN = Math.max(maxN, parseInt(m[1], 10));
     });
     return `NA${maxN + 1}`;
-  };
-
-  const isPendingBillNumber = (billNumber: string) =>
-    isPendingBillNumber(billNumber) || /^n\/?a$/i.test(billNumber.trim());
-
-  // One-time cleanup: entries that were saved with a literal "N/A"/"NA" bill
-  // number (before pending invoices got their own numbers) all got merged
-  // into a single invoice. This splits them back apart — one invoice per
-  // distinct supplier + purchase date — and assigns each its own NA# number.
-  const legacyNaBillNumbers = Array.from(
-    new Set(
-      logs
-        .filter(
-          (l) => l.type === "purchase" && /^n\/?a$/i.test((l.billNumber || "").trim()),
-        )
-        .map((l) => l.billNumber as string),
-    ),
-  );
-
-  const handleSplitLegacyNaInvoices = async () => {
-    if (!isAdmin || legacyNaBillNumbers.length === 0) return;
-    const legacyLogs = logs.filter(
-      (l) => l.type === "purchase" && legacyNaBillNumbers.includes(l.billNumber || ""),
-    );
-    if (
-      !window.confirm(
-        `This will split ${legacyLogs.length} item(s) currently compiled under "${legacyNaBillNumbers.join('", "')}" into separate invoices, grouped by supplier and date. Continue?`,
-      )
-    )
-      return;
-
-    try {
-      const groups = new Map<string, StorePurchase[]>();
-      for (const l of legacyLogs) {
-        const supplierKey = (l.supplier || "Unknown").trim().toLowerCase();
-        const dayKey = new Date(l.purchaseDate).toDateString();
-        const key = `${supplierKey}|${dayKey}`;
-        groups.set(key, [...(groups.get(key) || []), l]);
-      }
-
-      // Avoid spreading a large array into Math.max — that overflows the
-      // call stack once there are thousands of entries
-      let maxExistingN = 0;
-      logs.forEach((l) => {
-        const m = /^NA(\d+)$/.exec(l.billNumber || "");
-        if (m) maxExistingN = Math.max(maxExistingN, parseInt(m[1], 10));
-      });
-      let nextN = maxExistingN + 1;
-
-      const batch = writeBatch(db);
-      for (const group of groups.values()) {
-        const newBillNumber = `NA${nextN}`;
-        nextN++;
-        group.forEach((l) => {
-          batch.update(doc(db, "store_purchases", l.id), { billNumber: newBillNumber });
-        });
-      }
-      await batch.commit();
-      alert(`Split into ${groups.size} separate invoice(s).`);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, "store_purchases");
-    }
   };
 
   const handleAddPurchase = async (e: React.FormEvent) => {
@@ -900,7 +795,11 @@ export default function StoreDashboard({
     if (validItems.length === 0) return;
 
     try {
-      const billNumber = newPurchase.billNumber.trim() || generateNaBillNumber();
+      const typedBillNumber = newPurchase.billNumber.trim();
+      const billNumber =
+        !typedBillNumber || /^n\/?a$/i.test(typedBillNumber)
+          ? generateNaBillNumber()
+          : typedBillNumber;
       for (const item of validItems) {
         const itemTotal = item.quantity * (item.costPrice || 0);
         const vatAmount = item.vatEnabled
@@ -1945,22 +1844,6 @@ export default function StoreDashboard({
 
       {activeTab === "invoices" && (
         <div className="space-y-6">
-          {isAdmin && legacyNaBillNumbers.length > 0 && (
-            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <p className="text-sm text-amber-800 font-medium">
-                {legacyNaBillNumbers.length === 1
-                  ? `Invoice "${legacyNaBillNumbers[0]}" has items from different suppliers/dates compiled together.`
-                  : `Invoices "${legacyNaBillNumbers.join('", "')}" have items from different suppliers/dates compiled together.`}{" "}
-                Split them into separate invoices by supplier and date.
-              </p>
-              <button
-                onClick={handleSplitLegacyNaInvoices}
-                className="shrink-0 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-sm font-bold transition-colors"
-              >
-                Split Into Separate Invoices
-              </button>
-            </div>
-          )}
           <div className="bg-white rounded-2xl sm:rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
             <div className="p-4 sm:p-6 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-base sm:text-lg font-bold text-gray-900">Invoices</h2>
@@ -2019,13 +1902,8 @@ export default function StoreDashboard({
                         onClick={() => setSelectedInvoiceBillNumber(billNumber)}
                         className="hover:bg-gray-50/50 transition-colors cursor-pointer"
                       >
-                        <td className="p-4 pl-6">
-                          <span className="font-bold text-indigo-600">{billNumber}</span>
-                          {isPendingBillNumber(billNumber) && (
-                            <span className="ml-2 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold uppercase align-middle">
-                              Pending
-                            </span>
-                          )}
+                        <td className="p-4 pl-6 font-bold text-indigo-600">
+                          {billNumber}
                         </td>
                         <td className="p-4 font-medium text-gray-900 whitespace-nowrap">
                           {new NepaliDate(new Date(first.purchaseDate)).format("YYYY-MM-DD")}
@@ -2044,28 +1922,16 @@ export default function StoreDashboard({
                         </td>
                         {isAdmin && (
                           <td className="p-4 pr-6">
-                            <div className="flex items-center gap-1">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleStartEditInvoice(billNumber);
-                                }}
-                                className="p-2 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
-                                title="Edit invoice"
-                              >
-                                <Pencil className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setBillNumberToDelete(billNumber);
-                                }}
-                                className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                                title="Delete invoice"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setBillNumberToDelete(billNumber);
+                              }}
+                              className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                              title="Delete invoice"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           </td>
                         )}
                       </tr>
@@ -2103,14 +1969,7 @@ export default function StoreDashboard({
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <div className="font-bold text-sm text-indigo-600">
-                          {billNumber}
-                          {isPendingBillNumber(billNumber) && (
-                            <span className="ml-2 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold uppercase align-middle">
-                              Pending
-                            </span>
-                          )}
-                        </div>
+                        <div className="font-bold text-sm text-indigo-600">{billNumber}</div>
                         <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium text-gray-500">
                           <span>{new NepaliDate(new Date(first.purchaseDate)).format("YYYY-MM-DD")}</span>
                           <span>&middot;</span>
@@ -2124,17 +1983,7 @@ export default function StoreDashboard({
                       </span>
                     </div>
                     {isAdmin && (
-                      <div className="mt-2 flex justify-end gap-1">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleStartEditInvoice(billNumber);
-                          }}
-                          className="p-2 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
-                          title="Edit invoice"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
+                      <div className="mt-2 flex justify-end">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -2586,74 +2435,6 @@ export default function StoreDashboard({
                   Delete
                 </button>
               </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Edit Invoice Modal */}
-      <AnimatePresence>
-        {editingInvoiceBillNumber && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white rounded-2xl sm:rounded-[2rem] p-5 sm:p-8 w-full max-w-md shadow-2xl relative"
-            >
-              <button
-                onClick={() => setEditingInvoiceBillNumber(null)}
-                className="absolute top-6 right-6 text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
-
-              <h2 className="text-2xl font-bold text-gray-900 mb-2 font-sans tracking-tight">
-                Edit Invoice
-              </h2>
-              <p className="text-sm text-gray-500 mb-6">
-                {isPendingBillNumber(editingInvoiceBillNumber)
-                  ? "This invoice is pending — enter the real invoice details now that you have it in hand."
-                  : "Update the invoice number or supplier for all items on this invoice."}
-              </p>
-
-              <form onSubmit={handleUpdateInvoice} className="space-y-4 text-left">
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">
-                    Invoice / Bill Number
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={editInvoiceForm.billNumber}
-                    onChange={(e) =>
-                      setEditInvoiceForm({ ...editInvoiceForm, billNumber: e.target.value })
-                    }
-                    className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium"
-                    placeholder="e.g. INV-2026-0145"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">
-                    Supplier
-                  </label>
-                  <input
-                    type="text"
-                    value={editInvoiceForm.supplier}
-                    onChange={(e) =>
-                      setEditInvoiceForm({ ...editInvoiceForm, supplier: e.target.value })
-                    }
-                    className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium"
-                    placeholder="Supplier name"
-                  />
-                </div>
-
-                <button type="submit" className="w-full pt-2">
-                  <div className="w-full py-4 bg-indigo-500 text-white rounded-xl font-bold hover:bg-indigo-600 transition-all text-center flex items-center justify-center gap-2">
-                    <Pencil className="w-5 h-5" /> Save Changes
-                  </div>
-                </button>
-              </form>
             </motion.div>
           </div>
         )}
@@ -3292,6 +3073,26 @@ export default function StoreDashboard({
                   </datalist>
                 </div>
 
+                {editingLog.type === "purchase" && (
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">
+                      Bill Number
+                    </label>
+                    <input
+                      type="text"
+                      value={editLogForm.billNumber}
+                      onChange={(e) =>
+                        setEditLogForm({ ...editLogForm, billNumber: e.target.value })
+                      }
+                      className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium"
+                      placeholder="e.g. INV-2026-0145"
+                    />
+                    <p className="text-xs text-gray-400 mt-1">
+                      Editing this only changes this item's invoice. Edit other items on the same invoice separately if needed.
+                    </p>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-1">
@@ -3420,7 +3221,7 @@ export default function StoreDashboard({
                       placeholder="e.g. INV-2026-0145"
                     />
                     <p className="text-xs text-gray-400 mt-1">
-                      Leave blank if you don't have the invoice yet — a temporary number (NA1, NA2…) will be assigned. You can edit it later.
+                      Leave blank or type "NA" if you don't have the invoice yet — a unique temporary number (NA1, NA2…) will be assigned. Edit it later from the invoice's entries.
                     </p>
                   </div>
                   <div>
