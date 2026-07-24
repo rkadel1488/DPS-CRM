@@ -119,6 +119,7 @@ export default function StoreDashboard({
   const [purchaseDateFilter, setPurchaseDateFilter] = useState<"all" | "today" | "yesterday" | "custom">("all");
   const [purchaseCustomDate, setPurchaseCustomDate] = useState("");
   const [purchaseCategoryFilter, setPurchaseCategoryFilter] = useState<"All" | StoreCategory>("All");
+  const [purchaseSupplierFilter, setPurchaseSupplierFilter] = useState("");
 
   const [orderCategoryFilter, setOrderCategoryFilter] = useState<"All" | StoreCategory>("All");
 
@@ -1020,6 +1021,7 @@ export default function StoreDashboard({
       (l) =>
         l.type === "purchase" &&
         (purchaseCategoryFilter === "All" || l.category === purchaseCategoryFilter) &&
+        (l.supplier || "").toLowerCase().includes(purchaseSupplierFilter.trim().toLowerCase()) &&
         matchesDateFilter(l.purchaseDate, purchaseDateFilter, purchaseCustomDate),
     )
     .sort(compareByDateThenPage);
@@ -1748,6 +1750,22 @@ export default function StoreDashboard({
                     <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
+                <div className="relative">
+                  <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={purchaseSupplierFilter}
+                    onChange={(e) => setPurchaseSupplierFilter(e.target.value)}
+                    placeholder="Search vendor…"
+                    list="purchase-supplier-filter-list"
+                    className="pl-9 pr-3 py-2 bg-gray-50 rounded-xl text-sm font-medium border-none outline-none focus:ring-2 focus:ring-indigo-500 w-40"
+                  />
+                  <datalist id="purchase-supplier-filter-list">
+                    {suppliers.map((s) => (
+                      <option key={s.id} value={s.name} />
+                    ))}
+                  </datalist>
+                </div>
               </div>
             </div>
             <div className="overflow-x-auto">
