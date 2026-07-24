@@ -867,14 +867,14 @@ export default function StoreDashboard({
         groups.set(key, [...(groups.get(key) || []), l]);
       }
 
-      let nextN =
-        Math.max(
-          0,
-          ...logs.map((l) => {
-            const m = /^NA(\d+)$/.exec(l.billNumber || "");
-            return m ? parseInt(m[1], 10) : 0;
-          }),
-        ) + 1;
+      // Avoid spreading a large array into Math.max — that overflows the
+      // call stack once there are thousands of entries
+      let maxExistingN = 0;
+      logs.forEach((l) => {
+        const m = /^NA(\d+)$/.exec(l.billNumber || "");
+        if (m) maxExistingN = Math.max(maxExistingN, parseInt(m[1], 10));
+      });
+      let nextN = maxExistingN + 1;
 
       const batch = writeBatch(db);
       for (const group of groups.values()) {
