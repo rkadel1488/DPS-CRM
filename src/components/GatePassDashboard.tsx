@@ -204,7 +204,7 @@ export default function GatePassDashboard({
     }
   };
 
-  // ─── SMS via Vercel API route → Cloudflare tunnel → Android gateway ──────
+  // ─── SMS via Cloudflare tunnel → Android gateway (called directly from the browser) ──
   const sendSmsNotification = async (
     phone: string,
     studentName: string,
@@ -219,31 +219,44 @@ export default function GatePassDashboard({
       ? `+${cleanPhone}`
       : `+977${cleanPhone}`;
 
+    const gatewayUrl = import.meta.env.VITE_SMS_GATEWAY_URL;
+    const gatewaySecret = import.meta.env.VITE_SMS_GATEWAY_SECRET || "";
+
+    if (!gatewayUrl) {
+      console.error("[SMS] VITE_SMS_GATEWAY_URL is not configured");
+      setSmsStatus("failed");
+      alert(
+        `⚠️ Gate pass created, but SMS was not sent.\n\n` +
+        `SMS gateway URL is not configured. Set VITE_SMS_GATEWAY_URL in the app's environment variables.`,
+      );
+      return;
+    }
+
+    const message =
+      `DPS School Alert: ${studentName} checked out at ${date}. ` +
+      `Picked up by: ${tickedPerson}. Authorized by: ${profile?.displayName || "Admin"}. ` +
+      `If unauthorized, contact school immediately.`;
+
     setSmsStatus("sending");
 
     try {
-      const response = await fetch("/api/sms/send", {
+      const response = await fetch(`${gatewayUrl}/send-sms`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          phone: formattedPhone,
-          variables: {
-            studentName,
-            date,
-            tickedPerson,
-            admin: profile?.displayName || "Admin",
-          },
-        }),
+        headers: {
+          "Content-Type": "application/json",
+          "X-SMS-Secret": gatewaySecret,
+        },
+        body: JSON.stringify({ to: formattedPhone, message }),
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
         console.error("[SMS] Error:", data);
         setSmsStatus("failed");
         alert(
           `⚠️ Gate pass created, but SMS failed.\n\n` +
-          `Reason: ${data.error || "Unknown error"}\n\n` +
+          `Reason: ${data.error || `HTTP ${response.status}`}\n\n` +
           `Check that:\n` +
           `1. Gateway phone is on and QR SMS app is open\n` +
           `2. Cloudflare tunnel is running in Termux\n` +
@@ -256,7 +269,7 @@ export default function GatePassDashboard({
     } catch (err: any) {
       console.error("[SMS] Network error:", err);
       setSmsStatus("failed");
-      alert(`⚠️ Could not reach SMS API.\n\n${err.message}`);
+      alert(`⚠️ Could not reach SMS gateway.\n\n${err.message}`);
     }
   };
   // ─────────────────────────────────────────────────────────────────────────
