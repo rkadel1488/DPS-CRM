@@ -487,6 +487,23 @@ export default function AdminDashboard({
         );
       }
 
+      const footerY = guardiansStartY + 380;
+      ctx.fillStyle = "#9ca3af";
+      ctx.font = "16px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(
+        "This card is for official use only. If found, please return to school office.",
+        1000 / 2,
+        footerY,
+      );
+      ctx.fillStyle = "#ef4444";
+      ctx.font = "bold 16px sans-serif";
+      ctx.fillText(
+        "In case of Replacement Due to Loss/Damage there will be additional charge of Rs 1000",
+        1000 / 2,
+        footerY + 25,
+      );
+
       const finalUrl = canvas.toDataURL("image/png", 1.0);
       const link = document.createElement("a");
       link.href = finalUrl;
@@ -690,7 +707,14 @@ export default function AdminDashboard({
       ctx.fillText(
         "This card is for official use only. If found, please return to school office.",
         1000 / 2,
-        1370,
+        1355,
+      );
+      ctx.fillStyle = "#ef4444";
+      ctx.font = "bold 16px sans-serif";
+      ctx.fillText(
+        "In case of Replacement Due to Loss/Damage there will be additional charge of Rs 1000",
+        1000 / 2,
+        1380,
       );
 
       // Trigger Download
