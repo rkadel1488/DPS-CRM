@@ -121,6 +121,7 @@ export default function AdminDashboard({
     otherName: "",
     otherPhotoUrl: "",
     photoUrl: "",
+    selfPickup: false,
   });
   const [newStaff, setNewStaff] = useState<StaffInvite>({
     name: "",
@@ -210,6 +211,7 @@ export default function AdminDashboard({
         otherName: "",
         otherPhotoUrl: "",
         photoUrl: "",
+        selfPickup: false,
       });
       alert("Student added successfully!");
     } catch (error) {
@@ -2493,6 +2495,29 @@ export default function AdminDashboard({
                     />
                   </div>
                 </div>
+
+                <label className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 rounded-[1rem] cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={editingStudent.selfPickup || false}
+                    onChange={(e) =>
+                      setEditingStudent({
+                        ...editingStudent,
+                        selfPickup: e.target.checked,
+                      })
+                    }
+                    className="w-4 h-4 accent-amber-600"
+                  />
+                  <div>
+                    <p className="text-sm font-semibold text-amber-800">
+                      Goes home on their own (Self Pickup)
+                    </p>
+                    <p className="text-xs text-amber-700">
+                      No guardian picks this student up — the gate pass scan
+                      alert will reflect this instead of a pickup person.
+                    </p>
+                  </div>
+                </label>
               </div>
 
               <div>
@@ -3199,6 +3224,29 @@ export default function AdminDashboard({
                     />
                   </div>
                 </div>
+
+                <label className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 rounded-[1rem] cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={newStudent.selfPickup}
+                    onChange={(e) =>
+                      setNewStudent({
+                        ...newStudent,
+                        selfPickup: e.target.checked,
+                      })
+                    }
+                    className="w-4 h-4 accent-amber-600"
+                  />
+                  <div>
+                    <p className="text-sm font-semibold text-amber-800">
+                      Goes home on their own (Self Pickup)
+                    </p>
+                    <p className="text-xs text-amber-700">
+                      No guardian picks this student up — the gate pass scan
+                      alert will reflect this instead of a pickup person.
+                    </p>
+                  </div>
+                </label>
               </div>
 
               <div>
