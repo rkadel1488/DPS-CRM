@@ -338,7 +338,7 @@ export default function AdminDashboard({
       // A6 Size Equivalent (1240 x 1754) for printing 4 on A4 page
       canvas.width = 1240;
       const originalWidth = 1000;
-      const studentsHeight = Math.ceil(family.students.length / 2) * 200 + 100;
+      const studentsHeight = Math.ceil(family.students.length / 2) * 220 + 100;
       const requiredOriginalHeight = 850 + studentsHeight; // Increased from 800
       canvas.height = Math.max(1754, requiredOriginalHeight * 1.25); // Minimum A6 height, or taller if needed
 
@@ -370,11 +370,45 @@ export default function AdminDashboard({
         });
       };
 
+      // Wraps text into at most maxLines lines that fit maxWidth, adding an
+      // ellipsis to the last line if the text doesn't fit even then — used
+      // so a long student name wraps instead of overflowing into the
+      // neighboring student's photo.
+      const wrapLines = (
+        text: string,
+        maxWidth: number,
+        maxLines: number,
+      ): string[] => {
+        const words = text.split(" ");
+        const lines: string[] = [];
+        let current = "";
+        for (const word of words) {
+          const candidate = current ? `${current} ${word}` : word;
+          if (current && ctx.measureText(candidate).width > maxWidth) {
+            lines.push(current);
+            current = word;
+            if (lines.length === maxLines) break;
+          } else {
+            current = candidate;
+          }
+        }
+        if (lines.length < maxLines && current) lines.push(current);
+        if (lines.length === maxLines) {
+          let last = lines[maxLines - 1];
+          while (ctx.measureText(`${last}…`).width > maxWidth && last.length > 1) {
+            last = last.slice(0, -1);
+          }
+          lines[maxLines - 1] = `${last}…`;
+        }
+        return lines;
+      };
+
       ctx.fillStyle = "#374151";
       ctx.font = "bold 30px sans-serif";
       ctx.textAlign = "left";
       ctx.fillText("STUDENTS", 50, 160);
 
+      const studentRowHeight = 220;
       for (let i = 0; i < family.students.length; i++) {
         const student = family.students[i];
         if (!student.name) continue;
@@ -382,7 +416,7 @@ export default function AdminDashboard({
         const col = i % 2;
 
         const startX = 50 + col * 450;
-        const startY = 200 + row * 180;
+        const startY = 200 + row * studentRowHeight;
         const imgSize = 140;
         const studentImg = await loadImage(student.photoUrl || "");
 
@@ -396,25 +430,29 @@ export default function AdminDashboard({
           ctx.fillRect(startX, startY, imgSize, imgSize);
         }
 
+        const textX = startX + imgSize + 20;
+        const nameMaxWidth = 450 - imgSize - 30;
         ctx.textAlign = "left";
         ctx.fillStyle = "#111827";
-        ctx.font = "bold 28px sans-serif";
-        ctx.fillText(
-          student.name.substring(0, 20),
-          startX + imgSize + 20,
-          startY + 40,
-        );
+        ctx.font = "bold 26px sans-serif";
+        const nameLines = wrapLines(student.name, nameMaxWidth, 2);
+        nameLines.forEach((line, idx) => {
+          ctx.fillText(line, textX, startY + 32 + idx * 30);
+        });
 
         ctx.fillStyle = "#4b5563";
         ctx.font = "22px sans-serif";
         ctx.fillText(
           `Grade: ${student.grade} - ${student.section}`,
-          startX + imgSize + 20,
-          startY + 80,
+          textX,
+          startY + 32 + nameLines.length * 30 + 10,
         );
       }
 
-      const qrStartY = 200 + Math.ceil(family.students.length / 2) * 180 + 50;
+      const qrStartY =
+        200 +
+        Math.ceil(family.students.length / 2) * studentRowHeight +
+        30;
       const appUrl =
         typeof window !== "undefined" ? window.location.origin : "";
       const qrDataUrl = await QRCode.toDataURL(
