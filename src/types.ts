@@ -75,6 +75,7 @@ export interface Student {
   otherName?: string;
   otherPhotoUrl?: string;
   familyId?: string;
+  selfPickup?: boolean; // student goes home on their own, no one picks them up
 }
 
 export interface StoreProduct {

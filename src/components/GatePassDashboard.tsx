@@ -11,6 +11,7 @@ import {
   AlertTriangle,
   Phone,
   Trash2,
+  UserCheck,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { db } from "../firebase";
@@ -53,7 +54,7 @@ export default function GatePassDashboard({
   const [isVerifying, setIsVerifying] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [selectedPickup, setSelectedPickup] = useState<
-    "father" | "mother" | "driver" | "other" | null
+    "father" | "mother" | "driver" | "other" | "self" | null
   >(null);
   const [otherPersonName, setOtherPersonName] = useState("");
   const [smsStatus, setSmsStatus] = useState<"idle" | "sending" | "sent" | "failed">("idle");
@@ -69,6 +70,9 @@ export default function GatePassDashboard({
       if (matchedStudents.length > 0) {
         setScannedStudents(matchedStudents);
         setIsScanning(false);
+        if (matchedStudents.every((s) => s.selfPickup)) {
+          setSelectedPickup("self");
+        }
       }
     }
   }, [verifyId, students]);
@@ -107,7 +111,9 @@ export default function GatePassDashboard({
               (s.familyId && s.familyId === extractedId),
           );
           if (matchedStudents.length > 0 && isMounted) {
-            setSelectedPickup(null);
+            setSelectedPickup(
+              matchedStudents.every((s) => s.selfPickup) ? "self" : null,
+            );
             setScannedStudents(matchedStudents);
             setIsScanning(false);
             html5QrCode?.stop().catch(console.error);
@@ -210,6 +216,7 @@ export default function GatePassDashboard({
     studentName: string,
     date: string,
     tickedPerson: string,
+    isSelfPickup: boolean = false,
   ) => {
     const cleanPhone = phone.replace(/[^\d+]/g, "");
     // Add +977 prefix if not present
@@ -232,10 +239,12 @@ export default function GatePassDashboard({
       return;
     }
 
-    const message =
-      `DPS School Alert: ${studentName} checked out at ${date}. ` +
-      `Picked up by: ${tickedPerson}. Authorized by: ${profile?.displayName || "Admin"}. ` +
-      `If unauthorized, contact school immediately.`;
+    const message = isSelfPickup
+      ? `DPS School Alert: ${studentName} checked out at ${date} and left the school on their own (no guardian pickup). ` +
+        `Authorized by: ${profile?.displayName || "Admin"}. If unexpected, contact school immediately.`
+      : `DPS School Alert: ${studentName} checked out at ${date}. ` +
+        `Picked up by: ${tickedPerson}. Authorized by: ${profile?.displayName || "Admin"}. ` +
+        `If unauthorized, contact school immediately.`;
 
     setSmsStatus("sending");
 
@@ -285,11 +294,13 @@ export default function GatePassDashboard({
       let studentNames = "";
       const firstStudent = scannedStudents[0];
 
+      const isSelfPickup = selectedPickup === "self";
       let tickedPerson = "";
       if (selectedPickup === "father") tickedPerson = firstStudent.fatherName || "Father";
       else if (selectedPickup === "mother") tickedPerson = firstStudent.motherName || "Mother";
       else if (selectedPickup === "driver") tickedPerson = firstStudent.driverName || "Driver";
       else if (selectedPickup === "other") tickedPerson = otherPersonName || firstStudent.otherName || "Other";
+      else if (isSelfPickup) tickedPerson = "Self (No Guardian)";
 
       for (const student of scannedStudents) {
         if (student.phoneNumber && phone === "N/A") phone = student.phoneNumber;
@@ -313,7 +324,7 @@ export default function GatePassDashboard({
       studentNames = studentNames.slice(0, -2);
 
       if (phone !== "N/A") {
-        await sendSmsNotification(phone, studentNames, scannedDate, tickedPerson);
+        await sendSmsNotification(phone, studentNames, scannedDate, tickedPerson, isSelfPickup);
       }
 
       setScannedStudents(null);
@@ -658,6 +669,20 @@ export default function GatePassDashboard({
                         </div>
                       );
                     })}
+                    <div
+                      className={`space-y-2 cursor-pointer transition-all ${selectedPickup === "self" ? "scale-105" : "hover:scale-105 opacity-70"}`}
+                      onClick={() => setSelectedPickup("self")}
+                    >
+                      <div className={`aspect-square rounded-[1rem] overflow-hidden ring-2 flex items-center justify-center bg-amber-50 ${selectedPickup === "self" ? "ring-amber-500 ring-offset-2" : "ring-black/5"}`}>
+                        <UserCheck className="w-8 h-8 text-amber-500" />
+                      </div>
+                      <div className="text-center">
+                        <p className={`text-xs font-bold line-clamp-1 ${selectedPickup === "self" ? "text-amber-600" : "text-gray-900"}`}>
+                          Goes Alone
+                        </p>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">Self</p>
+                      </div>
+                    </div>
                   </div>
 
                   {selectedPickup === "other" && (
