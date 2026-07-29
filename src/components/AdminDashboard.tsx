@@ -228,7 +228,7 @@ export default function AdminDashboard({
           const canvas = document.createElement("canvas");
           let width = img.width;
           let height = img.height;
-          const MAX_SIZE = 400;
+          const MAX_SIZE = 280;
 
           if (width > height) {
             if (width > MAX_SIZE) {
@@ -250,7 +250,7 @@ export default function AdminDashboard({
             ctx.fillRect(0, 0, width, height);
             ctx.drawImage(img, 0, 0, width, height);
           }
-          resolve(canvas.toDataURL("image/jpeg", 0.5));
+          resolve(canvas.toDataURL("image/jpeg", 0.4));
         };
         img.src = e.target?.result as string;
       };
