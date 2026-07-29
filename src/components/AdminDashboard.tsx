@@ -96,7 +96,7 @@ export default function AdminDashboard({
     otherPhotoUrl: "",
     phoneNumber: "",
     students: [
-      { name: "", studentId: "", grade: "", section: "", photoUrl: "" },
+      { name: "", studentId: "", grade: "", section: "", photoUrl: "", selfPickup: false },
     ],
   });
   const [isAddingStaff, setIsAddingStaff] = useState(false);
@@ -317,7 +317,7 @@ export default function AdminDashboard({
         otherPhotoUrl: "",
         phoneNumber: "",
         students: [
-          { name: "", studentId: "", grade: "", section: "", photoUrl: "" },
+          { name: "", studentId: "", grade: "", section: "", photoUrl: "", selfPickup: false },
         ],
       });
       alert(
@@ -2819,6 +2819,7 @@ export default function AdminDashboard({
                             grade: "",
                             section: "",
                             photoUrl: "",
+                            selfPickup: false,
                           },
                         ],
                       })
@@ -2924,6 +2925,23 @@ export default function AdminDashboard({
                             className="w-full px-3 py-2 text-sm bg-white border border-black/10 rounded-lg outline-none focus:border-blue-500"
                             placeholder="e.g. A"
                           />
+                        </div>
+                        <div className="col-span-2 lg:col-span-4">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={(student as any).selfPickup || false}
+                              onChange={(e) => {
+                                const s = [...newFamily.students] as any[];
+                                s[index].selfPickup = e.target.checked;
+                                setNewFamily({ ...newFamily, students: s });
+                              }}
+                              className="w-4 h-4 accent-amber-600"
+                            />
+                            <span className="text-xs font-semibold text-amber-700">
+                              Goes home on their own (Self Pickup)
+                            </span>
+                          </label>
                         </div>
                       </div>
 
