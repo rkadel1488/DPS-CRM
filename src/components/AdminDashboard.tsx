@@ -1140,6 +1140,30 @@ export default function AdminDashboard({
     doc.save(`${activeTab}-report.pdf`);
   };
 
+  const exportStudentsExcel = () => {
+    const rows = students.map((s) => ({
+      Name: s.name,
+      "Student ID": s.studentId || s.id,
+      Grade: s.grade || "",
+      Section: s.section || "",
+      Balance: s.balance || 0,
+      "Phone Number": s.phoneNumber || "",
+      "Father Name": s.fatherName || "",
+      "Mother Name": s.motherName || "",
+      "Driver Name": s.driverName || "",
+      "Other Name": s.otherName || "",
+      "Self Pickup": s.selfPickup ? "Yes" : "No",
+      "Medical Info": s.medicalInfo || "",
+      Allergies: (s.allergies || []).join(", "),
+      "Route ID": s.routeId || "",
+      "Family ID": s.familyId || "",
+    }));
+    const ws = xlsx.utils.json_to_sheet(rows);
+    const wb = xlsx.utils.book_new();
+    xlsx.utils.book_append_sheet(wb, ws, "Students");
+    xlsx.writeFile(wb, "Students_Full_Details.xlsx");
+  };
+
   const availableTabs = [
     { id: "dashboard", label: "Dashboard" },
     { id: "gatepass", label: "Gate Pass" },
@@ -1185,6 +1209,13 @@ export default function AdminDashboard({
           )}
           {activeTab === "students" && isAdmin && (
             <>
+              <button
+                onClick={exportStudentsExcel}
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl text-sm font-bold hover:bg-emerald-100 transition-all cursor-pointer"
+              >
+                <Download className="w-4 h-4" />
+                Export Full Details
+              </button>
               <button
                 onClick={() => setIsAddingFamily(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 shadow-lg shadow-blue-500/20 border-none text-white rounded-xl text-sm font-bold hover:from-blue-600 hover:to-indigo-600 hover:shadow-xl hover:-translate-y-0.5 transition-all"
