@@ -100,6 +100,7 @@ export default function AdminDashboard({
     ],
   });
   const [isAddingStaff, setIsAddingStaff] = useState(false);
+  const [managementSearch, setManagementSearch] = useState("");
   const [studentToDelete, setStudentToDelete] = useState<string | null>(null);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [staffToDelete, setStaffToDelete] = useState<string | null>(null);
@@ -982,6 +983,12 @@ export default function AdminDashboard({
     }
   };
 
+  const filteredStudents = managementSearch.trim()
+    ? students.filter((s) =>
+        s.name.toLowerCase().includes(managementSearch.trim().toLowerCase()),
+      )
+    : students;
+
   const teacherMembers = staff.filter((s) => s.role === "teacher");
   const parentMembers = staff.filter((s) => s.role === "parent");
   const staffMembers = staff.filter(
@@ -1336,6 +1343,8 @@ export default function AdminDashboard({
               <input
                 type="text"
                 placeholder="Search..."
+                value={managementSearch}
+                onChange={(e) => setManagementSearch(e.target.value)}
                 className="pl-9 pr-4 py-2 bg-white/60 backdrop-blur-md border-none rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500 w-full md:w-64"
               />
             </div>
@@ -1411,8 +1420,8 @@ export default function AdminDashboard({
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100/80">
-                {students.length > 0 ? (
-                  students.map((student) => (
+                {filteredStudents.length > 0 ? (
+                  filteredStudents.map((student) => (
                     <tr
                       key={student.id}
                       className="hover:bg-white/60 backdrop-blur-md transition-all cursor-pointer group"
