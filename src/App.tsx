@@ -8,7 +8,6 @@ import {
   LogOut,
   Bell,
   Search,
-  Menu as MenuIcon,
   X,
   CreditCard,
   MapPin,
@@ -800,21 +799,11 @@ function AppContent() {
         <div className="absolute bottom-[-20%] left-[-10%] w-[800px] h-[800px] bg-emerald-400/15 rounded-full blur-[120px] mix-blend-multiply"></div>
       </div>
 
-      {/* Mobile Sidebar Overlay */}
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/20 z-40 lg:hidden"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
-
-      {/* Sidebar */}
+      {/* Sidebar (desktop only — mobile uses the bottom nav bar instead) */}
       <motion.aside
         initial={false}
         animate={{ width: isSidebarOpen ? 280 : 80 }}
-        className={`bg-white/70 backdrop-blur-3xl border-r border-white/60 flex flex-col z-50 fixed lg:sticky top-0 h-screen transition-transform duration-300 shadow-[4px_0_24px_rgba(0,0,0,0.02)] ${
-          isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-        }`}
+        className="hidden lg:flex bg-white/70 backdrop-blur-3xl border-r border-white/60 flex-col z-50 sticky top-0 h-screen shadow-[4px_0_24px_rgba(0,0,0,0.02)]"
       >
         <div className="p-6 flex items-center justify-between">
           <AnimatePresence mode="wait">
@@ -897,7 +886,7 @@ function AppContent() {
       </motion.aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col min-w-0 relative z-10 h-screen overflow-y-auto">
+      <main className="flex-1 flex flex-col min-w-0 relative z-10 h-screen overflow-y-auto pb-20 lg:pb-0">
         {impersonatingProfile && (
           <div className="bg-amber-50 border-b border-amber-200 px-4 py-3 flex items-center justify-between sticky top-0 z-50">
             <div className="flex items-center gap-2 text-amber-800">
@@ -922,12 +911,16 @@ function AppContent() {
           className={`h-16 md:h-24 bg-white/40 backdrop-blur-3xl border-b border-white/60 px-4 md:px-8 flex items-center justify-between sticky ${impersonatingProfile ? "top-[52px]" : "top-0"} z-40`}
         >
           <div className="flex items-center gap-4">
-            <button
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="p-2.5 bg-white/60 hover:bg-white shadow-sm rounded-xl lg:hidden transition-all"
-            >
-              <MenuIcon className="w-5 h-5 text-gray-700" />
-            </button>
+            <div className="flex items-center gap-2 lg:hidden">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden border border-white/60 bg-white shrink-0">
+                <img
+                  src="https://dpsbiratnagar.edu.np/wp-content/uploads/2026/03/dps-logo-high-scaled.png"
+                  alt="DPS Logo"
+                  className="w-full h-full object-contain p-0.5"
+                />
+              </div>
+              <span className="font-bold text-lg tracking-tight">DPS CRM</span>
+            </div>
             <div className="relative hidden md:block group">
               <Search className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-500 transition-colors" />
               <input
@@ -1163,6 +1156,33 @@ function AppContent() {
           </AnimatePresence>
         </div>
       </main>
+
+      {/* Bottom Nav (mobile/tablet only — desktop uses the sidebar) */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-xl border-t border-white/60 shadow-[0_-4px_24px_rgba(0,0,0,0.04)] pb-[env(safe-area-inset-bottom)]">
+        <div className="flex overflow-x-auto no-scrollbar">
+          {navItems.map((item) => {
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className={`flex-1 min-w-[64px] flex flex-col items-center justify-center gap-1 py-2.5 transition-all ${
+                  isActive ? "text-emerald-600" : "text-gray-400"
+                }`}
+              >
+                <item.icon
+                  className={`w-5 h-5 ${isActive ? "scale-110" : ""} transition-transform`}
+                />
+                <span
+                  className={`text-[10px] leading-none ${isActive ? "font-bold" : "font-medium"}`}
+                >
+                  {item.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
     </div>
   );
 }
