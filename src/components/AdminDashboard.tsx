@@ -341,18 +341,21 @@ export default function AdminDashboard({
       // A6 Size Equivalent (1240 x 1754) for printing 4 on A4 page
       canvas.width = 1240;
       const originalWidth = 1000;
-      const studentsHeight = Math.ceil(family.students.length / 2) * 220 + 100;
-      const requiredOriginalHeight = 850 + studentsHeight; // Increased from 800
-      canvas.height = Math.max(1754, requiredOriginalHeight * 1.25); // Minimum A6 height, or taller if needed
+      const studentRowHeight = 220;
+      const studentRows = Math.ceil(family.students.length / 2);
+      // Precompute every section's Y position up front (in the internal
+      // 1000-wide coordinate system) so the canvas is always tall enough to
+      // fit the footer, no matter how many student rows there are.
+      const qrStartY = 200 + studentRows * studentRowHeight + 30;
+      const guardiansStartY = qrStartY + 400;
+      const footerY = guardiansStartY + 380;
+      const totalInternalHeight = footerY + 40;
+      canvas.height = Math.max(1754, totalInternalHeight * 1.24); // Minimum A6 height, or taller if needed
 
-      const scaleX = 1240 / 1000;
-      const scaleY = canvas.height / requiredOriginalHeight;
-      // We will use 1.24 scale for both to keep aspect ratio perfect, if it fits
-      // Actually, since A6 width is 1240, scale is exactly 1.24.
       ctx.scale(1.24, 1.24);
 
       ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, 1000, requiredOriginalHeight * 1.2);
+      ctx.fillRect(0, 0, 1000, totalInternalHeight);
 
       ctx.fillStyle = "#2563eb";
       ctx.fillRect(0, 0, 1000, 100);
@@ -411,7 +414,6 @@ export default function AdminDashboard({
       ctx.textAlign = "left";
       ctx.fillText("STUDENTS", 50, 160);
 
-      const studentRowHeight = 220;
       for (let i = 0; i < family.students.length; i++) {
         const student = family.students[i];
         if (!student.name) continue;
@@ -452,10 +454,6 @@ export default function AdminDashboard({
         );
       }
 
-      const qrStartY =
-        200 +
-        Math.ceil(family.students.length / 2) * studentRowHeight +
-        30;
       const appUrl =
         typeof window !== "undefined" ? window.location.origin : "";
       const qrDataUrl = await QRCode.toDataURL(
@@ -467,7 +465,6 @@ export default function AdminDashboard({
         ctx.drawImage(qrImg, (1000 - 350) / 2, qrStartY, 350, 350);
       }
 
-      const guardiansStartY = qrStartY + 400;
       ctx.fillStyle = "#f9fafb";
       ctx.fillRect(50, guardiansStartY, 1000 - 100, 350);
 
@@ -528,7 +525,6 @@ export default function AdminDashboard({
         );
       }
 
-      const footerY = guardiansStartY + 380;
       ctx.fillStyle = "#9ca3af";
       ctx.font = "16px sans-serif";
       ctx.textAlign = "center";
