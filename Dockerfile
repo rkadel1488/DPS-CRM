@@ -1,5 +1,7 @@
-# Build stage
-FROM node:22-alpine AS build
+# Build stage — Debian-based (not Alpine) to avoid musl/glibc native-binary
+# mismatches with lightningcss (used by Tailwind v4), which ships prebuilt
+# .node binaries per platform and can fail to resolve the musl variant.
+FROM node:22-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
