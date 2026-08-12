@@ -23,6 +23,9 @@ import {
   serverTimestamp,
   updateDoc,
   deleteDoc,
+  query,
+  orderBy,
+  limit,
 } from "firebase/firestore";
 import { UserProfile, Student, GatePass } from "../types";
 import { handleFirestoreError, OperationType } from "../App";
@@ -174,7 +177,7 @@ export default function GatePassDashboard({
     );
 
     const unsubscribeGatePasses = onSnapshot(
-      collection(db, "gate_passes"),
+      query(collection(db, "gate_passes"), orderBy("createdAt", "desc"), limit(300)),
       (snapshot) => {
         setGatePasses(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as GatePass));
       },

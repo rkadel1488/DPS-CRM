@@ -45,6 +45,7 @@ import {
   orderBy,
   limit,
   getDocs,
+  getCountFromServer,
   addDoc,
   serverTimestamp,
   updateDoc,
@@ -1217,19 +1218,25 @@ function DashboardOverview({
         return;
       }
       try {
-        const studentsSnap = await getDocs(collection(db, "students"));
-        const vehiclesSnap = await getDocs(collection(db, "vehicles"));
-        const gatePassesSnap = await getDocs(collection(db, "gate_passes"));
-
-        const productsSnap = await getDocs(collection(db, "store_products"));
+        // Use server-side count aggregation instead of downloading every
+        // document (which, for students, includes multiple base64 photos
+        // per record) just to read snapshot.size — this was a major cause
+        // of slow app load.
+        const [studentsCount, vehiclesCount, activeGatePassesCount, productsCount] =
+          await Promise.all([
+            getCountFromServer(collection(db, "students")),
+            getCountFromServer(collection(db, "vehicles")),
+            getCountFromServer(
+              query(collection(db, "gate_passes"), where("status", "==", "active")),
+            ),
+            getCountFromServer(collection(db, "store_products")),
+          ]);
 
         setStats({
-          totalStudents: studentsSnap.size,
-          activeBuses: vehiclesSnap.size,
-          storeProductsCount: productsSnap.size,
-          activeGatePasses: gatePassesSnap.docs.filter(
-            (d) => d.data().status === "active",
-          ).length,
+          totalStudents: studentsCount.data().count,
+          activeBuses: vehiclesCount.data().count,
+          storeProductsCount: productsCount.data().count,
+          activeGatePasses: activeGatePassesCount.data().count,
         });
       } catch (error) {
         console.error("Failed to fetch stats:", error);
