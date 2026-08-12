@@ -65,12 +65,14 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-// Components
-import StoreDashboard from "./components/StoreDashboard";
-import TransportDashboard from "./components/TransportDashboard";
-import AdminDashboard from "./components/AdminDashboard";
-import LibraryDashboard from "./components/LibraryDashboard";
-import GatePassDashboard from "./components/GatePassDashboard";
+// Components — lazy-loaded per tab so the initial bundle only contains the
+// code for whichever tab is actually being viewed, instead of every
+// dashboard's code (several MB combined) loading upfront on first visit.
+const StoreDashboard = React.lazy(() => import("./components/StoreDashboard"));
+const TransportDashboard = React.lazy(() => import("./components/TransportDashboard"));
+const AdminDashboard = React.lazy(() => import("./components/AdminDashboard"));
+const LibraryDashboard = React.lazy(() => import("./components/LibraryDashboard"));
+const GatePassDashboard = React.lazy(() => import("./components/GatePassDashboard"));
 import { COUNTRY_CODES } from "./countryCodes";
 
 // Firestore Error Handling
@@ -1109,6 +1111,13 @@ function AppContent() {
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
             >
+              <React.Suspense
+                fallback={
+                  <div className="flex items-center justify-center py-24">
+                    <div className="w-8 h-8 border-4 border-emerald-200 border-t-emerald-500 rounded-full animate-spin" />
+                  </div>
+                }
+              >
               {activeTab === "dashboard" && (
                 <DashboardOverview
                   profile={activeProfile}
@@ -1155,6 +1164,7 @@ function AppContent() {
               {activeTab === "settings" && (
                 <SettingsView profile={activeProfile} isAdmin={isAdmin} />
               )}
+              </React.Suspense>
             </motion.div>
           </AnimatePresence>
         </div>
