@@ -1,0 +1,42 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Mirrors the isStaff()/isAdmin() logic in firestore.rules, using the
+    // cross-service firestore.get()/firestore.exists() rules functions to
+    // read each user's role from the `users` collection.
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function getUserData() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isMainAdminEmail() {
+      return isAuthenticated() &&
+             ('email' in request.auth.token) &&
+             request.auth.token.email == "rkadel1488@gmail.com" &&
+             request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return isMainAdminEmail() ||
+             (isAuthenticated() &&
+              firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
+              getUserData().role == 'admin');
+    }
+
+    function isStaff() {
+      return isAdmin() ||
+             (isAuthenticated() &&
+              firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
+              getUserData().role in ['staff', 'teacher']);
+    }
+
+    // Student, guardian (father/mother/driver/other), and book cover photos.
+    match /student-photos/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isStaff();
+    }
+  }
+}

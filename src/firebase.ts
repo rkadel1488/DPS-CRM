@@ -1,5 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
+import { getStorage } from "firebase/storage";
 import {
   initializeFirestore,
   persistentLocalCache,
@@ -9,6 +10,7 @@ import firebaseConfig from "../firebase-applet-config.json";
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+export const storage = getStorage(app);
 // Auto-detect long polling keeps the connection alive on older browsers,
 // proxies, and unstable networks where WebChannel streaming fails.
 // The persistent cache lets the app keep working from local data during

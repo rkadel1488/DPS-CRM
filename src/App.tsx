@@ -23,9 +23,11 @@ import {
   ShoppingCart,
   UserPlus,
   Trash2,
+  Upload,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { auth, db } from "./firebase";
+import { auth, db, storage } from "./firebase";
+import { ref, uploadString, getDownloadURL } from "firebase/storage";
 import {
   onAuthStateChanged,
   signInWithPopup,
@@ -1610,6 +1612,75 @@ function SettingsView({
   const [isSaving, setIsSaving] = useState(false);
   const [isCleaningStoreData, setIsCleaningStoreData] = useState(false);
   const [isDeletingBooks, setIsDeletingBooks] = useState(false);
+  const [isMigratingPhotos, setIsMigratingPhotos] = useState(false);
+  const [migrationProgress, setMigrationProgress] = useState("");
+
+  const PHOTO_FIELDS = [
+    "photoUrl",
+    "fatherPhotoUrl",
+    "motherPhotoUrl",
+    "driverPhotoUrl",
+    "otherPhotoUrl",
+  ] as const;
+
+  const handleMigratePhotosToStorage = async () => {
+    if (!isAdmin) return;
+    const confirmed = window.confirm(
+      "This will upload every student/guardian photo currently stored as base64 to Firebase Storage, and replace it with a link. This speeds up app loading (especially Gate Pass). It's safe to run more than once — already-migrated photos are skipped. Continue?",
+    );
+    if (!confirmed) return;
+
+    setIsMigratingPhotos(true);
+    let migratedStudents = 0;
+    let migratedPhotos = 0;
+    let failedPhotos = 0;
+    try {
+      const snap = await getDocs(collection(db, "students"));
+      const docsArr = snap.docs;
+      for (let i = 0; i < docsArr.length; i++) {
+        const d = docsArr[i];
+        const data = d.data();
+        setMigrationProgress(`Checking student ${i + 1} of ${docsArr.length}...`);
+
+        const updates: Record<string, string> = {};
+        await Promise.all(
+          PHOTO_FIELDS.map(async (field) => {
+            const value = data[field];
+            if (typeof value !== "string" || !value.startsWith("data:")) return;
+            try {
+              const path = `student-photos/${d.id}-${field}-${Date.now()}.jpg`;
+              const storageRef = ref(storage, path);
+              await uploadString(storageRef, value, "data_url");
+              const url = await getDownloadURL(storageRef);
+              updates[field] = url;
+              migratedPhotos++;
+            } catch (err) {
+              console.error(`Failed to migrate ${field} for student ${d.id}:`, err);
+              failedPhotos++;
+            }
+          }),
+        );
+
+        if (Object.keys(updates).length > 0) {
+          await updateDoc(doc(db, "students", d.id), updates);
+          migratedStudents++;
+        }
+      }
+
+      alert(
+        `Migration complete.\n\nStudents updated: ${migratedStudents}\nPhotos migrated: ${migratedPhotos}` +
+          (failedPhotos > 0 ? `\nPhotos failed: ${failedPhotos} (check console)` : ""),
+      );
+    } catch (e) {
+      console.error("Failed to migrate photos:", e);
+      alert(
+        "Failed to migrate photos. Make sure Firebase Storage is enabled for this project and its security rules allow staff writes (see storage.rules in the repo). Check the console for details.",
+      );
+    } finally {
+      setIsMigratingPhotos(false);
+      setMigrationProgress("");
+    }
+  };
 
   const handleDeleteAllBooks = async () => {
     if (!isAdmin) return;
@@ -1880,6 +1951,36 @@ function SettingsView({
                 {isCleaningStoreData
                   ? "Cleaning..."
                   : "Delete Entries Older Than 6 Months"}
+              </button>
+            </div>
+          </div>
+        )}
+        {isAdmin && (
+          <div className="p-6">
+            <h3 className="font-bold text-gray-900 mb-1 flex items-center gap-2">
+              Photo Storage Migration
+            </h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Existing student/guardian photos are stored as base64 text
+              directly inside each student record, which slows down app
+              loading (especially Gate Pass, which downloads every student
+              up front). This uploads those photos to Firebase Storage
+              instead and replaces them with a link. Safe to re-run — already
+              migrated photos are skipped.
+            </p>
+            <div className="bg-blue-50 p-4 rounded-[1rem] border border-blue-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <p className="text-xs text-blue-900 font-medium">
+                {isMigratingPhotos && migrationProgress
+                  ? migrationProgress
+                  : "Requires Firebase Storage to be enabled for this project."}
+              </p>
+              <button
+                onClick={handleMigratePhotosToStorage}
+                disabled={isMigratingPhotos}
+                className="shrink-0 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                <Upload className="w-4 h-4" />
+                {isMigratingPhotos ? "Migrating..." : "Migrate Photos to Storage"}
               </button>
             </div>
           </div>
