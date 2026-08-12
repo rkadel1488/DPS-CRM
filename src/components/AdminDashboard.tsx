@@ -24,7 +24,8 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { db } from "../firebase";
+import { db, storage } from "../firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import {
   addDoc,
   collection,
@@ -220,12 +221,14 @@ export default function AdminDashboard({
     }
   };
 
-  const compressImage = (file: File): Promise<string> => {
-    return new Promise((resolve) => {
-      // Load via a blob object URL instead of FileReader.readAsDataURL —
-      // base64-encoding the full-size original (often several MB straight
-      // off a phone camera) before we've even downscaled it is wasted work.
-      // The object URL is just a lightweight in-memory reference.
+  // Downscales the image to a small JPEG blob, then uploads it to Firebase
+  // Storage and returns the download URL — rather than storing the image
+  // as a base64 string directly inside the Firestore document. Every
+  // screen that lists students (Gate Pass in particular) has to download
+  // every student document up front, and base64 photos inline in those
+  // documents made that download several MB larger than it needed to be.
+  const compressAndUploadPhoto = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
       const objectUrl = URL.createObjectURL(file);
       const img = new Image();
       img.onload = () => {
@@ -255,7 +258,30 @@ export default function AdminDashboard({
           ctx.drawImage(img, 0, 0, width, height);
         }
         URL.revokeObjectURL(objectUrl);
-        resolve(canvas.toDataURL("image/jpeg", 0.4));
+
+        canvas.toBlob(
+          async (blob) => {
+            if (!blob) {
+              reject(new Error("Failed to compress image"));
+              return;
+            }
+            try {
+              const path = `student-photos/${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
+              const storageRef = ref(storage, path);
+              await uploadBytes(storageRef, blob, { contentType: "image/jpeg" });
+              const url = await getDownloadURL(storageRef);
+              resolve(url);
+            } catch (err) {
+              reject(err);
+            }
+          },
+          "image/jpeg",
+          0.4,
+        );
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error("Failed to load image"));
       };
       img.src = objectUrl;
     });
@@ -269,15 +295,19 @@ export default function AdminDashboard({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const base64String = await compressImage(file);
-
-    if (type === "student" && studentIndex !== undefined) {
-      const updatedStudents = [...newFamily.students];
-      updatedStudents[studentIndex].photoUrl = base64String;
-      setNewFamily({ ...newFamily, students: updatedStudents });
-    } else {
-      const field = `${type}PhotoUrl`;
-      setNewFamily({ ...newFamily, [field]: base64String });
+    try {
+      const photoUrl = await compressAndUploadPhoto(file);
+      if (type === "student" && studentIndex !== undefined) {
+        const updatedStudents = [...newFamily.students];
+        updatedStudents[studentIndex].photoUrl = photoUrl;
+        setNewFamily({ ...newFamily, students: updatedStudents });
+      } else {
+        const field = `${type}PhotoUrl`;
+        setNewFamily({ ...newFamily, [field]: photoUrl });
+      }
+    } catch (err) {
+      console.error("Photo upload failed:", err);
+      alert("Failed to upload photo. Please try again.");
     }
   };
 
@@ -778,13 +808,17 @@ export default function AdminDashboard({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const base64String = await compressImage(file);
     const field = type === "student" ? "photoUrl" : `${type}PhotoUrl`;
-
-    if (isEdit && editingStudent) {
-      setEditingStudent({ ...editingStudent, [field]: base64String });
-    } else {
-      setNewStudent({ ...newStudent, [field]: base64String });
+    try {
+      const photoUrl = await compressAndUploadPhoto(file);
+      if (isEdit && editingStudent) {
+        setEditingStudent({ ...editingStudent, [field]: photoUrl });
+      } else {
+        setNewStudent({ ...newStudent, [field]: photoUrl });
+      }
+    } catch (err) {
+      console.error("Photo upload failed:", err);
+      alert("Failed to upload photo. Please try again.");
     }
   };
 
