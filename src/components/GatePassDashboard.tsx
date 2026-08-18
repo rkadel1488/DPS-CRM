@@ -242,12 +242,20 @@ export default function GatePassDashboard({
       return;
     }
 
+    // Kept under 160 characters (the single-SMS limit) — longer messages
+    // need multi-part SMS support, which the Android gateway app doesn't
+    // implement, so anything over 160 chars silently fails to send while
+    // still reporting success back to this app. Each name is capped since
+    // a large family's combined student name list (or a long guardian
+    // name) could otherwise push the total past the limit.
+    const truncate = (s: string, max: number) =>
+      s.length > max ? `${s.slice(0, max - 1)}…` : s;
+    const admin = truncate(profile?.displayName || "Admin", 15);
+    const shortStudentName = truncate(studentName, 30);
+    const shortTickedPerson = truncate(tickedPerson, 20);
     const message = isSelfPickup
-      ? `DPS School Alert: ${studentName} checked out at ${date} and left the school on their own (no guardian pickup). ` +
-        `Authorized by: ${profile?.displayName || "Admin"}. If unexpected, contact school immediately.`
-      : `DPS School Alert: ${studentName} checked out at ${date}. ` +
-        `Picked up by: ${tickedPerson}. Authorized by: ${profile?.displayName || "Admin"}. ` +
-        `If unauthorized, contact school immediately.`;
+      ? `DPS Alert: ${shortStudentName} left school alone at ${date}, no pickup. By ${admin}. Unexpected? Call school.`
+      : `DPS Alert: ${shortStudentName} left school ${date} with ${shortTickedPerson}. By ${admin}. Unauthorized? Call school.`;
 
     setSmsStatus("sending");
 
