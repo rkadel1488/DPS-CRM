@@ -250,8 +250,39 @@ export default function GatePassDashboard({
     // name) could otherwise push the total past the limit.
     const truncate = (s: string, max: number) =>
       s.length > max ? `${s.slice(0, max - 1)}…` : s;
+
+    // For a family gate pass with several kids, "First1, First2, Middle…"
+    // truncation would silently drop names. Instead: try full names, fall
+    // back to first names only, then "First +N more" so every student is
+    // at least represented.
+    const summarizeNames = (namesStr: string, max: number) => {
+      const names = namesStr
+        .split(",")
+        .map((n) => n.trim())
+        .filter(Boolean);
+      if (names.length === 0) return "";
+      const full = names.join(", ");
+      if (full.length <= max) return full;
+
+      const firstNames = names.map((n) => n.split(" ")[0]);
+      const firstOnly = firstNames.join(", ");
+      if (firstOnly.length <= max) return firstOnly;
+
+      let result = firstNames[0];
+      for (let i = 1; i < firstNames.length; i++) {
+        const candidate = `${result}, ${firstNames[i]}`;
+        const remaining = firstNames.length - i - 1;
+        const suffix = remaining > 0 ? ` +${remaining} more` : "";
+        if ((candidate + suffix).length > max) {
+          return `${result} +${firstNames.length - i} more`;
+        }
+        result = candidate;
+      }
+      return result;
+    };
+
     const admin = truncate(profile?.displayName || "Admin", 15);
-    const shortStudentName = truncate(studentName, 30);
+    const shortStudentName = summarizeNames(studentName, 30);
     const shortTickedPerson = truncate(tickedPerson, 20);
     const message = isSelfPickup
       ? `DPS Alert: ${shortStudentName} left school alone at ${date}, no pickup. By ${admin}. Unexpected? Call school.`
