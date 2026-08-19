@@ -1623,6 +1623,8 @@ function SettingsView({
   const [isCleaningStoreData, setIsCleaningStoreData] = useState(false);
   const [isDeletingBooks, setIsDeletingBooks] = useState(false);
   const [isMigratingPhotos, setIsMigratingPhotos] = useState(false);
+  const [isDeletingGatePasses, setIsDeletingGatePasses] = useState(false);
+  const [gatePassCutoffDate, setGatePassCutoffDate] = useState("");
   const [migrationProgress, setMigrationProgress] = useState("");
 
   const PHOTO_FIELDS = [
@@ -1721,6 +1723,53 @@ function SettingsView({
       alert("Failed to delete all books.");
     } finally {
       setIsDeletingBooks(false);
+    }
+  };
+
+  const handleDeleteGatePassesBeforeDate = async () => {
+    if (!isAdmin) return;
+    if (!gatePassCutoffDate) {
+      alert("Please select a cutoff date first.");
+      return;
+    }
+    const cutoff = new Date(gatePassCutoffDate);
+    // End of the selected day, so the chosen date itself is included.
+    cutoff.setHours(23, 59, 59, 999);
+
+    const confirmed = window.confirm(
+      `This will permanently delete all Gate Pass entries on or before ${cutoff.toLocaleDateString()}. This action cannot be undone. Continue?`,
+    );
+    if (!confirmed) return;
+
+    setIsDeletingGatePasses(true);
+    try {
+      const snap = await getDocs(collection(db, "gate_passes"));
+      const staleDocs = snap.docs.filter((d) => {
+        const departureTime = new Date(d.data().departureTime);
+        return !isNaN(departureTime.getTime()) && departureTime <= cutoff;
+      });
+
+      if (staleDocs.length === 0) {
+        alert("No gate pass entries were found on or before that date.");
+        return;
+      }
+
+      const BATCH_SIZE = 400;
+      for (let i = 0; i < staleDocs.length; i += BATCH_SIZE) {
+        const batch = writeBatch(db);
+        staleDocs
+          .slice(i, i + BATCH_SIZE)
+          .forEach((d) => batch.delete(doc(db, "gate_passes", d.id)));
+        await batch.commit();
+      }
+
+      alert(`Deleted ${staleDocs.length} gate pass entries.`);
+      setGatePassCutoffDate("");
+    } catch (e) {
+      console.error("Failed to delete gate pass entries:", e);
+      alert("Failed to delete gate pass entries.");
+    } finally {
+      setIsDeletingGatePasses(false);
     }
   };
 
@@ -2017,6 +2066,39 @@ function SettingsView({
               >
                 <Trash2 className="w-4 h-4" />
                 {isDeletingBooks ? "Deleting..." : "Delete All Books"}
+              </button>
+            </div>
+          </div>
+        )}
+        {isAdmin && (
+          <div className="p-6">
+            <h3 className="font-bold text-gray-900 mb-1 flex items-center gap-2">
+              Gate Pass Data
+            </h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Permanently delete Gate Pass entries on or before a chosen
+              date. Useful for clearing out old records once they're no
+              longer needed.
+            </p>
+            <div className="bg-rose-50 p-4 rounded-[1rem] border border-rose-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-rose-900 uppercase tracking-wide">
+                  Delete entries on or before
+                </label>
+                <input
+                  type="date"
+                  value={gatePassCutoffDate}
+                  onChange={(e) => setGatePassCutoffDate(e.target.value)}
+                  className="px-3 py-2 bg-white border border-rose-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-rose-400"
+                />
+              </div>
+              <button
+                onClick={handleDeleteGatePassesBeforeDate}
+                disabled={isDeletingGatePasses || !gatePassCutoffDate}
+                className="shrink-0 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                {isDeletingGatePasses ? "Deleting..." : "Delete Entries"}
               </button>
             </div>
           </div>
