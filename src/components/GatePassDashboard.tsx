@@ -217,7 +217,7 @@ export default function GatePassDashboard({
   const sendSmsNotification = async (
     phone: string,
     studentName: string,
-    date: string,
+    departureTime: Date,
     tickedPerson: string,
     isSelfPickup: boolean = false,
   ) => {
@@ -251,21 +251,26 @@ export default function GatePassDashboard({
     const truncate = (s: string, max: number) =>
       s.length > max ? `${s.slice(0, max - 1)}…` : s;
 
-    // For a family gate pass with several kids, "First1, First2, Middle…"
-    // truncation would silently drop names. Instead: try full names, fall
-    // back to first names only, then "First +N more" so every student is
-    // at least represented.
+    // Oxford-style list ("A, B & C") using an Android-shortened date
+    // (DD/MM/YY h:mm AM/PM). For a family gate pass with several kids,
+    // dropping to first names only (then "First +N more") keeps every
+    // student represented if the full name list won't fit.
+    const joinOxford = (names: string[]) =>
+      names.length <= 1
+        ? names[0] || ""
+        : `${names.slice(0, -1).join(", ")} & ${names[names.length - 1]}`;
+
     const summarizeNames = (namesStr: string, max: number) => {
       const names = namesStr
         .split(",")
         .map((n) => n.trim())
         .filter(Boolean);
       if (names.length === 0) return "";
-      const full = names.join(", ");
+      const full = joinOxford(names);
       if (full.length <= max) return full;
 
       const firstNames = names.map((n) => n.split(" ")[0]);
-      const firstOnly = firstNames.join(", ");
+      const firstOnly = joinOxford(firstNames);
       if (firstOnly.length <= max) return firstOnly;
 
       let result = firstNames[0];
@@ -281,12 +286,24 @@ export default function GatePassDashboard({
       return result;
     };
 
-    const admin = truncate(profile?.displayName || "Admin", 15);
-    const shortStudentName = summarizeNames(studentName, 30);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const shortDate = (d: Date) => {
+      const day = pad(d.getDate());
+      const month = pad(d.getMonth() + 1);
+      const year = String(d.getFullYear()).slice(-2);
+      let hours = d.getHours();
+      const minutes = pad(d.getMinutes());
+      const ampm = hours >= 12 ? "PM" : "AM";
+      hours = hours % 12 || 12;
+      return `${day}/${month}/${year} ${hours}:${minutes} ${ampm}`;
+    };
+
+    const shortStudentName = summarizeNames(studentName, 40);
     const shortTickedPerson = truncate(tickedPerson, 20);
+    const date = shortDate(departureTime);
     const message = isSelfPickup
-      ? `DPS Alert: ${shortStudentName} left school alone at ${date}, no pickup. By ${admin}. Unexpected? Call school.`
-      : `DPS Alert: ${shortStudentName} left school ${date} with ${shortTickedPerson}. By ${admin}. Unauthorized? Call school.`;
+      ? `DPS Alert: ${shortStudentName} checked out ${date} alone (no pickup). If unauthorised, call school.`
+      : `DPS Alert: ${shortStudentName} checked out ${date}. Picked up by ${shortTickedPerson}. If unauthorised, call school.`;
 
     setSmsStatus("sending");
 
@@ -366,7 +383,7 @@ export default function GatePassDashboard({
       studentNames = studentNames.slice(0, -2);
 
       if (phone !== "N/A") {
-        await sendSmsNotification(phone, studentNames, scannedDate, tickedPerson, isSelfPickup);
+        await sendSmsNotification(phone, studentNames, now, tickedPerson, isSelfPickup);
       }
 
       setScannedStudents(null);
