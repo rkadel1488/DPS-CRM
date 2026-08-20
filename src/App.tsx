@@ -193,12 +193,32 @@ class ErrorBoundary extends React.Component<
     window.removeEventListener("error", this.handleErrorEvent);
   }
 
+  // Browser extensions (ad blockers, password managers, translators, etc.)
+  // throw their own errors and rejected promises on every page they run on
+  // — e.g. "Window message 'chrome: call method' timed out" is a known
+  // extension-messaging error, not anything from this app. Treating every
+  // unhandled rejection/error on the page as fatal was crashing the whole
+  // UI for noise that has nothing to do with DPS-CRM. Only escalate to
+  // the crash screen when the error can be traced back to our own bundle.
+  isFromOwnBundle = (source?: string | null) =>
+    !!source && /\/assets\/.*\.js/.test(source);
+
   handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+    const reason = event.reason;
+    const stack = reason instanceof Error ? reason.stack : undefined;
+    if (!this.isFromOwnBundle(stack)) {
+      console.warn("Ignored unhandled rejection (not from app code):", reason);
+      return;
+    }
     event.preventDefault();
-    this.setState({ hasError: true, error: event.reason });
+    this.setState({ hasError: true, error: reason });
   };
 
   handleErrorEvent = (event: ErrorEvent) => {
+    if (!this.isFromOwnBundle(event.filename)) {
+      console.warn("Ignored window error (not from app code):", event);
+      return;
+    }
     event.preventDefault();
     this.setState({ hasError: true, error: event.error });
   };
