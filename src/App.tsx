@@ -163,12 +163,34 @@ interface ErrorBoundaryState {
   error: any;
 }
 
-// Shared with ErrorBoundary's instance-level window listeners below —
-// some background browser/SDK noise (see comments in the class) should
-// never be treated as a fatal app crash, however it's caught.
-const isKnownBenignErrorMessage = (message?: string | null) =>
-  !!message &&
-  /window message|call method|cross-origin-opener-policy/i.test(message);
+// Shared with ErrorBoundary's instance-level window listeners below.
+//
+// Those listeners exist so handleFirestoreError's deliberately-thrown,
+// structured error (see its JSON.stringify(errInfo) throw above) reaches
+// the user as a proper message instead of vanishing as a silent unhandled
+// rejection. But *any* unrelated async noise on the page — browser
+// extensions, or Firebase Auth's own background cross-window/iframe
+// channel timing out internally — also fires these same window events,
+// and trying to blocklist every such message as it's discovered is a
+// losing game (this app has already hit two different messages from two
+// different sources). Instead: only ever escalate to the crash screen
+// for an error whose message matches the exact shape handleFirestoreError
+// throws. Everything else — known noise or not-yet-seen noise — is
+// logged and ignored by default.
+const isRecognizedAppError = (message?: string | null) => {
+  if (!message) return false;
+  try {
+    const parsed = JSON.parse(message);
+    return (
+      typeof parsed === "object" &&
+      parsed !== null &&
+      "error" in parsed &&
+      "operationType" in parsed
+    );
+  } catch {
+    return false;
+  }
+};
 
 class ErrorBoundary extends React.Component<
   ErrorBoundaryProps,
@@ -200,28 +222,11 @@ class ErrorBoundary extends React.Component<
     window.removeEventListener("error", this.handleErrorEvent);
   }
 
-  // Browser extensions (ad blockers, password managers, translators, etc.)
-  // throw their own errors and rejected promises on every page they run on
-  // — e.g. "Window message 'chrome: call method' timed out" is a known
-  // extension-messaging error, not anything from this app. Treating every
-  // unhandled rejection/error on the page as fatal was crashing the whole
-  // UI for noise that has nothing to do with DPS-CRM. Only escalate to
-  // the crash screen when the error can be traced back to our own bundle.
-  isFromOwnBundle = (source?: string | null) =>
-    !!source && /\/assets\/.*\.js/.test(source);
-
-  // Some of this noise can *also* come from inside our own bundled code —
-  // e.g. Firebase Auth keeps a background cross-window/iframe channel open
-  // to sync login state, and that channel's own internal RPC calls can
-  // time out (same "Window message ... call method ... timed out" wording)
-  // without any explicit action from the user or this app's own code.
-  // These are known-benign and shouldn't take down the whole UI either.
   handleUnhandledRejection = (event: PromiseRejectionEvent) => {
     const reason = event.reason;
-    const stack = reason instanceof Error ? reason.stack : undefined;
     const message = reason instanceof Error ? reason.message : String(reason);
-    if (!this.isFromOwnBundle(stack) || isKnownBenignErrorMessage(message)) {
-      console.warn("Ignored unhandled rejection (not from app code):", reason);
+    if (!isRecognizedAppError(message)) {
+      console.warn("Ignored unhandled rejection (not a recognized app error):", reason);
       return;
     }
     event.preventDefault();
@@ -229,11 +234,8 @@ class ErrorBoundary extends React.Component<
   };
 
   handleErrorEvent = (event: ErrorEvent) => {
-    if (
-      !this.isFromOwnBundle(event.filename) ||
-      isKnownBenignErrorMessage(event.message)
-    ) {
-      console.warn("Ignored window error (not from app code):", event);
+    if (!isRecognizedAppError(event.message)) {
+      console.warn("Ignored window error (not a recognized app error):", event);
       return;
     }
     event.preventDefault();
