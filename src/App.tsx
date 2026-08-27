@@ -163,6 +163,13 @@ interface ErrorBoundaryState {
   error: any;
 }
 
+// Shared with ErrorBoundary's instance-level window listeners below —
+// some background browser/SDK noise (see comments in the class) should
+// never be treated as a fatal app crash, however it's caught.
+const isKnownBenignErrorMessage = (message?: string | null) =>
+  !!message &&
+  /window message|call method|cross-origin-opener-policy/i.test(message);
+
 class ErrorBoundary extends React.Component<
   ErrorBoundaryProps,
   ErrorBoundaryState
@@ -203,10 +210,17 @@ class ErrorBoundary extends React.Component<
   isFromOwnBundle = (source?: string | null) =>
     !!source && /\/assets\/.*\.js/.test(source);
 
+  // Some of this noise can *also* come from inside our own bundled code —
+  // e.g. Firebase Auth keeps a background cross-window/iframe channel open
+  // to sync login state, and that channel's own internal RPC calls can
+  // time out (same "Window message ... call method ... timed out" wording)
+  // without any explicit action from the user or this app's own code.
+  // These are known-benign and shouldn't take down the whole UI either.
   handleUnhandledRejection = (event: PromiseRejectionEvent) => {
     const reason = event.reason;
     const stack = reason instanceof Error ? reason.stack : undefined;
-    if (!this.isFromOwnBundle(stack)) {
+    const message = reason instanceof Error ? reason.message : String(reason);
+    if (!this.isFromOwnBundle(stack) || isKnownBenignErrorMessage(message)) {
       console.warn("Ignored unhandled rejection (not from app code):", reason);
       return;
     }
@@ -215,7 +229,10 @@ class ErrorBoundary extends React.Component<
   };
 
   handleErrorEvent = (event: ErrorEvent) => {
-    if (!this.isFromOwnBundle(event.filename)) {
+    if (
+      !this.isFromOwnBundle(event.filename) ||
+      isKnownBenignErrorMessage(event.message)
+    ) {
       console.warn("Ignored window error (not from app code):", event);
       return;
     }
