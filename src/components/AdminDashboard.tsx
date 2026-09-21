@@ -39,10 +39,7 @@ import {
 import { Student, UserProfile, UserRole, StaffInvite } from "../types";
 import { MAIN_ADMIN_EMAIL } from "../constants";
 import { handleFirestoreError, OperationType } from "../App";
-import * as xlsx from "xlsx";
 import { addAppNotification } from "../utils";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
 import {
   BarChart,
   Bar,
@@ -102,6 +99,8 @@ export default function AdminDashboard({
   });
   const [isAddingStaff, setIsAddingStaff] = useState(false);
   const [managementSearch, setManagementSearch] = useState("");
+  const [studentPage, setStudentPage] = useState(1);
+  const studentsPerPage = 25;
   const [studentToDelete, setStudentToDelete] = useState<string | null>(null);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [staffToDelete, setStaffToDelete] = useState<string | null>(null);
@@ -1021,6 +1020,17 @@ export default function AdminDashboard({
       )
     : students;
 
+  const totalStudentPages =
+    Math.ceil(filteredStudents.length / studentsPerPage) || 1;
+  const paginatedStudents = filteredStudents.slice(
+    (studentPage - 1) * studentsPerPage,
+    studentPage * studentsPerPage,
+  );
+
+  useEffect(() => {
+    setStudentPage(1);
+  }, [managementSearch]);
+
   const teacherMembers = staff.filter((s) => s.role === "teacher");
   const parentMembers = staff.filter((s) => s.role === "parent");
   const staffMembers = staff.filter(
@@ -1085,6 +1095,7 @@ export default function AdminDashboard({
     if (!file) return;
 
     try {
+      const xlsx = await import("xlsx");
       const data = await file.arrayBuffer();
       const workbook = xlsx.read(data);
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -1140,7 +1151,11 @@ export default function AdminDashboard({
     e.target.value = "";
   };
 
-  const exportPDFReport = () => {
+  const exportPDFReport = async () => {
+    const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+      import("jspdf"),
+      import("jspdf-autotable"),
+    ]);
     const doc = new jsPDF();
     doc.text(`Report: ${activeTab.toUpperCase()}`, 14, 15);
 
@@ -1179,7 +1194,8 @@ export default function AdminDashboard({
     doc.save(`${activeTab}-report.pdf`);
   };
 
-  const exportStudentsExcel = () => {
+  const exportStudentsExcel = async () => {
+    const xlsx = await import("xlsx");
     const rows = students.map((s) => ({
       Name: s.name,
       "Student ID": s.studentId || s.id,
@@ -1439,7 +1455,8 @@ export default function AdminDashboard({
 
         <div className="overflow-x-auto">
           {activeTab === "students" && (
-            <table className="w-full text-left min-w-[600px]">
+            <>
+              <table className="w-full text-left min-w-[600px]">
               <thead className="bg-white/60 backdrop-blur-md text-gray-400 text-[10px] uppercase tracking-widest font-bold">
                 <tr>
                   <th className="px-4 py-3 md:px-6 md:py-4">Student</th>
@@ -1452,8 +1469,8 @@ export default function AdminDashboard({
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100/80">
-                {filteredStudents.length > 0 ? (
-                  filteredStudents.map((student) => (
+                {paginatedStudents.length > 0 ? (
+                  paginatedStudents.map((student) => (
                     <tr
                       key={student.id}
                       className="hover:bg-white/60 backdrop-blur-md transition-all cursor-pointer group"
@@ -1465,7 +1482,9 @@ export default function AdminDashboard({
                               student.photoUrl ||
                               `https://ui-avatars.com/api/?name=${student.name}`
                             }
-                            className="w-10 h-10 rounded-xl border border-white/60"
+                            loading="lazy"
+                            decoding="async"
+                            className="w-10 h-10 rounded-xl border border-white/60 object-cover"
                             alt=""
                           />
                           <div>
@@ -1561,6 +1580,37 @@ export default function AdminDashboard({
                 )}
               </tbody>
             </table>
+            {totalStudentPages > 1 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-6 py-4 bg-white/40 border-t border-gray-100/80">
+                <p className="text-xs text-gray-500">
+                  Showing <span className="font-bold text-gray-800">{(studentPage - 1) * studentsPerPage + 1}</span> to{" "}
+                  <span className="font-bold text-gray-800">
+                    {Math.min(studentPage * studentsPerPage, filteredStudents.length)}
+                  </span>{" "}
+                  of <span className="font-bold text-gray-800">{filteredStudents.length}</span> students
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setStudentPage((p) => Math.max(p - 1, 1))}
+                    disabled={studentPage === 1}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-xl border border-gray-200 bg-white/80 text-gray-700 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm"
+                  >
+                    Previous
+                  </button>
+                  <span className="text-xs text-gray-600 font-medium px-2">
+                    Page {studentPage} of {totalStudentPages}
+                  </span>
+                  <button
+                    onClick={() => setStudentPage((p) => Math.min(p + 1, totalStudentPages))}
+                    disabled={studentPage === totalStudentPages}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-xl border border-gray-200 bg-white/80 text-gray-700 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+            </>
           )}
 
           {activeTab === "teachers" && (

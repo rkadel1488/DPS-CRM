@@ -12,7 +12,7 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { db } from "../firebase";
-import { Book, BookIssue, UserProfile, Student } from "../types";
+import { Book, BookIssue, UserProfile } from "../types";
 import {
   BookOpen,
   Search,
@@ -30,7 +30,6 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import NepaliDatePicker from "./NepaliDatePicker";
-import * as XLSX from "xlsx";
 import { handleFirestoreError, OperationType } from "../App";
 
 interface LibraryDashboardProps {
@@ -44,8 +43,6 @@ export default function LibraryDashboard({
 }: LibraryDashboardProps) {
   const [books, setBooks] = useState<Book[]>([]);
   const [issues, setIssues] = useState<BookIssue[]>([]);
-  const [students, setStudents] = useState<Student[]>([]);
-  const [teachers, setTeachers] = useState<UserProfile[]>([]);
 
   const [activeTab, setActiveTab] = useState<"books" | "issues" | "overdue">(
     "books",
@@ -150,39 +147,9 @@ export default function LibraryDashboard({
       (error) => handleFirestoreError(error, OperationType.GET, "book_issues"),
     );
 
-    const studentsUnsubscribe = onSnapshot(
-      collection(db, "students"),
-      (snapshot) => {
-        setStudents(
-          snapshot.docs.map(
-            (doc) => ({ id: doc.id, ...doc.data() }) as Student,
-          ),
-        );
-      },
-      (error) => handleFirestoreError(error, OperationType.GET, "students"),
-    );
-
-    const teachersQuery = query(
-      collection(db, "users"),
-      where("role", "==", "teacher"),
-    );
-    const teachersUnsubscribe = onSnapshot(
-      teachersQuery,
-      (snapshot) => {
-        setTeachers(
-          snapshot.docs.map(
-            (doc) => ({ uid: doc.id, ...doc.data() }) as UserProfile,
-          ),
-        );
-      },
-      (error) => handleFirestoreError(error, OperationType.GET, "users"),
-    );
-
     return () => {
       booksUnsubscribe();
       issuesUnsubscribe();
-      studentsUnsubscribe();
-      teachersUnsubscribe();
     };
   }, [profile]);
 
@@ -279,6 +246,7 @@ export default function LibraryDashboard({
     const reader = new FileReader();
     reader.onload = async (evt) => {
       try {
+        const XLSX = await import("xlsx");
         const bstr = evt.target?.result;
         const wb = XLSX.read(bstr, { type: "binary" });
         const wsname = wb.SheetNames[0];
@@ -503,7 +471,8 @@ export default function LibraryDashboard({
     setDeleteConfirm(null);
   };
 
-  const exportEntries = () => {
+  const exportEntries = async () => {
+    const XLSX = await import("xlsx");
     const dataToExport = issues.map((issue) => ({
       "Book Code": issue.bookCode,
       "Book Title": issue.bookTitle,
@@ -523,7 +492,8 @@ export default function LibraryDashboard({
     XLSX.writeFile(wb, "Library_Entries.xlsx");
   };
 
-  const exportBooks = () => {
+  const exportBooks = async () => {
+    const XLSX = await import("xlsx");
     const dataToExport = books.map((book) => ({
       "Book Code": book.bookCode,
       Title: book.title,

@@ -23,6 +23,7 @@ import {
   onSnapshot,
   query,
   orderBy,
+  limit,
   doc,
   deleteDoc,
   updateDoc,
@@ -30,7 +31,6 @@ import {
 } from "firebase/firestore";
 import NepaliDate from "nepali-date-converter";
 import NepaliDatePicker from "./NepaliDatePicker";
-import * as XLSX from "xlsx";
 import {
   STORE_CATEGORIES,
   StoreCategory,
@@ -209,6 +209,7 @@ export default function StoreDashboard({
     const qLogs = query(
       collection(db, "store_purchases"),
       orderBy("purchaseDate", "desc"),
+      limit(500),
     );
     const unsubscribeLogs = onSnapshot(
       qLogs,
@@ -544,7 +545,7 @@ export default function StoreDashboard({
     }
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     let dataToExport = products;
     if (exportCategory !== "All") {
       dataToExport = products.filter((p) => p.category === exportCategory);
@@ -603,6 +604,7 @@ export default function StoreDashboard({
       };
     });
 
+    const XLSX = await import("xlsx");
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Inventory");
@@ -613,9 +615,10 @@ export default function StoreDashboard({
     setIsExportModalOpen(false);
   };
 
-  const handleExportInvoices = () => {
+  const handleExportInvoices = async () => {
     const fromDate = new Date(invoiceExportDateFrom);
     const toDate = new Date(invoiceExportDateTo + "T23:59:59");
+    const XLSX = await import("xlsx");
 
     const inRangeLogs = logs.filter(
       (log) =>
@@ -3702,7 +3705,8 @@ export default function StoreDashboard({
             return d >= from && d <= to;
           });
 
-          const handleLedgerExport = () => {
+          const handleLedgerExport = async () => {
+            const XLSX = await import("xlsx");
             const openingRow = { Date: "—", Type: "OPENING STOCK", Qty: "", Balance: openingStock, Remarks: "", "Recorded By": "" };
             const dataRows = filteredForExport.map((r) => ({
               Date: new NepaliDate(new Date(r.purchaseDate)).format("YYYY-MM-DD"),

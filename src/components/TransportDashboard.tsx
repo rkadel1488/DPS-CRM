@@ -20,6 +20,7 @@ import {
   collection,
   onSnapshot,
   query,
+  where,
   doc,
   setDoc,
   serverTimestamp,
@@ -29,7 +30,6 @@ import {
 import {
   Vehicle,
   Route,
-  BoardingLog,
   UserProfile,
   Student,
   TransportAttendance,
@@ -123,7 +123,6 @@ export default function TransportDashboard({
 }) {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [routes, setRoutes] = useState<Route[]>([]);
-  const [logs, setLogs] = useState<BoardingLog[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [attendance, setAttendance] = useState<TransportAttendance[]>([]);
   const [activeTab, setActiveTab] = useState<
@@ -352,20 +351,6 @@ export default function TransportDashboard({
       },
     );
 
-    const unsubscribeLogs = onSnapshot(
-      collection(db, "boarding_logs"),
-      (snapshot) => {
-        setLogs(
-          snapshot.docs.map(
-            (doc) => ({ id: doc.id, ...doc.data() }) as BoardingLog,
-          ),
-        );
-      },
-      (error) => {
-        handleFirestoreError(error, OperationType.LIST, "boarding_logs");
-      },
-    );
-
     const unsubscribeStudents = onSnapshot(
       collection(db, "students"),
       (snapshot) => {
@@ -380,8 +365,23 @@ export default function TransportDashboard({
       },
     );
 
-    const unsubscribeAttendance = onSnapshot(
+    return () => {
+      unsubscribeVehicles();
+      unsubscribeRoutes();
+      unsubscribeStudents();
+    };
+  }, [profile]);
+
+  useEffect(() => {
+    if (!profile || !selectedDate) return;
+
+    const qAttendance = query(
       collection(db, "transport_attendance"),
+      where("date", "==", selectedDate),
+    );
+
+    const unsubscribeAttendance = onSnapshot(
+      qAttendance,
       (snapshot) => {
         setAttendance(
           snapshot.docs.map(
@@ -395,13 +395,9 @@ export default function TransportDashboard({
     );
 
     return () => {
-      unsubscribeVehicles();
-      unsubscribeRoutes();
-      unsubscribeLogs();
-      unsubscribeStudents();
       unsubscribeAttendance();
     };
-  }, [profile]);
+  }, [profile, selectedDate]);
 
   return (
     <div className="space-y-6">
