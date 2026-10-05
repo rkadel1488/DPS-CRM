@@ -28,6 +28,7 @@ import {
   limit,
 } from "firebase/firestore";
 import { UserProfile, Student, GatePass } from "../types";
+import { getDoc, getDocs, where } from "firebase/firestore";
 import { handleFirestoreError, OperationType } from "../App";
 import { addAppNotification } from "../utils";
 import { Html5Qrcode } from "html5-qrcode";
@@ -44,8 +45,10 @@ export default function GatePassDashboard({
   verifyId?: string | null;
 }) {
   const [gatePasses, setGatePasses] = useState<GatePass[]>([]);
-  const [students, setStudents] = useState<Student[]>([]);
   const [isAddingGatePass, setIsAddingGatePass] = useState(false);
+  const [studentSearchTerm, setStudentSearchTerm] = useState("");
+  const [searchedStudents, setSearchedStudents] = useState<Student[]>([]);
+  const [selectedStudentForPass, setSelectedStudentForPass] = useState<Student | null>(null);
   const [newGatePass, setNewGatePass] = useState({
     studentId: "",
     reason: "",
@@ -62,23 +65,46 @@ export default function GatePassDashboard({
   const [otherPersonName, setOtherPersonName] = useState("");
   const [smsStatus, setSmsStatus] = useState<"idle" | "sending" | "sent" | "failed">("idle");
 
-  useEffect(() => {
-    if (verifyId && students.length > 0) {
-      const matchedStudents = students.filter(
-        (s) =>
-          s.id === verifyId ||
-          s.studentId === verifyId ||
-          (s.familyId && s.familyId === verifyId),
-      );
-      if (matchedStudents.length > 0) {
-        setScannedStudents(matchedStudents);
-        setIsScanning(false);
-        if (matchedStudents.every((s) => s.selfPickup)) {
-          setSelectedPickup("self");
+
+  const fetchStudentsForVerification = async (idToVerify: string) => {
+    try {
+      let matchedStudents: Student[] = [];
+      const docRef = doc(db, "students", idToVerify);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        matchedStudents.push({ id: docSnap.id, ...docSnap.data() } as Student);
+      } else {
+        const qStudentId = query(collection(db, "students"), where("studentId", "==", idToVerify));
+        const studentIdSnap = await getDocs(qStudentId);
+        studentIdSnap.forEach(d => matchedStudents.push({ id: d.id, ...d.data() } as Student));
+
+        if (matchedStudents.length === 0) {
+          const qFamilyId = query(collection(db, "students"), where("familyId", "==", idToVerify));
+          const familyIdSnap = await getDocs(qFamilyId);
+          familyIdSnap.forEach(d => matchedStudents.push({ id: d.id, ...d.data() } as Student));
         }
       }
+      return matchedStudents;
+    } catch (e) {
+      console.error(e);
+      return [];
     }
-  }, [verifyId, students]);
+  };
+
+  useEffect(() => {
+    if (verifyId) {
+      fetchStudentsForVerification(verifyId).then((matchedStudents) => {
+        if (matchedStudents.length > 0) {
+          setScannedStudents(matchedStudents);
+          setIsScanning(false);
+          if (matchedStudents.every((s) => s.selfPickup)) {
+            setSelectedPickup("self");
+          }
+        }
+      });
+    }
+  }, [verifyId]);
+
 
   useEffect(() => {
     if (initialScan) setIsScanning(true);
@@ -99,7 +125,7 @@ export default function GatePassDashboard({
         html5QrCode = new Html5Qrcode("qr-reader");
         const config = { fps: 10, qrbox: { width: 250, height: 250 } };
 
-        const onScanSuccess = (decodedText: string) => {
+        const onScanSuccess = async (decodedText: string) => {
           let extractedId = decodedText;
           try {
             if (decodedText.includes("verify=")) {
@@ -107,19 +133,21 @@ export default function GatePassDashboard({
               extractedId = url.searchParams.get("verify") || decodedText;
             }
           } catch (e) {}
-          const matchedStudents = students.filter(
-            (s) =>
-              s.id === extractedId ||
-              s.studentId === extractedId ||
-              (s.familyId && s.familyId === extractedId),
-          );
+          
+          html5QrCode?.stop().catch(console.error);
+          const matchedStudents = await fetchStudentsForVerification(extractedId);
+          
           if (matchedStudents.length > 0 && isMounted) {
             setSelectedPickup(
               matchedStudents.every((s) => s.selfPickup) ? "self" : null,
             );
             setScannedStudents(matchedStudents);
             setIsScanning(false);
-            html5QrCode?.stop().catch(console.error);
+          } else {
+            if (isMounted) {
+              alert("No student found for this QR code.");
+              setIsScanning(false);
+            }
           }
         };
 
@@ -163,18 +191,12 @@ export default function GatePassDashboard({
         html5QrCode.stop().catch(console.error);
       }
     };
-  }, [isScanning, students]);
+  }, [isScanning]);
 
   useEffect(() => {
     if (!profile) return;
 
-    const unsubscribeStudents = onSnapshot(
-      collection(db, "students"),
-      (snapshot) => {
-        setStudents(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Student));
-      },
-      (error) => handleFirestoreError(error, OperationType.LIST, "students"),
-    );
+
 
     const unsubscribeGatePasses = onSnapshot(
       query(collection(db, "gate_passes"), orderBy("createdAt", "desc"), limit(300)),
@@ -185,16 +207,31 @@ export default function GatePassDashboard({
     );
 
     return () => {
-      unsubscribeStudents();
       unsubscribeGatePasses();
     };
   }, [profile]);
 
+  useEffect(() => {
+    if (studentSearchTerm.trim().length < 2) {
+      setSearchedStudents([]);
+      return;
+    }
+    const q = query(
+      collection(db, "students"),
+      where("name", ">=", studentSearchTerm),
+      where("name", "<=", studentSearchTerm + "\u{f8ff}"),
+      limit(10)
+    );
+    const unsub = onSnapshot(q, (snapshot) => {
+      setSearchedStudents(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Student)));
+    });
+    return () => unsub();
+  }, [studentSearchTerm]);
+
   const handleAddGatePass = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!profile) return;
-    const student = students.find((s) => s.id === newGatePass.studentId);
-    if (!student) return;
+    if (!profile || !selectedStudentForPass) return;
+    const student = selectedStudentForPass;
     try {
       await addDoc(collection(db, "gate_passes"), {
         studentId: newGatePass.studentId,
@@ -208,6 +245,9 @@ export default function GatePassDashboard({
       await addAppNotification("Gate Pass Issued", `Gate pass issued for ${student.name}.`, "warning");
       setIsAddingGatePass(false);
       setNewGatePass({ studentId: "", reason: "", departureTime: new Date().toISOString().slice(0, 16) });
+      setSelectedStudentForPass(null);
+      setStudentSearchTerm("");
+      setSearchedStudents([]);
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, "gate_passes");
     }
@@ -813,18 +853,51 @@ export default function GatePassDashboard({
             </div>
             <form onSubmit={handleAddGatePass} className="space-y-5">
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1.5">Select Student</label>
-                <select
-                  required
-                  value={newGatePass.studentId}
-                  onChange={(e) => setNewGatePass({ ...newGatePass, studentId: e.target.value })}
-                  className="w-full px-4 py-3 bg-white/60 backdrop-blur-md border-none rounded-[1rem] focus:ring-2 focus:ring-emerald-500 outline-none font-medium"
-                >
-                  <option value="">Choose student...</option>
-                  {students.sort((a, b) => a.name.localeCompare(b.name)).map((s) => (
-                    <option key={s.id} value={s.id}>{s.name} (Grade {s.grade})</option>
-                  ))}
-                </select>
+                <label className="block text-sm font-bold text-gray-700 mb-1.5">Search Student</label>
+                {selectedStudentForPass ? (
+                  <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-100 rounded-xl">
+                    <div>
+                      <p className="font-bold text-gray-900">{selectedStudentForPass.name}</p>
+                      <p className="text-xs text-gray-500">Grade {selectedStudentForPass.grade} • {selectedStudentForPass.studentId}</p>
+                    </div>
+                    <button type="button" onClick={() => { setSelectedStudentForPass(null); setNewGatePass({ ...newGatePass, studentId: "" }); }} className="text-gray-400 hover:text-red-500">
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Type student name..."
+                      value={studentSearchTerm}
+                      onChange={(e) => {
+                        let val = e.target.value;
+                        if (val.length > 0) val = val.charAt(0).toUpperCase() + val.slice(1);
+                        setStudentSearchTerm(val);
+                      }}
+                      className="w-full px-4 py-3 bg-white/60 backdrop-blur-md border-none rounded-[1rem] focus:ring-2 focus:ring-emerald-500 outline-none font-medium"
+                    />
+                    {searchedStudents.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-100 shadow-xl rounded-xl overflow-hidden z-10 max-h-60 overflow-y-auto">
+                        {searchedStudents.map(s => (
+                          <div
+                            key={s.id}
+                            onClick={() => {
+                              setSelectedStudentForPass(s);
+                              setNewGatePass({ ...newGatePass, studentId: s.id });
+                              setStudentSearchTerm("");
+                              setSearchedStudents([]);
+                            }}
+                            className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-50 last:border-0"
+                          >
+                            <p className="font-bold text-gray-900">{s.name}</p>
+                            <p className="text-xs text-gray-500">Grade {s.grade} • {s.studentId}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1.5">Reason for Leaving</label>
