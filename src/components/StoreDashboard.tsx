@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Package,
   Plus,
@@ -115,11 +115,13 @@ export default function StoreDashboard({
   const [logDateFilter, setLogDateFilter] = useState<"all" | "today" | "yesterday" | "custom">("all");
   const [logCustomDate, setLogCustomDate] = useState("");
   const [logCategoryFilter, setLogCategoryFilter] = useState<"All" | StoreCategory>("All");
+  const [logItemFilter, setLogItemFilter] = useState("");
 
   const [purchaseDateFilter, setPurchaseDateFilter] = useState<"all" | "today" | "yesterday" | "custom">("all");
   const [purchaseCustomDate, setPurchaseCustomDate] = useState("");
   const [purchaseCategoryFilter, setPurchaseCategoryFilter] = useState<"All" | StoreCategory>("All");
   const [purchaseSupplierFilter, setPurchaseSupplierFilter] = useState("");
+  const [purchaseItemFilter, setPurchaseItemFilter] = useState("");
 
   const [orderCategoryFilter, setOrderCategoryFilter] = useState<"All" | StoreCategory>("All");
 
@@ -1010,11 +1012,24 @@ export default function StoreDashboard({
     return pageA - pageB;
   };
 
+  const allItemNames = useMemo(() => {
+    const set = new Set<string>();
+    products.forEach((p) => {
+      if (p.name) set.add(p.name);
+    });
+    logs.forEach((l) => {
+      if (l.productName) set.add(l.productName);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [products, logs]);
+
   const visibleLogs = logs
     .filter(
       (l) =>
         l.type === activeTab &&
         (logCategoryFilter === "All" || l.category === logCategoryFilter) &&
+        (logItemFilter.trim() === "" ||
+          (l.productName || "").toLowerCase().includes(logItemFilter.trim().toLowerCase())) &&
         matchesDateFilter(l.purchaseDate, logDateFilter, logCustomDate),
     )
     .sort(compareByDateThenPage);
@@ -1024,6 +1039,8 @@ export default function StoreDashboard({
       (l) =>
         l.type === "purchase" &&
         (purchaseCategoryFilter === "All" || l.category === purchaseCategoryFilter) &&
+        (purchaseItemFilter.trim() === "" ||
+          (l.productName || "").toLowerCase().includes(purchaseItemFilter.trim().toLowerCase())) &&
         (l.supplier || "").toLowerCase().includes(purchaseSupplierFilter.trim().toLowerCase()) &&
         matchesDateFilter(l.purchaseDate, purchaseDateFilter, purchaseCustomDate),
     )
@@ -1517,6 +1534,32 @@ export default function StoreDashboard({
                     <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
+                <div className="relative">
+                  <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={logItemFilter}
+                    onChange={(e) => setLogItemFilter(e.target.value)}
+                    placeholder="Search item…"
+                    list="log-item-filter-list"
+                    className="pl-9 pr-7 py-2 bg-gray-50 rounded-xl text-sm font-medium border-none outline-none focus:ring-2 focus:ring-indigo-500 w-40"
+                  />
+                  {logItemFilter && (
+                    <button
+                      type="button"
+                      onClick={() => setLogItemFilter("")}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      title="Clear item filter"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  <datalist id="log-item-filter-list">
+                    {allItemNames.map((name) => (
+                      <option key={name} value={name} />
+                    ))}
+                  </datalist>
+                </div>
               </div>
             </div>
             <div className="hidden lg:block overflow-x-auto">
@@ -1757,12 +1800,48 @@ export default function StoreDashboard({
                   <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <input
                     type="text"
+                    value={purchaseItemFilter}
+                    onChange={(e) => setPurchaseItemFilter(e.target.value)}
+                    placeholder="Search item…"
+                    list="purchase-item-filter-list"
+                    className="pl-9 pr-7 py-2 bg-gray-50 rounded-xl text-sm font-medium border-none outline-none focus:ring-2 focus:ring-indigo-500 w-40"
+                  />
+                  {purchaseItemFilter && (
+                    <button
+                      type="button"
+                      onClick={() => setPurchaseItemFilter("")}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      title="Clear item filter"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  <datalist id="purchase-item-filter-list">
+                    {allItemNames.map((name) => (
+                      <option key={name} value={name} />
+                    ))}
+                  </datalist>
+                </div>
+                <div className="relative">
+                  <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
                     value={purchaseSupplierFilter}
                     onChange={(e) => setPurchaseSupplierFilter(e.target.value)}
                     placeholder="Search vendor…"
                     list="purchase-supplier-filter-list"
-                    className="pl-9 pr-3 py-2 bg-gray-50 rounded-xl text-sm font-medium border-none outline-none focus:ring-2 focus:ring-indigo-500 w-40"
+                    className="pl-9 pr-7 py-2 bg-gray-50 rounded-xl text-sm font-medium border-none outline-none focus:ring-2 focus:ring-indigo-500 w-40"
                   />
+                  {purchaseSupplierFilter && (
+                    <button
+                      type="button"
+                      onClick={() => setPurchaseSupplierFilter("")}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      title="Clear vendor filter"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                   <datalist id="purchase-supplier-filter-list">
                     {suppliers.map((s) => (
                       <option key={s.id} value={s.name} />
