@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo, useDeferredValue } from "react";
 import {
   collection,
   query,
@@ -48,6 +48,7 @@ export default function LibraryDashboard({
     "books",
   );
   const [searchQuery, setSearchQuery] = useState("");
+  const deferredSearchQuery = useDeferredValue(searchQuery);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showIssueModal, setShowIssueModal] = useState(false);
@@ -511,22 +512,34 @@ export default function LibraryDashboard({
     XLSX.writeFile(wb, "Library_Books.xlsx");
   };
 
-  const filteredBooks = books.filter(
-    (book) =>
-      book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      book.bookCode.toLowerCase().includes(searchQuery.toLowerCase()),
+  const filteredBooks = useMemo(
+    () =>
+      books.filter(
+        (book) =>
+          book.title.toLowerCase().includes(deferredSearchQuery.toLowerCase()) ||
+          book.bookCode.toLowerCase().includes(deferredSearchQuery.toLowerCase()),
+      ),
+    [books, deferredSearchQuery],
   );
 
-  const filteredIssues = issues.filter(
-    (issue) =>
-      issue.bookTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      issue.issuedToName.toLowerCase().includes(searchQuery.toLowerCase()),
+  const filteredIssues = useMemo(
+    () =>
+      issues.filter(
+        (issue) =>
+          issue.bookTitle.toLowerCase().includes(deferredSearchQuery.toLowerCase()) ||
+          issue.issuedToName.toLowerCase().includes(deferredSearchQuery.toLowerCase()),
+      ),
+    [issues, deferredSearchQuery],
   );
 
-  const filteredOverdue = notifications.filter(
-    (issue) =>
-      issue.bookTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      issue.issuedToName.toLowerCase().includes(searchQuery.toLowerCase()),
+  const filteredOverdue = useMemo(
+    () =>
+      notifications.filter(
+        (issue) =>
+          issue.bookTitle.toLowerCase().includes(deferredSearchQuery.toLowerCase()) ||
+          issue.issuedToName.toLowerCase().includes(deferredSearchQuery.toLowerCase()),
+      ),
+    [notifications, deferredSearchQuery],
   );
 
   const totalPages = Math.ceil(

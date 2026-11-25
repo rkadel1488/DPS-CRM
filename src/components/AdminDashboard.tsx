@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useDeferredValue } from "react";
 import QRCode from "qrcode";
 import {
   Users,
@@ -1014,27 +1014,41 @@ export default function AdminDashboard({
     }
   };
 
-  const filteredStudents = managementSearch.trim()
-    ? students.filter((s) =>
-        s.name.toLowerCase().includes(managementSearch.trim().toLowerCase()),
-      )
-    : students;
+  const deferredManagementSearch = useDeferredValue(managementSearch);
+
+  const filteredStudents = useMemo(() => {
+    const term = deferredManagementSearch.trim().toLowerCase();
+    return term
+      ? students.filter((s) => s.name.toLowerCase().includes(term))
+      : students;
+  }, [students, deferredManagementSearch]);
 
   const totalStudentPages =
     Math.ceil(filteredStudents.length / studentsPerPage) || 1;
-  const paginatedStudents = filteredStudents.slice(
-    (studentPage - 1) * studentsPerPage,
-    studentPage * studentsPerPage,
+  const paginatedStudents = useMemo(
+    () =>
+      filteredStudents.slice(
+        (studentPage - 1) * studentsPerPage,
+        studentPage * studentsPerPage,
+      ),
+    [filteredStudents, studentPage, studentsPerPage],
   );
 
   useEffect(() => {
     setStudentPage(1);
   }, [managementSearch]);
 
-  const teacherMembers = staff.filter((s) => s.role === "teacher");
-  const parentMembers = staff.filter((s) => s.role === "parent");
-  const staffMembers = staff.filter(
-    (s) => s.role !== "parent" && s.role !== "teacher",
+  const teacherMembers = useMemo(
+    () => staff.filter((s) => s.role === "teacher"),
+    [staff],
+  );
+  const parentMembers = useMemo(
+    () => staff.filter((s) => s.role === "parent"),
+    [staff],
+  );
+  const staffMembers = useMemo(
+    () => staff.filter((s) => s.role !== "parent" && s.role !== "teacher"),
+    [staff],
   );
 
   const pendingTeacherInvites = pendingInvites.filter(

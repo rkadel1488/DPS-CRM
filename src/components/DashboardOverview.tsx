@@ -17,15 +17,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { UserProfile } from "../types";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip as RechartsTooltip,
-  ResponsiveContainer,
-} from "recharts";
+
 
 interface DashboardOverviewProps {
   profile: UserProfile | null;
@@ -299,64 +291,85 @@ export default function DashboardOverview({
 
       {/* Visual Dashboards */}
       <div className="bg-white/70 backdrop-blur-xl p-4 sm:p-5 md:p-8 rounded-2xl sm:rounded-3xl md:rounded-[2rem] border border-white/60 shadow-2xl shadow-gray-200/50">
-        <h3 className="text-lg sm:text-[1.35rem] font-extrabold tracking-tight text-gray-900 mb-4 sm:mb-6">
-          System Overview
-        </h3>
-        <div className="h-[300px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={[
-                {
-                  name: "Students",
-                  count: stats.totalStudents,
-                  fill: "#3b82f6",
-                },
-                {
-                  name: "Active Buses",
-                  count: stats.activeBuses,
-                  fill: "#10b981",
-                },
-                {
-                  name: "Gate Passes",
-                  count: stats.activeGatePasses,
-                  fill: "#f97316",
-                },
-                {
-                  name: "Store Items",
-                  count: stats.storeProductsCount,
-                  fill: "#6366f1",
-                },
-              ]}
-              margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-            >
-              <CartesianGrid
-                strokeDasharray="3 3"
-                vertical={false}
-                stroke="#E5E7EB"
-              />
-              <XAxis
-                dataKey="name"
-                axisLine={false}
-                tickLine={false}
-                tick={{ fill: "#6B7280", fontSize: 12 }}
-              />
-              <YAxis
-                axisLine={false}
-                tickLine={false}
-                tick={{ fill: "#6B7280", fontSize: 12 }}
-              />
-              <RechartsTooltip
-                cursor={{ fill: "#F3F4F6" }}
-                contentStyle={{
-                  borderRadius: "12px",
-                  border: "none",
-                  boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
-                }}
-              />
-              <Bar dataKey="count" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
+          <div>
+            <h3 className="text-lg sm:text-[1.35rem] font-extrabold tracking-tight text-gray-900">
+              System Overview
+            </h3>
+            <p className="text-xs sm:text-sm text-gray-500 mt-0.5">Live counts across campus modules</p>
+          </div>
         </div>
+
+        {(() => {
+          const chartItems = [
+            { name: "Students", count: stats.totalStudents, gradient: "from-blue-500 to-indigo-600" },
+            { name: "Active Buses", count: stats.activeBuses, gradient: "from-emerald-500 to-teal-600" },
+            { name: "Gate Passes", count: stats.activeGatePasses, gradient: "from-orange-500 to-amber-600" },
+            { name: "Store Items", count: stats.storeProductsCount, gradient: "from-indigo-500 to-purple-600" },
+          ];
+          const maxVal = Math.max(...chartItems.map((c) => c.count), 1);
+          const magnitude = Math.pow(10, Math.max(Math.floor(Math.log10(maxVal)), 0));
+          const yMax = Math.max(Math.ceil(maxVal / magnitude) * magnitude, 4);
+          const yTicks = [yMax, Math.round(yMax * 0.75), Math.round(yMax * 0.5), Math.round(yMax * 0.25), 0];
+
+          return (
+            <div className="relative pt-2 pb-6">
+              <div className="flex h-56 sm:h-64 items-end gap-2 sm:gap-4">
+                {/* Y-axis labels */}
+                <div className="flex flex-col justify-between h-full pr-2 text-[11px] font-semibold text-gray-400 select-none pb-7">
+                  {yTicks.map((tick, i) => (
+                    <span key={i} className="leading-none text-right min-w-[28px]">{tick}</span>
+                  ))}
+                </div>
+
+                {/* Bars Area with horizontal gridlines */}
+                <div className="relative flex-1 h-full flex flex-col justify-end">
+                  {/* Grid lines */}
+                  <div className="absolute inset-0 pb-7 flex flex-col justify-between pointer-events-none">
+                    {yTicks.map((_, i) => (
+                      <div key={i} className="w-full border-b border-gray-100" />
+                    ))}
+                  </div>
+
+                  {/* Bars */}
+                  <div className="relative grid grid-cols-4 gap-2 sm:gap-6 h-full items-end pb-7">
+                    {chartItems.map((item, idx) => {
+                      const pct = Math.max(Math.min(Math.round((item.count / yMax) * 100), 100), item.count > 0 ? 5 : 0);
+                      return (
+                        <div key={idx} className="group relative flex flex-col items-center h-full justify-end">
+                          {/* Value tooltip badge */}
+                          <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-8 px-2 py-1 bg-gray-900 text-white text-xs font-bold rounded-md pointer-events-none shadow-md z-20 whitespace-nowrap">
+                            {item.count.toLocaleString()} {item.name}
+                          </div>
+
+                          <span className="text-xs font-bold text-gray-700 mb-1.5 opacity-90 transition-transform group-hover:scale-110">
+                            {item.count}
+                          </span>
+
+                          <div className="w-full max-w-[64px] bg-gray-100/70 rounded-t-xl overflow-hidden h-full flex items-end">
+                            <motion.div
+                              initial={{ height: 0 }}
+                              animate={{ height: `${pct}%` }}
+                              transition={{ duration: 0.5, delay: idx * 0.08, ease: "easeOut" }}
+                              className={`w-full bg-gradient-to-t ${item.gradient} rounded-t-xl transition-all shadow-sm group-hover:brightness-110`}
+                            />
+                          </div>
+
+                          {/* X-axis Label */}
+                          <div className="absolute -bottom-6 w-full text-center">
+                            <span className="text-[11px] sm:text-xs font-semibold text-gray-600 block truncate">
+                              {item.name}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 md:p-8">

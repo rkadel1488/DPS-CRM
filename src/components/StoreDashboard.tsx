@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useDeferredValue } from "react";
 import {
   Package,
   Plus,
@@ -122,6 +122,23 @@ export default function StoreDashboard({
   const [purchaseCategoryFilter, setPurchaseCategoryFilter] = useState<"All" | StoreCategory>("All");
   const [purchaseSupplierFilter, setPurchaseSupplierFilter] = useState("");
   const [purchaseItemFilter, setPurchaseItemFilter] = useState("");
+
+  const [inventoryPage, setInventoryPage] = useState(1);
+  const [purchasePage, setPurchasePage] = useState(1);
+  const [logsPage, setLogsPage] = useState(1);
+  const itemsPerPage = 25;
+
+  useEffect(() => {
+    setInventoryPage(1);
+  }, [searchTerm, inventoryCategoryFilter]);
+
+  useEffect(() => {
+    setPurchasePage(1);
+  }, [purchaseDateFilter, purchaseCustomDate, purchaseCategoryFilter, purchaseSupplierFilter, purchaseItemFilter]);
+
+  useEffect(() => {
+    setLogsPage(1);
+  }, [activeTab, logDateFilter, logCustomDate, logCategoryFilter, logItemFilter]);
 
   const [orderCategoryFilter, setOrderCategoryFilter] = useState<"All" | StoreCategory>("All");
 
@@ -939,18 +956,33 @@ export default function StoreDashboard({
 
   const inventoryCategories = ["All", ...STORE_CATEGORIES];
 
-  const filteredProducts = products
-    .filter((p) => {
-      const term = searchTerm.toLowerCase();
-      const matchesSearch =
-        p.name.toLowerCase().includes(term) ||
-        p.category.toLowerCase().includes(term);
-      const matchesCategory =
-        inventoryCategoryFilter === "All" ||
-        p.category === inventoryCategoryFilter;
-      return matchesSearch && matchesCategory;
-    })
-    .sort((a, b) => a.name.localeCompare(b.name));
+  const deferredSearchTerm = useDeferredValue(searchTerm);
+  const deferredPurchaseItemFilter = useDeferredValue(purchaseItemFilter);
+  const deferredPurchaseSupplierFilter = useDeferredValue(purchaseSupplierFilter);
+  const deferredLogItemFilter = useDeferredValue(logItemFilter);
+
+  const filteredProducts = useMemo(() => {
+    const term = deferredSearchTerm.trim().toLowerCase();
+    return products
+      .filter((p) => {
+        const matchesSearch =
+          !term ||
+          p.name.toLowerCase().includes(term) ||
+          p.category.toLowerCase().includes(term);
+        const matchesCategory =
+          inventoryCategoryFilter === "All" ||
+          p.category === inventoryCategoryFilter;
+        return matchesSearch && matchesCategory;
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [products, deferredSearchTerm, inventoryCategoryFilter]);
+
+  const paginatedProducts = useMemo(() => {
+    return filteredProducts.slice(
+      (inventoryPage - 1) * itemsPerPage,
+      inventoryPage * itemsPerPage,
+    );
+  }, [filteredProducts, inventoryPage, itemsPerPage]);
 
   const matchesDateFilter = (
     dateVal: any,
@@ -1023,28 +1055,50 @@ export default function StoreDashboard({
     return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [products, logs]);
 
-  const visibleLogs = logs
-    .filter(
-      (l) =>
-        l.type === activeTab &&
-        (logCategoryFilter === "All" || l.category === logCategoryFilter) &&
-        (logItemFilter.trim() === "" ||
-          (l.productName || "").toLowerCase().includes(logItemFilter.trim().toLowerCase())) &&
-        matchesDateFilter(l.purchaseDate, logDateFilter, logCustomDate),
-    )
-    .sort(compareByDateThenPage);
+  const visibleLogs = useMemo(() => {
+    const itemTerm = deferredLogItemFilter.trim().toLowerCase();
+    return logs
+      .filter(
+        (l) =>
+          l.type === activeTab &&
+          (logCategoryFilter === "All" || l.category === logCategoryFilter) &&
+          (itemTerm === "" ||
+            (l.productName || "").toLowerCase().includes(itemTerm)) &&
+          matchesDateFilter(l.purchaseDate, logDateFilter, logCustomDate),
+      )
+      .sort(compareByDateThenPage);
+  }, [logs, activeTab, logCategoryFilter, deferredLogItemFilter, logDateFilter, logCustomDate, products]);
 
-  const visiblePurchases = logs
-    .filter(
-      (l) =>
-        l.type === "purchase" &&
-        (purchaseCategoryFilter === "All" || l.category === purchaseCategoryFilter) &&
-        (purchaseItemFilter.trim() === "" ||
-          (l.productName || "").toLowerCase().includes(purchaseItemFilter.trim().toLowerCase())) &&
-        (l.supplier || "").toLowerCase().includes(purchaseSupplierFilter.trim().toLowerCase()) &&
-        matchesDateFilter(l.purchaseDate, purchaseDateFilter, purchaseCustomDate),
-    )
-    .sort(compareByDateThenPage);
+  const paginatedLogs = useMemo(() => {
+    return visibleLogs.slice(
+      (logsPage - 1) * itemsPerPage,
+      logsPage * itemsPerPage,
+    );
+  }, [visibleLogs, logsPage, itemsPerPage]);
+
+  const visiblePurchases = useMemo(() => {
+    const itemTerm = deferredPurchaseItemFilter.trim().toLowerCase();
+    const supplierTerm = deferredPurchaseSupplierFilter.trim().toLowerCase();
+    return logs
+      .filter(
+        (l) =>
+          l.type === "purchase" &&
+          (purchaseCategoryFilter === "All" || l.category === purchaseCategoryFilter) &&
+          (itemTerm === "" ||
+            (l.productName || "").toLowerCase().includes(itemTerm)) &&
+          (supplierTerm === "" ||
+            (l.supplier || "").toLowerCase().includes(supplierTerm)) &&
+          matchesDateFilter(l.purchaseDate, purchaseDateFilter, purchaseCustomDate),
+      )
+      .sort(compareByDateThenPage);
+  }, [logs, purchaseCategoryFilter, deferredPurchaseItemFilter, deferredPurchaseSupplierFilter, purchaseDateFilter, purchaseCustomDate, products]);
+
+  const paginatedPurchases = useMemo(() => {
+    return visiblePurchases.slice(
+      (purchasePage - 1) * itemsPerPage,
+      purchasePage * itemsPerPage,
+    );
+  }, [visiblePurchases, purchasePage, itemsPerPage]);
 
   // Serial numbers restart at 1 for each date (lists are sorted by date)
   const dailySerials = (list: StorePurchase[]) => {
@@ -1322,7 +1376,7 @@ export default function StoreDashboard({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {filteredProducts.map((product) => {
+                  {paginatedProducts.map((product) => {
                     const inventoryValue = getProductInventoryValue(product);
                     return (
                       <tr
@@ -1407,7 +1461,7 @@ export default function StoreDashboard({
             </div>
 
             <div className="md:hidden divide-y divide-gray-100">
-              {filteredProducts.map((product) => {
+              {paginatedProducts.map((product) => {
                 const inventoryValue = getProductInventoryValue(product);
                 return (
                   <div key={product.id} className="p-4 bg-white">
@@ -1477,6 +1531,35 @@ export default function StoreDashboard({
             {filteredProducts.length === 0 && (
               <div className="p-8 text-center text-sm font-medium text-gray-500">
                 No products found
+              </div>
+            )}
+
+            {filteredProducts.length > itemsPerPage && (
+              <div className="px-4 py-3 bg-white border-t border-gray-100 flex flex-wrap items-center justify-between gap-3 text-sm">
+                <p className="text-gray-500">
+                  Showing <span className="font-bold text-gray-800">{(inventoryPage - 1) * itemsPerPage + 1}</span> to{" "}
+                  <span className="font-bold text-gray-800">{Math.min(inventoryPage * itemsPerPage, filteredProducts.length)}</span> of{" "}
+                  <span className="font-bold text-gray-800">{filteredProducts.length}</span> products
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setInventoryPage((p) => Math.max(1, p - 1))}
+                    disabled={inventoryPage === 1}
+                    className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Previous
+                  </button>
+                  <span className="text-xs font-bold text-gray-600 px-2">
+                    Page {inventoryPage} of {Math.ceil(filteredProducts.length / itemsPerPage) || 1}
+                  </span>
+                  <button
+                    onClick={() => setInventoryPage((p) => Math.min(Math.ceil(filteredProducts.length / itemsPerPage) || 1, p + 1))}
+                    disabled={inventoryPage >= Math.ceil(filteredProducts.length / itemsPerPage)}
+                    className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Next
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -1601,7 +1684,7 @@ export default function StoreDashboard({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {visibleLogs.map((log) => (
+                  {paginatedLogs.map((log) => (
                     <tr
                       key={log.id}
                       className="hover:bg-gray-50/50 transition-colors"
@@ -1675,7 +1758,7 @@ export default function StoreDashboard({
             </div>
 
             <div className="lg:hidden divide-y divide-gray-100">
-              {visibleLogs.map((log) => (
+              {paginatedLogs.map((log) => (
                 <div key={log.id} className="p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -1745,6 +1828,35 @@ export default function StoreDashboard({
                 </div>
               )}
             </div>
+
+            {visibleLogs.length > itemsPerPage && (
+              <div className="px-4 py-3 bg-white border-t border-gray-100 flex flex-wrap items-center justify-between gap-3 text-sm">
+                <p className="text-gray-500">
+                  Showing <span className="font-bold text-gray-800">{(logsPage - 1) * itemsPerPage + 1}</span> to{" "}
+                  <span className="font-bold text-gray-800">{Math.min(logsPage * itemsPerPage, visibleLogs.length)}</span> of{" "}
+                  <span className="font-bold text-gray-800">{visibleLogs.length}</span> entries
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setLogsPage((p) => Math.max(1, p - 1))}
+                    disabled={logsPage === 1}
+                    className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Previous
+                  </button>
+                  <span className="text-xs font-bold text-gray-600 px-2">
+                    Page {logsPage} of {Math.ceil(visibleLogs.length / itemsPerPage) || 1}
+                  </span>
+                  <button
+                    onClick={() => setLogsPage((p) => Math.min(Math.ceil(visibleLogs.length / itemsPerPage) || 1, p + 1))}
+                    disabled={logsPage >= Math.ceil(visibleLogs.length / itemsPerPage)}
+                    className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1901,7 +2013,7 @@ export default function StoreDashboard({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {visiblePurchases.map((log) => (
+                  {paginatedPurchases.map((log) => (
                     <tr key={log.id} className="hover:bg-gray-50/50 transition-colors">
                       <td className="p-4 pl-6 font-medium text-gray-500">
                         {purchaseSerials.get(log.id)}
@@ -1986,6 +2098,35 @@ export default function StoreDashboard({
                 </tbody>
               </table>
             </div>
+
+            {visiblePurchases.length > itemsPerPage && (
+              <div className="px-4 py-3 bg-white border-t border-gray-100 flex flex-wrap items-center justify-between gap-3 text-sm">
+                <p className="text-gray-500">
+                  Showing <span className="font-bold text-gray-800">{(purchasePage - 1) * itemsPerPage + 1}</span> to{" "}
+                  <span className="font-bold text-gray-800">{Math.min(purchasePage * itemsPerPage, visiblePurchases.length)}</span> of{" "}
+                  <span className="font-bold text-gray-800">{visiblePurchases.length}</span> entries
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setPurchasePage((p) => Math.max(1, p - 1))}
+                    disabled={purchasePage === 1}
+                    className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Previous
+                  </button>
+                  <span className="text-xs font-bold text-gray-600 px-2">
+                    Page {purchasePage} of {Math.ceil(visiblePurchases.length / itemsPerPage) || 1}
+                  </span>
+                  <button
+                    onClick={() => setPurchasePage((p) => Math.min(Math.ceil(visiblePurchases.length / itemsPerPage) || 1, p + 1))}
+                    disabled={purchasePage >= Math.ceil(visiblePurchases.length / itemsPerPage)}
+                    className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
