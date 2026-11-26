@@ -11,6 +11,7 @@ import {
   Activity,
   CheckCircle2,
   Sparkles,
+  PieChart as PieIcon,
   Layers,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
@@ -22,6 +23,13 @@ import {
   query,
   where,
 } from "firebase/firestore";
+import {
+  PieChart as RechartsPieChart,
+  Pie,
+  Cell,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer,
+} from "recharts";
 import { db } from "../firebase";
 import { UserProfile } from "../types";
 
@@ -201,57 +209,107 @@ export default function DashboardOverview({
     },
   ];
 
-  const operationsModules = [
+  // Pie Chart Data & Breakdown Details
+  const pieData = [
     {
-      title: "Student Administration",
-      subtitle: "Enrolled Student Directory",
-      count: stats.totalStudents,
-      unit: "Students",
-      status: "Active Database",
-      icon: Users,
-      gradient: "from-blue-500 to-indigo-600",
-      badgeColor: "bg-blue-50 text-blue-700 border-blue-200/60",
-      tab: "admin",
-      actionText: "View Directory",
+      name: "Store Inventory",
+      value: stats.storeProductsCount,
+      color: "#8b5cf6",
+      gradient: "from-purple-500 to-violet-600",
+      bgLight: "bg-purple-50",
+      textColor: "text-purple-700",
+      borderColor: "border-purple-200/80",
+      tab: "store",
+      icon: Package,
+      unit: "Products",
+      status: "Stock Monitored",
+      description: "Active items in campus store catalog",
     },
     {
-      title: "Transport & Fleet",
-      subtitle: "Operational Vehicle Fleet",
-      count: stats.activeBuses,
-      unit: "Buses Ready",
-      status: "GPS Monitored",
-      icon: Bus,
-      gradient: "from-emerald-500 to-teal-600",
-      badgeColor: "bg-emerald-50 text-emerald-700 border-emerald-200/60",
-      tab: "transport",
-      actionText: "Track Live Fleet",
-    },
-    {
-      title: "Gate Security & Passes",
-      subtitle: "Current Active Passes",
-      count: stats.activeGatePasses,
-      unit: "Active Passes",
-      status: "Checkpoint Guard",
-      icon: Ticket,
+      name: "Active Gate Passes",
+      value: stats.activeGatePasses,
+      color: "#f59e0b",
       gradient: "from-amber-500 to-orange-600",
-      badgeColor: "bg-amber-50 text-amber-700 border-amber-200/60",
+      bgLight: "bg-amber-50",
+      textColor: "text-amber-700",
+      borderColor: "border-amber-200/80",
       tab: "gatepass",
-      actionText: "Open Scanner",
+      icon: Ticket,
+      unit: "Passes",
+      status: "Active Today",
+      description: "Gate exit/entry passes active in system",
       quickScan: true,
     },
     {
-      title: "Store & Inventory",
-      subtitle: "Registered Product Catalog",
-      count: stats.storeProductsCount,
-      unit: "Products",
-      status: "Stock Monitored",
-      icon: Package,
-      gradient: "from-purple-500 to-violet-600",
-      badgeColor: "bg-purple-50 text-purple-700 border-purple-200/60",
-      tab: "store",
-      actionText: "Manage Inventory",
+      name: "Student Records",
+      value: stats.totalStudents,
+      color: "#3b82f6",
+      gradient: "from-blue-500 to-indigo-600",
+      bgLight: "bg-blue-50",
+      textColor: "text-blue-700",
+      borderColor: "border-blue-200/80",
+      tab: "admin",
+      icon: Users,
+      unit: "Students",
+      status: "Active Database",
+      description: "Registered & enrolled student directory",
+    },
+    {
+      name: "Fleet Transport",
+      value: stats.activeBuses,
+      color: "#10b981",
+      gradient: "from-emerald-500 to-teal-600",
+      bgLight: "bg-emerald-50",
+      textColor: "text-emerald-700",
+      borderColor: "border-emerald-200/80",
+      tab: "transport",
+      icon: Bus,
+      unit: "Buses",
+      status: stats.activeBuses > 0 ? "GPS Monitored" : "Standby Fleet",
+      description: "Operational transit fleet and mapped routes",
     },
   ];
+
+  const totalEntities = pieData.reduce((acc, curr) => acc + curr.value, 0);
+  const chartSlices = pieData.filter((item) => item.value > 0);
+  const effectiveChartData =
+    chartSlices.length > 0
+      ? chartSlices
+      : [{ name: "No Data", value: 1, color: "#e5e7eb", unit: "" }];
+
+  const CustomPieTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0];
+      const pct =
+        totalEntities > 0
+          ? ((data.value / totalEntities) * 100).toFixed(1)
+          : "0.0";
+      return (
+        <div className="bg-gray-900/95 text-white backdrop-blur-md px-3.5 py-2.5 rounded-xl shadow-xl border border-white/10 text-xs select-none">
+          <p className="font-bold flex items-center gap-1.5 mb-1 text-white">
+            <span
+              className="w-2.5 h-2.5 rounded-full inline-block"
+              style={{
+                backgroundColor: data.payload.color || data.payload.fill,
+              }}
+            />
+            {data.name}
+          </p>
+          <p className="text-gray-300 font-medium">
+            Total:{" "}
+            <span className="text-white font-bold">
+              {data.value.toLocaleString()}
+            </span>{" "}
+            {data.payload.unit || ""}
+          </p>
+          <p className="text-emerald-400 font-semibold mt-0.5">
+            Share: {pct}% of campus entities
+          </p>
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
     <div className="space-y-6 sm:space-y-8 relative">
@@ -420,18 +478,19 @@ export default function DashboardOverview({
         ))}
       </div>
 
-      {/* Balanced Campus Operations Matrix (Replaces Scale-Skewed Chart) */}
+      {/* Visual Analytics: Pie Chart & Campus Operational Details */}
       <div className="bg-white/80 backdrop-blur-xl p-5 md:p-8 rounded-2xl sm:rounded-3xl border border-white/80 shadow-xl shadow-gray-200/40">
+        {/* Section Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
           <div>
             <div className="flex items-center gap-2">
-              <Layers className="w-5 h-5 text-emerald-600" />
+              <PieIcon className="w-5 h-5 text-emerald-600" />
               <h3 className="text-lg sm:text-[1.35rem] font-extrabold tracking-tight text-gray-900">
-                Campus Operations Matrix
+                Operations & Resource Distribution
               </h3>
             </div>
             <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
-              Balanced operational capacity and status across core campus modules
+              Proportional distribution of campus data across inventory, gate passes, students, and fleet
             </p>
           </div>
 
@@ -443,87 +502,195 @@ export default function DashboardOverview({
           </div>
         </div>
 
-        {/* 4 Balanced Module Cards with Progress & Direct Navigation */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {operationsModules.map((mod, idx) => (
-            <div
-              key={idx}
-              className="relative p-5 rounded-2xl bg-gradient-to-b from-gray-50/70 to-white border border-gray-200/70 hover:border-gray-300 shadow-xs hover:shadow-md transition-all flex flex-col justify-between group"
-            >
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <div
-                    className={`w-9 h-9 rounded-xl bg-gradient-to-br ${mod.gradient} flex items-center justify-center text-white shadow-xs`}
+        {/* 2-Column Grid: Pie Chart on Left, Detailed Module Breakdown on Right */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-center">
+          {/* Left Column: Donut / Pie Chart */}
+          <div className="lg:col-span-5 flex flex-col items-center justify-center p-4 rounded-2xl bg-gradient-to-b from-gray-50/70 to-white border border-gray-100 shadow-2xs">
+            <div className="relative w-full h-[260px] sm:h-[280px] flex items-center justify-center">
+              <ResponsiveContainer width="100%" height="100%">
+                <RechartsPieChart>
+                  <RechartsTooltip content={<CustomPieTooltip />} />
+                  <Pie
+                    data={effectiveChartData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={68}
+                    outerRadius={98}
+                    paddingAngle={chartSlices.length > 1 ? 4 : 0}
+                    cornerRadius={6}
+                    dataKey="value"
+                    onClick={(entry: any) => {
+                      if (entry && entry.tab) {
+                        if (entry.quickScan) setIsQuickScanning?.(true);
+                        setActiveTab(entry.tab);
+                      }
+                    }}
+                    cursor="pointer"
                   >
-                    <mod.icon className="w-5 h-5" />
-                  </div>
+                    {effectiveChartData.map((entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={entry.color}
+                        stroke="#ffffff"
+                        strokeWidth={2}
+                        className="transition-opacity hover:opacity-85"
+                      />
+                    ))}
+                  </Pie>
+                </RechartsPieChart>
+              </ResponsiveContainer>
+
+              {/* Center Donut Grand Total Label */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight leading-none">
+                  {totalEntities.toLocaleString()}
+                </span>
+                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-1">
+                  Total Entities
+                </span>
+                <span className="text-[10px] text-emerald-600 font-semibold mt-0.5 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Live Sync
+                </span>
+              </div>
+            </div>
+
+            {/* Quick Interactive Legend Pills */}
+            <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
+              {pieData.map((item, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => {
+                    if (item.quickScan) setIsQuickScanning?.(true);
+                    setActiveTab(item.tab);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-white border border-gray-200/80 hover:border-gray-300 text-gray-600 hover:text-gray-900 transition-all shadow-2xs"
+                >
                   <span
-                    className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${mod.badgeColor}`}
-                  >
-                    {mod.status}
-                  </span>
-                </div>
-
-                <h4 className="text-sm font-bold text-gray-800 tracking-tight">{mod.title}</h4>
-                <p className="text-xs text-gray-500 mb-3">{mod.subtitle}</p>
-
-                <div className="flex items-baseline gap-2 mb-2">
-                  <span className="text-2xl font-extrabold text-gray-900 tracking-tight">
-                    {mod.count.toLocaleString()}
-                  </span>
-                  <span className="text-xs font-medium text-gray-500">{mod.unit}</span>
-                </div>
-
-                {/* Status Bar */}
-                <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden mb-4">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: "100%" }}
-                    transition={{ duration: 0.6, delay: idx * 0.1, ease: "easeOut" }}
-                    className={`h-full bg-gradient-to-r ${mod.gradient} rounded-full`}
+                    className="w-2 h-2 rounded-full shrink-0"
+                    style={{ backgroundColor: item.color }}
                   />
+                  <span>{item.name}</span>
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-gray-400 font-medium text-center mt-2">
+              Hover slices to inspect • Click to jump to module
+            </p>
+          </div>
+
+          {/* Right Column: Detailed Breakdown & Operations Details */}
+          <div className="lg:col-span-7 flex flex-col justify-between space-y-3.5">
+            <div className="flex items-center justify-between pb-1 border-b border-gray-100">
+              <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+                Module Breakdown
+              </span>
+              <span className="text-xs font-semibold text-gray-400">
+                Resource Share
+              </span>
+            </div>
+
+            <div className="space-y-2.5">
+              {pieData.map((item, idx) => {
+                const pct =
+                  totalEntities > 0
+                    ? (item.value / totalEntities) * 100
+                    : 0;
+                return (
+                  <div
+                    key={idx}
+                    onClick={() => {
+                      if (item.quickScan) setIsQuickScanning?.(true);
+                      setActiveTab(item.tab);
+                    }}
+                    className="group p-3 sm:p-3.5 rounded-2xl bg-white/70 hover:bg-white border border-gray-100 hover:border-gray-200/90 shadow-2xs hover:shadow-sm transition-all cursor-pointer flex flex-col gap-2"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div
+                          className={`w-9 h-9 rounded-xl bg-gradient-to-br ${item.gradient} flex items-center justify-center text-white shadow-xs shrink-0 group-hover:scale-105 transition-transform`}
+                        >
+                          <item.icon className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-xs sm:text-sm font-bold text-gray-800 truncate">
+                              {item.name}
+                            </h4>
+                            <span
+                              className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${item.bgLight} ${item.textColor} ${item.borderColor}`}
+                            >
+                              {item.status}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-gray-400 truncate hidden sm:block">
+                            {item.description}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 shrink-0">
+                        <div className="text-right">
+                          <span className="text-xs sm:text-sm font-extrabold text-gray-900 block leading-tight">
+                            {item.value.toLocaleString()}{" "}
+                            <span className="text-[11px] font-medium text-gray-500">
+                              {item.unit}
+                            </span>
+                          </span>
+                          <span className="text-[11px] font-semibold text-gray-400">
+                            {pct.toFixed(1)}%
+                          </span>
+                        </div>
+                        <ArrowUpRight className="w-4 h-4 text-gray-300 group-hover:text-emerald-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+                      </div>
+                    </div>
+
+                    {/* Proportional Progress Bar */}
+                    <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{
+                          width: `${Math.max(pct, item.value > 0 ? 3 : 0)}%`,
+                        }}
+                        transition={{
+                          duration: 0.6,
+                          delay: idx * 0.08,
+                          ease: "easeOut",
+                        }}
+                        className={`h-full bg-gradient-to-r ${item.gradient} rounded-full`}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Quick Operational Highlights / Details */}
+            <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div className="p-3 rounded-xl bg-gray-50/80 border border-gray-100 flex items-center gap-3">
+                <div className="w-2.5 h-2.5 rounded-full bg-purple-500 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                    Dominant Module
+                  </p>
+                  <p className="text-xs font-bold text-gray-800 truncate">
+                    Store Catalog ({stats.storeProductsCount.toLocaleString()} items)
+                  </p>
                 </div>
               </div>
 
-              <button
-                onClick={() => {
-                  if (mod.quickScan) setIsQuickScanning?.(true);
-                  setActiveTab(mod.tab);
-                }}
-                className="w-full py-2 px-3 rounded-xl bg-white border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50 hover:text-gray-900 group-hover:border-gray-300 transition-all flex items-center justify-center gap-1.5 shadow-2xs"
-              >
-                <span>{mod.actionText}</span>
-                <ArrowUpRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-emerald-600 transition-colors" />
-              </button>
+              <div className="p-3 rounded-xl bg-gray-50/80 border border-gray-100 flex items-center gap-3">
+                <div className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0 animate-pulse" />
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                    Active Security
+                  </p>
+                  <p className="text-xs font-bold text-gray-800 truncate">
+                    {stats.activeGatePasses.toLocaleString()} Passes in Circulation
+                  </p>
+                </div>
+              </div>
             </div>
-          ))}
-        </div>
-
-        {/* Operational Distribution Indicator */}
-        <div className="mt-6 pt-5 border-t border-gray-100">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-gray-500 gap-2 mb-2">
-            <span className="font-semibold text-gray-700">Campus Resource Footprint</span>
-            <span className="text-[11px] text-gray-400">All subsystems operating at 100% telemetry sync</span>
-          </div>
-          <div className="w-full h-2.5 rounded-full bg-gray-100 flex overflow-hidden gap-0.5 p-0.5">
-            <div className="h-full bg-blue-500 rounded-l-full flex-1" title="Students" />
-            <div className="h-full bg-emerald-500 flex-1" title="Transport" />
-            <div className="h-full bg-amber-500 flex-1" title="Gate Passes" />
-            <div className="h-full bg-purple-500 rounded-r-full flex-1" title="Store Inventory" />
-          </div>
-          <div className="flex flex-wrap items-center gap-4 mt-2.5 text-[11px] font-medium text-gray-500">
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-blue-500" /> Academics ({stats.totalStudents})
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" /> Fleet ({stats.activeBuses})
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-amber-500" /> Passes ({stats.activeGatePasses})
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-purple-500" /> Store ({stats.storeProductsCount})
-            </span>
           </div>
         </div>
       </div>
